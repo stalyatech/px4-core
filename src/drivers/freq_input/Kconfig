@@ -1,0 +1,5 @@
+menuconfig DRIVERS_FREQ_INPUT
+	bool "freq_input"
+	default n
+	---help---
+		Enable support for freq_input

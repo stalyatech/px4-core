@@ -83,11 +83,9 @@ public:
 class PCA9557 : public device::I2C, public I2CSPIDriver<PCA9557>, public PCA9557Dev
 {
 public:
-	PCA9557(I2CSPIBusOption bus_option, int bus, int bus_frequency);
+	PCA9557(const I2CSPIDriverConfig &config);
 	~PCA9557() override = default;
 
-	static I2CSPIDriverBase *instantiate(const BusCLIArguments &cli, const BusInstanceIterator &iterator,
-										 int runtime_instance);
 	static void print_usage();
 
 	int  init() override;
@@ -127,9 +125,9 @@ private:
 * Output         : None
 * Return         : None
 *******************************************************************************/
-PCA9557::PCA9557(I2CSPIBusOption bus_option, int bus, int bus_frequency) :
-	I2C(DRV_IOE_DEVTYPE_PCA9557, MODULE_NAME, bus, IOE_DEV_ADDR, bus_frequency),
-	I2CSPIDriver(MODULE_NAME, px4::device_bus_to_wq(get_device_id()), bus_option, bus),
+PCA9557::PCA9557(const I2CSPIDriverConfig &config) :
+	I2C(config),
+	I2CSPIDriver(config),
 	_outputs(0),
 	_inputs(0)
 {
@@ -393,32 +391,6 @@ void PCA9557::print_usage()
 	PRINT_MODULE_USAGE_COMMAND("reset");
 	PRINT_MODULE_USAGE_DEFAULT_COMMANDS();
 }//print_usage
-
-
-/*******************************************************************************
-* Function Name  : instantiate
-* Description    : None
-* Input          : None
-* Output         : None
-* Return         : None
-*******************************************************************************/
-I2CSPIDriverBase *PCA9557::instantiate(const BusCLIArguments &cli, const BusInstanceIterator &iterator,
-									   int runtime_instance)
-{
-	PCA9557 *instance = new PCA9557(iterator.configuredBusOption(), iterator.bus(), cli.bus_frequency);
-
-	if (!instance) {
-		PX4_ERR("alloc failed");
-		return nullptr;
-	}
-
-	if (OK != instance->init()) {
-		delete instance;
-		return nullptr;
-	}
-
-	return instance;
-}//instantiate
 
 
 /*******************************************************************************

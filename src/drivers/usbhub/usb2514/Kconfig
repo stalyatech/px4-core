@@ -1,0 +1,5 @@
+menuconfig DRIVERS_USBHUB_USB2514
+	bool "usb2514"
+	default y
+	---help---
+		Enable support for usb2514

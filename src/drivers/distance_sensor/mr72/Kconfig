@@ -1,0 +1,5 @@
+menuconfig DRIVERS_DISTANCE_SENSOR_MR72
+	bool "mr72"
+	default n
+	---help---
+		Enable support for mr72

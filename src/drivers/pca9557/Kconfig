@@ -1,0 +1,5 @@
+menuconfig DRIVERS_PCA9557
+	bool "pca9557"
+	default y
+	---help---
+		Enable support for pca9557

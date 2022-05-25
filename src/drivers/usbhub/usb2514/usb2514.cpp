@@ -103,8 +103,8 @@ extern "C" __EXPORT int usb2514_main(int argc, char *argv[]);
 * Output         : None
 * Return         : None
 *******************************************************************************/
-USB2514::USB2514(I2CSPIBusOption bus_option, const int bus, SMBus *interface) :
-	I2CSPIDriver(MODULE_NAME, px4::device_bus_to_wq(interface->get_device_id()), bus_option, bus),
+USB2514::USB2514(const I2CSPIDriverConfig &config, SMBus *interface) :
+	I2CSPIDriver(config),
 	_interface(interface)
 {
 #if defined(USBHUB_PWR_IOE_PIN) || defined(USBHUB_RST_IOE_PIN)
@@ -300,15 +300,14 @@ void USB2514::print_usage()
 * Output         : None
 * Return         : None
 *******************************************************************************/
-I2CSPIDriverBase *USB2514::instantiate(const BusCLIArguments &cli, const BusInstanceIterator &iterator,
-				      int runtime_instance)
+I2CSPIDriverBase *USB2514::instantiate(const I2CSPIDriverConfig &config, int runtime_instance)
 {
-	SMBus *interface = new SMBus(DRV_USB_DEVTYPE_HUB, iterator.bus(), cli.i2c_address);
+	SMBus *interface = new SMBus(DRV_USB_DEVTYPE_HUB, config.bus, config.i2c_address);
 	if (interface == nullptr) {
 		PX4_ERR("alloc failed");
 		return nullptr;
 	}
-	USB2514 *instance = new USB2514(iterator.configuredBusOption(), iterator.bus(), interface);
+	USB2514 *instance = new USB2514(config, interface);
 
 	if (instance == nullptr) {
 		PX4_ERR("alloc failed");

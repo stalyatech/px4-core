@@ -61,12 +61,11 @@ enum class USBHUB_PORT_TYPE
 class USB2514 : public I2CSPIDriver<USB2514>
 {
 public:
-	USB2514(I2CSPIBusOption bus_option, const int bus, SMBus *interface);
+	USB2514(const I2CSPIDriverConfig &config, SMBus *interface);
 
 	~USB2514();
 
-	static I2CSPIDriverBase *instantiate(const BusCLIArguments &cli, const BusInstanceIterator &iterator,
-					     int runtime_instance);
+	static I2CSPIDriverBase *instantiate(const I2CSPIDriverConfig &config, int runtime_instance);
 	static void print_usage();
 
 	friend SMBus;
