@@ -186,6 +186,7 @@
 /* Kernel Clock Configuration
  *  Note: look at Table 54 in ST Manual
  */
+#define STM32_RCC_D1CCIPR_SDMMCSEL   RCC_D1CCIPR_SDMMC_PLL1
 #define STM32_RCC_D2CCIP2R_I2C123SRC RCC_D2CCIP2R_I2C123SEL_HSI  /* I2C123 clock source */
 #define STM32_RCC_D3CCIPR_I2C4SRC    RCC_D3CCIPR_I2C4SEL_HSI     /* I2C4 clock source */
 #define STM32_RCC_D2CCIP1R_SPI123SRC RCC_D2CCIP1R_SPI123SEL_PLL2 /* SPI123 clock source */
