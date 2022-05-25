@@ -1,0 +1,146 @@
+#!/bin/sh
+#
+# @name Generic Hexarotor x geometry
+#
+# @type Hexarotor x
+# @class Copter
+#
+# @output MAIN1 motor 1
+# @output MAIN2 motor 2
+# @output MAIN3 motor 3
+# @output MAIN4 motor 4
+# @output MAIN5 motor 5
+# @output MAIN6 motor 6
+# @output MAIN7 feed-through of RC AUX1 channel
+# @output MAIN8 feed-through of RC AUX2 channel
+#
+# @output AUX1 feed-through of RC AUX1 channel
+# @output AUX2 feed-through of RC AUX2 channel
+# @output AUX3 feed-through of RC AUX3 channel
+# @output AUX4 feed-through of RC AUX4 channel
+#
+# @maintainer Tayfun Karan <volvox@stalya.com>
+#
+
+. ${R}etc/init.d/rc.mc_defaults
+
+# Main mixer
+set MIXER huma_x
+set PWM_OUT 12345678
+
+# AUX mixer
+set MIXER_AUX huma_x
+set PWM_AUX_OUT 12347
+
+###############################################
+# Attitude & rate gains
+###############################################
+
+# Roll
+param set-default MC_ROLL_P 6.5
+param set-default MC_ROLLRATE_P 0.2
+param set-default MC_ROLLRATE_I 0.1
+param set-default MC_ROLLRATE_D 0
+param set-default MC_ROLLRATE_MAX 220
+# Pitch
+param set-default MC_PITCH_P 6.5
+param set-default MC_PITCHRATE_P 0.2
+param set-default MC_PITCHRATE_I 0.1
+param set-default MC_PITCHRATE_D 0
+param set-default MC_PITCHRATE_MAX 220
+# Yaw
+param set-default MC_YAW_P 2.8
+param set-default MC_YAWRATE_P 0.4
+param set-default MC_YAWRATE_I 0.1
+param set-default MC_YAWRATE_D 0
+param set-default MC_YAW_FF 0
+param set-default MC_YAWRATE_MAX 200
+
+###############################################
+# Multirotor Position Gains
+###############################################
+
+# Filter settings
+param set-default IMU_DGYRO_CUTOFF 30
+param set-default IMU_GYRO_CUTOFF 30
+param set-default IMU_GYRO_NF_FREQ 65
+param set-default IMU_GYRO_NF_BW 30
+param set-default IMU_GYRO_RATEMAX 2000
+
+# System
+param set-default PWM_MAIN_MAX 1940
+param set-default PWM_MAIN_MIN 1140
+param set-default PWM_MAIN_RATE 400
+param set-default PWM_MAIN_DIS7 900
+param set-default PWM_MAIN_DIS8 900
+
+###############################################
+# GPS Ports
+###############################################
+
+# GPS1
+param set-default GPS_1_CONFIG 201
+param set-default GPS_1_GNSS 31
+param set-default GPS_1_PROTOCOL 1
+param set-default SER_GPS1_BAUD 0
+
+# GPS2
+param set-default GPS_2_CONFIG 202
+param set-default GPS_2_GNSS 31
+param set-default GPS_2_PROTOCOL 1
+param set-default SER_GPS2_BAUD 0
+
+param set-default GPS_UBX_DYNMODEL 6
+param set-default GPS_UBX_MODE 1
+
+# GPS as Yaw/Heading Source
+# Bit 0: use GPS
+# Bit 7: GPS yaw fusion
+param set-default EKF2_AID_MASK 129
+
+# Heading/Yaw offset for dual antenna GPS
+param set-default GPS_YAW_OFFSET 270
+
+###############################################
+# Telemetry Ports
+###############################################
+
+# TELEM1 (SiK Radio)
+param set-default SER_TEL1_BAUD 57600
+param set-default MAV_0_CONFIG 101
+param set-default MAV_0_FORWARD 1
+param set-default MAV_0_MODE 0
+param set-default MAV_0_RATE 1200
+
+# TELEM2 (NRA15 Radar)
+param set-default SER_TEL2_BAUD 115200
+param set-default MAV_1_CONFIG 102
+param set-default MAV_1_FORWARD 1
+param set-default MAV_1_MODE 2
+param set-default MAV_1_RATE 0
+
+# TELEM3 (ESP32 NTRIP Client)
+param set-default SER_TEL3_BAUD 115200
+param set-default MAV_2_CONFIG 103
+param set-default MAV_2_FORWARD 1
+param set-default MAV_2_MODE 2
+param set-default MAV_2_RATE 0
+
+# WIFI
+param set-default SER_WIFI_BAUD 921600
+param set-default MAV_3_CONFIG 301
+param set-default MAV_3_FORWARD 1
+param set-default MAV_3_MODE 0
+param set-default MAV_3_RATE 0
+
+###############################################
+# Radar Parameters
+###############################################
+
+# Configure the MR72 Radar parameters
+param set-default MR72CAN_BUSNUM  1
+param set-default MR72CAN_BITRATE 500000
+param set-default MR72CAN_UPDRATE 50
+
+# Configure the NRA15 Radar parameters (TELEM 2)
+#param set-default SENS_NRA15_CFG 102

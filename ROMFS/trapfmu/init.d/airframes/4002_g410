@@ -1,0 +1,172 @@
+#!/bin/sh
+#
+# @name G410 Quadrotor H geometry
+#
+# @type Quad H
+# @class Copter
+#
+# @output MAIN1 motor1
+# @output MAIN2 motor2
+# @output MAIN3 motor3
+# @output MAIN4 motor4
+# @output MAIN5 feed-through of RC AUX1 channel
+# @output MAIN6 feed-through of RC AUX2 channel
+# @output MAIN7 null
+# @output MAIN8 null
+#
+# @output AUX1 feed-through of RC AUX1 channel
+# @output AUX2 feed-through of RC AUX2 channel
+# @output AUX3 feed-through of RC AUX3 channel
+# @output AUX4 feed-through of RC AUX4 channel
+# @output AUX5 null
+#
+# @maintainer Tayfun Karan <volvox@stalya.com>
+#
+
+. ${R}etc/init.d/rc.mc_defaults
+
+set MIXER g410
+set PWM_OUT 12345678
+
+# AUX mixer
+set MIXER_AUX g410
+set PWM_AUX_OUT 12347
+
+###############################################
+# System parameters
+###############################################
+
+# System_power unavailable
+param set-default CBRK_SUPPLY_CHK 894281
+
+# Position of IMU in body frame
+param set-default EKF2_IMU_POS_X 0.2875
+param set-default EKF2_IMU_POS_Y 0.0
+param set-default EKF2_IMU_POS_Z 0.0
+
+# Position of GPS in body frame
+param set-default EKF2_GPS_POS_X 0.0
+param set-default EKF2_GPS_POS_Y 0.0
+param set-default EKF2_GPS_POS_Z 0.0
+
+# Enable high rate data logging
+param set-default SDLOG_PROFILE 17
+
+###############################################
+# Attitude & rate gains
+###############################################
+
+# Roll
+param set-default MC_ROLL_P 6.5
+param set-default MC_ROLLRATE_P 0.2
+param set-default MC_ROLLRATE_I 0.1
+param set-default MC_ROLLRATE_D 0
+param set-default MC_ROLLRATE_MAX 220
+# Pitch
+param set-default MC_PITCH_P 6.5
+param set-default MC_PITCHRATE_P 0.2
+param set-default MC_PITCHRATE_I 0.1
+param set-default MC_PITCHRATE_D 0
+param set-default MC_PITCHRATE_MAX 220
+# Yaw
+param set-default MC_YAW_P 2.8
+param set-default MC_YAWRATE_P 0.4
+param set-default MC_YAWRATE_I 0.1
+param set-default MC_YAWRATE_D 0
+param set-default MC_YAW_FF 0
+param set-default MC_YAWRATE_MAX 200
+
+param set-default MPC_THR_MIN 0.06
+param set-default MPC_MANTHR_MIN 0.06
+
+###############################################
+# Multirotor Position Gains
+###############################################
+
+# Filter settings
+param set-default IMU_DGYRO_CUTOFF 30
+param set-default IMU_GYRO_CUTOFF 30
+param set-default IMU_GYRO_NF_FREQ 65
+param set-default IMU_GYRO_NF_BW 30
+param set-default IMU_GYRO_RATEMAX 2000
+
+# System
+param set-default PWM_MAIN_MAX 1940
+param set-default PWM_MAIN_MIN 1140
+param set-default PWM_MAIN_RATE 400
+param set-default PWM_AUX_RATE 400
+
+###############################################
+# GPS Ports
+###############################################
+
+# GPS1
+param set-default GPS_1_CONFIG 201
+param set-default GPS_1_GNSS 31
+param set-default GPS_1_PROTOCOL 1
+param set-default SER_GPS1_BAUD 0
+
+# GPS2
+param set-default GPS_2_CONFIG 202
+param set-default GPS_2_GNSS 31
+param set-default GPS_2_PROTOCOL 1
+param set-default SER_GPS2_BAUD 0
+
+param set-default GPS_UBX_DYNMODEL 6
+param set-default GPS_UBX_MODE 1
+
+# GPS as Yaw/Heading Source
+# Bit 0: use GPS
+# Bit 7: GPS yaw fusion
+#param set-default EKF2_AID_MASK 129
+param set-default EKF2_AID_MASK 1
+
+# Heading/Yaw offset for dual antenna GPS
+param set-default GPS_YAW_OFFSET 270
+
+###############################################
+# Telemetry Ports
+###############################################
+
+# TELEM1 (SiK Radio)
+param set-default SER_TEL1_BAUD 57600
+param set-default MAV_0_CONFIG 101
+param set-default MAV_0_FORWARD 1
+param set-default MAV_0_MODE 0
+param set-default MAV_0_RATE 1200
+
+# TELEM2 (NRA15 Radar)
+param set-default SER_TEL2_BAUD 115200
+param set-default MAV_1_CONFIG 102
+param set-default MAV_1_FORWARD 1
+param set-default MAV_1_MODE 2
+param set-default MAV_1_RATE 0
+
+# TELEM3 (ESP32 NTRIP Client)
+param set-default SER_TEL3_BAUD 115200
+param set-default MAV_2_CONFIG 103
+param set-default MAV_2_FORWARD 1
+param set-default MAV_2_MODE 2
+param set-default MAV_2_RATE 0
+
+# WIFI
+param set-default SER_WIFI_BAUD 921600
+param set-default MAV_3_CONFIG 301
+param set-default MAV_3_FORWARD 1
+param set-default MAV_3_MODE 0
+param set-default MAV_3_RATE 0
+
+###############################################
+# Radar Parameters
+###############################################
+
+# Configure the MR72 Radar parameters
+param set-default MR72CAN_BUSNUM  1
+param set-default MR72CAN_BITRATE 500000
+param set-default MR72CAN_UPDRATE 50
+
+# Configure the NRA15 Radar parameters (TELEM 2)
+#param set-default SENS_NRA15_CFG 102
+
+# Configure the MR72 Radar parameters (TELEM 2)
+#param set-default SENS_MR72_CFG 102
