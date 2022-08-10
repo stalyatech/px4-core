@@ -1,0 +1,17 @@
+#!/bin/sh
+#
+# board specific defaults
+#------------------------------------------------------------------------------
+
+param set-default BAT1_V_DIV 38.60470200
+param set-default BAT1_A_PER_V 17
+param set-default BAT2_V_DIV 38.16053772
+param set-default BAT2_A_PER_V 17
+
+# Enable IMU thermal control
+param set-default SENS_EN_THERMAL 1
+#param set-default -s SENS_TEMP_ID 2621474
+
+set IOFW "/fs/microsd/etc/extras/stalya_io-v2_default.bin"
+
+safety_button start
