@@ -1,5 +1,5 @@
-menuconfig DRIVERS_TATTUCAN
-	bool "tattucan"
+menuconfig DRIVERS_TATTU_CAN
+	bool "tattu_can"
 	default n
 	---help---
 		Enable support for Tattu Battery CAN bus
