@@ -137,7 +137,7 @@ int NanoRadarMR72::collect()
 		if ((msgid = parse(_message.rawbuf[index])) != PX4_ERROR) {
 
 			// inform the application
-			_px4_rangefinder.update(timestamp_sample, _target_info.dist);
+			_px4_rangefinder.update(timestamp_sample, /*_target_info.dist*/ 0);
 
 			// increment the update counter
 			updated++;
