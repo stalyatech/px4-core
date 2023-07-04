@@ -314,6 +314,11 @@ private:
 	 */
 	bool cameraWasTriggering();
 
+	/**
+	 * @brief Check if a climb is necessary to align with mission altitude prior to starting the mission
+	 */
+	void checkClimbRequired();
+
 	DEFINE_PARAMETERS(
 		(ParamFloat<px4::params::MIS_DIST_1WP>) _param_mis_dist_1wp,
 		(ParamInt<px4::params::MIS_MNT_YAW_CTL>) _param_mis_mnt_yaw_ctl
@@ -338,6 +343,8 @@ private:
 	float _landing_alt{0.0f};
 
 	float _landing_loiter_radius{0.f};
+
+	float _mission_init_climb_altitude_amsl{NAN};	/**< altitude AMSL the vehicle will climb to when mission starts */
 
 	bool _need_takeoff{true};					/**< if true, then takeoff must be performed before going to the first waypoint (if needed) */
 
