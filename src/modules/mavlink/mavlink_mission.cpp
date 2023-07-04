@@ -92,6 +92,9 @@ MavlinkMissionManager::init_offboard_mission()
 			_dataman_id = (dm_item_t)mission_state.dataman_id;
 			_count[MAV_MISSION_TYPE_MISSION] = mission_state.count;
 			_current_seq = mission_state.current_seq;
+			_land_start_marker = mission_state.land_start_index;
+			_land_marker = mission_state.land_index;
+
 
 		} else {
 			PX4_WARN("offboard mission init failed");
@@ -150,6 +153,8 @@ MavlinkMissionManager::update_active_mission(dm_item_t dataman_id, uint16_t coun
 	mission.mission_update_counter = _mission_update_counter;
 	mission.geofence_update_counter = _geofence_update_counter;
 	mission.safe_points_update_counter = _safepoint_update_counter;
+	mission.land_start_index = _land_start_marker;
+	mission.land_index = _land_marker;
 
 	/* update active mission state */
 	_dataman_id = dataman_id;
@@ -158,6 +163,11 @@ MavlinkMissionManager::update_active_mission(dm_item_t dataman_id, uint16_t coun
 	_my_dataman_id = _dataman_id;
 
 	_offboard_mission_pub.publish(mission);
+
+	bool success = _dataman_client.writeSync(DM_KEY_MISSION_STATE, 0, reinterpret_cast<uint8_t *>(&mission),sizeof(mission_s));
+	if (!success) {
+		PX4_ERR("Can't update mission state in Dataman");
+	}
 }
 
 int
@@ -865,6 +875,9 @@ MavlinkMissionManager::handle_mission_count(const mavlink_message_t *msg)
 				return;
 			}
 
+			_land_start_marker = -1;
+			_land_marker = -1;
+
 			if (wpc.count == 0) {
 				PX4_DEBUG("WPM: MISSION_COUNT 0, clearing waypoints list and staying in state MAVLINK_WPM_STATE_IDLE");
 
@@ -1066,6 +1079,19 @@ MavlinkMissionManager::handle_mission_item_both(const mavlink_message_t *msg)
 					write_failed = !_dataman_client.writeSync(_transfer_dataman_id, wp.seq, reinterpret_cast<uint8_t *>(&mission_item),
 							sizeof(struct mission_item_s));
 
+					// Check for land start marker
+					if ((mission_item.nav_cmd == MAV_CMD_NAV_VTOL_LAND) && (_land_start_marker == -1)) {
+						_land_start_marker = wp.seq;
+					}
+
+					// Check for land index
+					if (((mission_item.nav_cmd == MAV_CMD_DO_LAND_START) || (mission_item.nav_cmd == MAV_CMD_NAV_LAND)) && (_land_marker == -1)) {
+						_land_marker = wp.seq;
+						if (_land_start_marker == -1) {
+							_land_start_marker = _land_marker;
+						}
+					}
+
 					if (!write_failed) {
 						/* waypoint marked as current */
 						if (wp.current) {
@@ -1215,6 +1241,8 @@ MavlinkMissionManager::handle_mission_clear_all(const mavlink_message_t *msg)
 			switch (wpca.mission_type) {
 			case MAV_MISSION_TYPE_MISSION:
 				++_mission_update_counter;
+				_land_start_marker = -1;
+				_land_marker = -1;
 				update_active_mission(_dataman_id == DM_KEY_WAYPOINTS_OFFBOARD_0 ? DM_KEY_WAYPOINTS_OFFBOARD_1 :
 						      DM_KEY_WAYPOINTS_OFFBOARD_0, 0, 0);
 				break;
@@ -1229,6 +1257,8 @@ MavlinkMissionManager::handle_mission_clear_all(const mavlink_message_t *msg)
 
 			case MAV_MISSION_TYPE_ALL:
 				++_mission_update_counter;
+				_land_start_marker = -1;
+				_land_marker = -1;
 				update_active_mission(_dataman_id == DM_KEY_WAYPOINTS_OFFBOARD_0 ? DM_KEY_WAYPOINTS_OFFBOARD_1 :
 						      DM_KEY_WAYPOINTS_OFFBOARD_0, 0, 0);
 				ret = update_geofence_count(0);

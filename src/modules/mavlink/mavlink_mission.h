@@ -135,6 +135,8 @@ private:
 	static uint16_t		_mission_update_counter;
 	static uint16_t		_geofence_update_counter;
 	static uint16_t		_safepoint_update_counter;
+	int32_t 		_land_start_marker{-1}; 	///< index of land start mission item in current transmission (if unavailable, index of land mission item, -1 otherwise)
+	int32_t 		_land_marker{-1}; 		///< index of land mission item in current transmission (-1 if unavailable)
 
 	MavlinkRateLimiter	_slow_rate_limiter{100 * 1000};		///< Rate limit sending of the current WP sequence to 10 Hz
 
