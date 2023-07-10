@@ -110,6 +110,7 @@ Mission::set_current_mission_index(uint16_t index)
 	if (index == _mission.current_seq) {
 		return true;
 	}
+
 	if (_navigator->get_mission_result()->valid && (index < _mission.count)) {
 		if (goToItem(index, true) != PX4_OK) {
 			// Keep the old mission index (it was not updated by the interface) and report back.
@@ -117,6 +118,7 @@ Mission::set_current_mission_index(uint16_t index)
 		}
 
 		_is_current_planned_mission_item_valid = true;
+
 		// we start from the first item so can reset the cache
 		if (_mission.current_seq == 0) {
 			resetItemCache();
@@ -237,11 +239,15 @@ void Mission::setActiveMissionItems()
 
 	mission_item_s next_mission_items[max_num_next_items];
 	const dm_item_t dataman_id = static_cast<dm_item_t>(_mission.dataman_id);
-	for (size_t i=0U; i < num_found_items; i++) {
+
+	for (size_t i = 0U; i < num_found_items; i++) {
 		mission_item_s next_mission_item;
-		bool success = _dataman_cache.loadWait(dataman_id, next_mission_items_index[i], reinterpret_cast<uint8_t *>(&next_mission_item), sizeof(next_mission_item));
+		bool success = _dataman_cache.loadWait(dataman_id, next_mission_items_index[i],
+						       reinterpret_cast<uint8_t *>(&next_mission_item), sizeof(next_mission_item));
+
 		if (success) {
 			next_mission_items[i] = next_mission_item;
+
 		} else {
 			num_found_items = i;
 			break;
@@ -649,7 +655,8 @@ Mission::save_mission_state()
 
 	if (success) {
 		/* data read successfully, check dataman ID and items count */
-		if (mission_state.dataman_id == _mission.dataman_id && mission_state.count == _mission.count && mission_state.mission_update_counter && _mission.mission_update_counter) {
+		if (mission_state.dataman_id == _mission.dataman_id && mission_state.count == _mission.count
+		    && mission_state.mission_update_counter && _mission.mission_update_counter) {
 			/* navigator may modify only sequence, write modified state only if it changed */
 			if (mission_state.current_seq != _mission.current_seq) {
 				mission_state = _mission;

@@ -590,6 +590,7 @@ void Navigator::run()
 						vcmd.param1 = _mission.get_land_start_index();
 						publish_vehicle_cmd(&vcmd);
 					}
+
 				} else {
 					PX4_WARN("planned mission landing not available");
 					result = vehicle_command_ack_s::VEHICLE_CMD_RESULT_CANCELLED;

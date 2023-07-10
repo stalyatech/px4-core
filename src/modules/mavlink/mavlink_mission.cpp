@@ -164,7 +164,9 @@ MavlinkMissionManager::update_active_mission(dm_item_t dataman_id, uint16_t coun
 
 	_offboard_mission_pub.publish(mission);
 
-	bool success = _dataman_client.writeSync(DM_KEY_MISSION_STATE, 0, reinterpret_cast<uint8_t *>(&mission),sizeof(mission_s));
+	bool success = _dataman_client.writeSync(DM_KEY_MISSION_STATE, 0, reinterpret_cast<uint8_t *>(&mission),
+			sizeof(mission_s));
+
 	if (!success) {
 		PX4_ERR("Can't update mission state in Dataman");
 	}
@@ -1085,8 +1087,10 @@ MavlinkMissionManager::handle_mission_item_both(const mavlink_message_t *msg)
 					}
 
 					// Check for land index
-					if (((mission_item.nav_cmd == MAV_CMD_DO_LAND_START) || (mission_item.nav_cmd == MAV_CMD_NAV_LAND)) && (_land_marker == -1)) {
+					if (((mission_item.nav_cmd == MAV_CMD_DO_LAND_START) || (mission_item.nav_cmd == MAV_CMD_NAV_LAND))
+					    && (_land_marker == -1)) {
 						_land_marker = wp.seq;
+
 						if (_land_start_marker == -1) {
 							_land_start_marker = _land_marker;
 						}

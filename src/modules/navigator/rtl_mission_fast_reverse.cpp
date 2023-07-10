@@ -120,7 +120,8 @@ void RtlMissionFastReverse::setActiveMissionItems()
 		getPreviousPositionItems(_mission.current_seq, &next_mission_item_index, num_found_items, 1u);
 		const dm_item_t dataman_id = static_cast<dm_item_t>(_mission.dataman_id);
 		mission_item_s next_mission_item;
-		bool success = _dataman_cache.loadWait(dataman_id, next_mission_item_index, reinterpret_cast<uint8_t *>(&next_mission_item), sizeof(mission_item_s));
+		bool success = _dataman_cache.loadWait(dataman_id, next_mission_item_index,
+						       reinterpret_cast<uint8_t *>(&next_mission_item), sizeof(mission_item_s));
 
 		if (num_found_items > 0 && success) {
 
