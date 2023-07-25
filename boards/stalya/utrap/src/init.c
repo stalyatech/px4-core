@@ -58,6 +58,7 @@
 #include <px4_arch/io_timer.h>
 #include <px4_platform_common/init.h>
 #include <px4_platform/gpio.h>
+#include <px4_platform/board_determine_hw_info.h>
 #include <px4_platform/board_dma_alloc.h>
 
 #include <mpu.h>
@@ -66,6 +67,7 @@ __BEGIN_DECLS
 extern void led_init(void);
 extern void led_on(int led);
 extern void led_off(int led);
+extern int can_devinit(void);
 __END_DECLS
 
 /************************************************************************************
@@ -118,6 +120,16 @@ __EXPORT void board_on_reset(int status)
  ************************************************************************************/
 __EXPORT void stm32_boardinitialize(void)
 {
+	// clear all existing MPU configuration from bootloader
+	for (int region = 0; region < CONFIG_ARM_MPU_NREGIONS; region++) {
+		putreg32(region, MPU_RNR);
+		putreg32(0, MPU_RBAR);
+		putreg32(0, MPU_RASR);
+
+		// save
+		putreg32(0, MPU_CTRL);
+	}
+
 	/* Reset PWM first thing */
 	board_on_reset(-1);
 
@@ -156,6 +168,14 @@ __EXPORT int board_app_initialize(uintptr_t arg)
 	/* Need hrt running before using the ADC */
 	px4_platform_init();
 
+	/* Determine HW info */
+	if (OK == board_determine_hw_info()) {
+		syslog(LOG_INFO, "[boot] Rev 0x%1x : Ver 0x%1x %s\n", board_get_hw_revision(), board_get_hw_version(),
+		       board_get_hw_type_name());
+	} else {
+		syslog(LOG_ERR, "[boot] Failed to read HW revision and version\n");
+	}
+
 	/* configure SPI interfaces (after we determined the HW version) */
 	stm32_spiinitialize();
 
@@ -178,15 +198,25 @@ __EXPORT int board_app_initialize(uintptr_t arg)
 
 	if (!sdio_dev) {
 		syslog(LOG_ERR, "[boot] Failed to initialize SDIO slot %d\n", 0);
+		return ERROR;
 	}
 
 	if (mmcsd_slotinitialize(0, sdio_dev) != OK) {
 		syslog(LOG_ERR, "[boot] Failed to bind SDIO to the MMC/SD driver\n");
+		return ERROR;
 	}
 
 	/* Assume that the SD card is inserted.  What choice do we have? */
 	sdio_mediachange(sdio_dev, true);
 #endif /* CONFIG_MMCSD */
+
+#ifdef CONFIG_CAN
+	#if 0
+	if (can_devinit() != OK) {
+		syslog(LOG_ERR, "[boot] Failed to bind CAN bus(es) to the FDCAN driver\n");
+	}
+	#endif
+#endif /* CONFIG_CAN */
 
 	/* Configure the HW based on the manifest */
 

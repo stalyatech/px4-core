@@ -35,16 +35,11 @@ ms5611 -s -b 1 start
 # Secondary IMU Sensors
 ###############################################
 
-# Yaw 270°
-#icm20689 -I -b 4 -R 6 start
+# Yaw 90°
+icm20689 -I -b 4 -f 400 -R 2 start
 
 # Yaw 270°
-#lis3mdl -I -b 4 -R 6 start
+lis3mdl -I -b 4 -f 400 -R 6 start
 
 # No rotation
-#ms5611 -I -b 4 start
-
-###############################################
-# NRA15 Radar on TEL2
-###############################################
-nra15 start -d /dev/ttyS5
+ms5611 -I -b 4 -f 400 start

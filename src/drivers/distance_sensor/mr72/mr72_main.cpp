@@ -117,7 +117,7 @@ $ mr72 stop
 	PRINT_MODULE_USAGE_SUBCATEGORY("distance_sensor");
 	PRINT_MODULE_USAGE_COMMAND_DESCR("start", "Start driver");
 	PRINT_MODULE_USAGE_PARAM_STRING('d', "/dev/ttyS5", "<file:dev>", "Serial device", false);
-	PRINT_MODULE_USAGE_PARAM_INT('R', 25, 0, 25, "Sensor rotation - downward facing by default", true);
+	PRINT_MODULE_USAGE_PARAM_INT('R', 0, 0, 25, "Sensor rotation - forward facing by default", true);
 	PRINT_MODULE_USAGE_COMMAND_DESCR("stop", "Stop driver");
 	return PX4_OK;
 }
@@ -126,7 +126,7 @@ $ mr72 stop
 
 extern "C" __EXPORT int mr72_main(int argc, char *argv[])
 {
-	uint8_t rotation = distance_sensor_s::ROTATION_DOWNWARD_FACING;
+	uint8_t rotation = distance_sensor_s::ROTATION_FORWARD_FACING;
 	const char *port = nullptr;
 	const char *myoptarg = nullptr;
 	int myoptind = 1;

@@ -72,6 +72,7 @@
 #define PIN_ADC1_INP9			(GPIO_ANALOG|GPIO_PORTB|GPIO_PIN0)
 #define PIN_ADC1_INP10			(GPIO_ANALOG|GPIO_PORTC|GPIO_PIN0)
 #define PIN_ADC1_INP11			(GPIO_ANALOG|GPIO_PORTC|GPIO_PIN1)
+#define PIN_ADC1_INP18			(GPIO_ANALOG|GPIO_PORTA|GPIO_PIN4)
 
 /* ADC channels */
 #define PX4_ADC_GPIO  \
@@ -80,7 +81,8 @@
 	/* PB0 */  PIN_ADC1_INP9,  \
 	/* PB1 */  PIN_ADC1_INP5,  \
 	/* PC0 */  PIN_ADC1_INP10, \
-	/* PC1 */  PIN_ADC1_INP11
+	/* PC1 */  PIN_ADC1_INP11, \
+	/* PA4 */  PIN_ADC1_INP18
 
 /* Define Channel numbers must match above GPIO pins */
 #define ADC_BATTERY1_VOLTAGE_CHANNEL         8 /* PC5: BATT_VOLTAGE_SENS */
@@ -89,6 +91,7 @@
 #define ADC_BATTERY2_CURRENT_CHANNEL         9 /* PB0: AUX_CURRENT_SENS */
 #define ADC_PRESSURE_VOLTAGE_CHANNEL        10 /* PC0: PRESSURE_SENS */
 #define ADC_AIRSPEED_VOLTAGE_CHANNEL        11 /* PC1: AIRSPEED_SENS */
+#define ADC_HW_REV_SENSE_CHANNEL            18 /* PA4: HW_REV_SENS   */
 
 #define ADC_CHANNELS \
 	((1 << ADC_BATTERY1_VOLTAGE_CHANNEL)       | \
@@ -96,21 +99,35 @@
 	 (1 << ADC_BATTERY2_VOLTAGE_CHANNEL)       | \
 	 (1 << ADC_BATTERY2_CURRENT_CHANNEL)       | \
 	 (1 << ADC_PRESSURE_VOLTAGE_CHANNEL)       | \
-	 (1 << ADC_AIRSPEED_VOLTAGE_CHANNEL))
+	 (1 << ADC_AIRSPEED_VOLTAGE_CHANNEL)	   | \
+	 (1 << ADC_HW_REV_SENSE_CHANNEL))
 
 #define SYSTEM_ADC_BASE STM32_ADC1_BASE
 
 /* HW has to large of R termination on ADC todo:change when HW value is chosen */
 #define BOARD_ADC_OPEN_CIRCUIT_V     (5.6f)
 
+/* HW Version and Revision drive signals Default to 1 to detect */
+
+#define BOARD_HAS_HW_VERSIONING
+
+#define GPIO_HW_REV_SENSE    	/* PA4 */ PIN_ADC1_INP18
+#define HW_INFO_INIT           {'G','2','X','x','x',0}
+#define HW_INFO_INIT_VER       3 /* Offset in above string of the VER */
+#define HW_INFO_INIT_REV       4 /* Offset in above string of the REV */
+
+// Base                   FMUM
+#define G2X00		HW_VER_REV(0x0,0x0) // FMU Gen2,	Ver 0, Rev 0
+#define G2X01		HW_VER_REV(0x0,0x1) // FMU Gen2,	Ver 0, Rev 1
+#define G2X02		HW_VER_REV(0x0,0x2) // FMU Gen2,	Ver 0, Rev 2
+
 /* CAN Silence Silent mode control */
 #define GPIO_CAN1_SILENT_S0  	/* PD3 */ (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_CLEAR|GPIO_PORTD|GPIO_PIN3)
-#define GPIO_CAN2_SILENT_S1  	/* PB7 */ (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_CLEAR|GPIO_PORTB|GPIO_PIN7)
-
+#define GPIO_CAN2_SILENT_S0  	/* PB7 */ (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_CLEAR|GPIO_PORTB|GPIO_PIN7)
 
 /* PWM */
-#define DIRECT_PWM_OUTPUT_CHANNELS	7
-#define BOARD_NUM_IO_TIMERS			2
+#define DIRECT_PWM_OUTPUT_CHANNELS	4
+#define BOARD_NUM_IO_TIMERS			1
 
 /* Power supply control and monitoring GPIOs */
 #define BOARD_NUMBER_BRICKS     	2
@@ -125,21 +142,20 @@
 #define TONE_ALARM_TIMER        	2  /* Timer 2 */
 #define TONE_ALARM_CHANNEL      	2  /* PB3 TIM2_CH2 */
 
-#define GPIO_TONE_ALARM_IDLE    /* PB3 */ (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_SET|GPIO_PORTB|GPIO_PIN3) // ALARM
-#define GPIO_TONE_ALARM         GPIO_TIM2_CH2OUT_2
+#define GPIO_TONE_ALARM_IDLE    /* PB3 */ (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_CLEAR|GPIO_PORTB|GPIO_PIN3) // ALARM
+#define GPIO_TONE_ALARM         /* PB3 */ (GPIO_ALT|GPIO_AF1|GPIO_SPEED_50MHz|GPIO_PUSHPULL|GPIO_PORTB|GPIO_PIN3)
 
-/* PWM input driver. Use FMU AUX5 pins attached to Timer1 Channel 1 */
-#define PWMIN_TIMER                        1
-#define PWMIN_TIMER_CHANNEL    	/* T1C1 */ 1
-#define GPIO_PWM_IN            	/* PA8  */ GPIO_TIM1_CH1IN_1
-
-/* FREQ input driver. Use FMU AUX6 pins attached to Timer1 Channel 2 */
+/* FREQ input driver. Use FMU AUX5, AUX6, AUX7 pins attached to Timer1 Channel 1,2,3 */
 #define FREQIN_TIMER                       1
-#define FREQIN_TIMER_CHANNEL    /* T1C2 */ 1
-#define GPIO_FREQ_IN            /* PA9  */ GPIO_TIM1_CH2IN_1
+#define FREQIN_TIMER_CHANNEL1  	/* T1C1 */ 1
+#define FREQIN_TIMER_CHANNEL2  	/* T1C2 */ 2
+#define FREQIN_TIMER_CHANNEL3  	/* T1C3 */ 3
+
+#define GPIO_FREQ_IN1			/* PA8  */ (GPIO_ALT|GPIO_AF1|GPIO_SPEED_50MHz|GPIO_PULLDOWN|GPIO_PORTA|GPIO_PIN8)
+#define GPIO_FREQ_IN2         	/* PA9  */ (GPIO_ALT|GPIO_AF1|GPIO_SPEED_50MHz|GPIO_PULLDOWN|GPIO_PORTA|GPIO_PIN9)
+#define GPIO_FREQ_IN3         	/* PA10 */ (GPIO_ALT|GPIO_AF1|GPIO_SPEED_50MHz|GPIO_PULLDOWN|GPIO_PORTA|GPIO_PIN10)
 
 /* Safety LED is only on PX4IO */
-
 #define GPIO_SAFETY_SWITCH_IN	/* PD6  */ (GPIO_INPUT|GPIO_FLOAT|GPIO_PORTD|GPIO_PIN6)
 
 /* Enable the FMU to use the switch it if there is no px4io fixme:This should be BOARD_SAFTY_BUTTON() */
@@ -166,13 +182,9 @@
 
 /* This board provides the board_on_reset interface */
 #define BOARD_HAS_ON_RESET 			1
-
 #define BOARD_HAS_STATIC_MANIFEST 	1
-
 #define BOARD_HAS_PWM  				DIRECT_PWM_OUTPUT_CHANNELS
-#define BOARD_NUM_IO_TIMERS 		2
-
-#define BOARD_DSHOT_MOTOR_ASSIGNMENT	{3, 2, 1, 0, 4, 5, 6};
+#define BOARD_DSHOT_MOTOR_ASSIGNMENT	{3, 2, 1, 0};
 
 /* Internal IMU Heater
  *
@@ -187,11 +199,17 @@
  */
 #define IOE_GPSPWR_OUTPUT		2
 
+/* GPS direct RTCM selection control
+ *
+ * Connected to the IO Expander; tell compiler to enable support
+ */
+#define IOE_RTCMSEL_OUTPUT		1
+
 /* USB Hub power control
  *
  * Connected to the IO Expander; tell compiler to enable support
  */
-#define USBHUB_PWR_IOE_PIN		6
+#define IOE_USBPWR_OUTPUT		6
 
 /* USB Hub reset control
  *
@@ -200,7 +218,11 @@
 #define USBHUB_RST_GPIO_PIN /* PA15 */	(GPIO_OUTPUT|GPIO_OPENDRAIN|GPIO_SPEED_2MHz|GPIO_OUTPUT_CLEAR|GPIO_PORTA|GPIO_PIN15)
 
 /* I/O expander reset control */
-#define IOE_RST_GPIO_PIN 	/* PE14 */	(GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_CLEAR|GPIO_PORTE|GPIO_PIN14)
+#define IOE_RST_GPIO_PIN 	/* PE15 */	(GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_CLEAR|GPIO_PORTE|GPIO_PIN15)
+
+/* I2C4 Bus pins */
+#define GPIO_I2C4_SCL_RESET	/* PB8 */ 	(GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_CLEAR|GPIO_PORTB|GPIO_PIN8)
+#define GPIO_I2C4_SDA_RESET	/* PB9 */ 	(GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_CLEAR|GPIO_PORTB|GPIO_PIN9)
 
 /* SPI bus item count */
 #define BOARD_SPI_BUS_MAX_BUS_ITEMS	2
@@ -209,8 +231,7 @@
 
 #define BOARD_USB_VBUS_SENSE_DISABLED
 
-#define BOARD_I2C_BUS_CLOCK_INIT {0, 100000, 0, 100000}
-
+#define BOARD_I2C_BUS_CLOCK_INIT {0, 100000, 0, 400000}
 
 #define PX4_GPIO_INIT_LIST { \
 		PX4_ADC_GPIO,                     \
@@ -219,11 +240,13 @@
 		GPIO_FDCAN2_TX,                   \
 		GPIO_FDCAN2_RX,                   \
 		GPIO_CAN1_SILENT_S0,              \
-		GPIO_CAN2_SILENT_S1,              \
+		GPIO_CAN2_SILENT_S0,              \
+		GPIO_I2C4_SCL_RESET,			  \
+		GPIO_I2C4_SDA_RESET,			  \
 		USBHUB_RST_GPIO_PIN,		      \
 		IOE_RST_GPIO_PIN,				  \
 		GPIO_nVDD_BRICK1_VALID,           \
-		GPIO_nVDD_BRICK1_VALID,           \
+		GPIO_nVDD_BRICK2_VALID,           \
 		GPIO_nVDD_USB_VALID,              \
 		GPIO_nVDD_5V_PERIPH_OC,           \
 		GPIO_nVDD_5V_HIPOWER_OC,          \

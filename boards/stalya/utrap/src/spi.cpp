@@ -37,9 +37,9 @@
 
 constexpr px4_spi_bus_t px4_spi_buses[SPI_BUS_MAX_BUS_ITEMS] = {
 	initSPIBus(SPI::Bus::SPI1, {
-		initSPIDevice(DRV_ACC_DEVTYPE_BMI088,   SPI::CS{GPIO::PortC, GPIO::Pin2}/*, SPI::DRDY{GPIO::PortE, GPIO::Pin12}*/), // ACC_CS, ACC_DRDY
+		initSPIDevice(DRV_ACC_DEVTYPE_BMI088,   SPI::CS{GPIO::PortC, GPIO::Pin2},  SPI::DRDY{GPIO::PortE, GPIO::Pin12}),	// ACC_CS, ACC_DRDY
 		initSPIDevice(DRV_GYR_DEVTYPE_BMI088,   SPI::CS{GPIO::PortC, GPIO::Pin3}), 											// GYR_CS
-		initSPIDevice(DRV_IMU_DEVTYPE_ICM20689, SPI::CS{GPIO::PortA, GPIO::Pin4}/*, SPI::DRDY{GPIO::PortE, GPIO::Pin13}*/), // MPU_CS, MPU_DRDY
+		initSPIDevice(DRV_IMU_DEVTYPE_ICM20689, SPI::CS{GPIO::PortE, GPIO::Pin14}, SPI::DRDY{GPIO::PortE, GPIO::Pin13}),	// MPU_CS, MPU_DRDY
 		initSPIDevice(DRV_MAG_DEVTYPE_LIS3MDL,  SPI::CS{GPIO::PortB, GPIO::Pin2}), 											// MAG_CS
 		initSPIDevice(DRV_BARO_DEVTYPE_MS5611,  SPI::CS{GPIO::PortE, GPIO::Pin11}), 										// BARO_CS
 	}),

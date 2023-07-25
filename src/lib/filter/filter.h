@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2020 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2012-2013, 2017 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,47 +32,68 @@
  ****************************************************************************/
 
 /**
- * @file bootloader_main.c
+ * @file filter.h
+ * Filter functions declarations
  *
- * FMU-specific early startup code for bootloader
-*/
+ * @author volvox <volvox@stalya.com>
+ *
+ */
 
-#include "board_config.h"
-#include "bl.h"
+#pragma once
 
-#include <nuttx/config.h>
-#include <nuttx/board.h>
-#include <chip.h>
-#include <stm32_uart.h>
-#include <arch/board/board.h>
-#include "arm_internal.h"
-#include <px4_platform_common/init.h>
+#include <math.h>
 
-extern int sercon_main(int c, char **argv);
+namespace filter {
 
-__EXPORT void board_on_reset(int status) {}
-
-__EXPORT void stm32_boardinitialize(void)
+/**
+ ** class Filter
+ */
+class __EXPORT Filter
 {
-	/* configure USB interfaces */
-#if !defined(BOARD_USB_VBUS_SENSE_DISABLED)
-	stm32_configgpio(GPIO_OTGFS_VBUS);
-#endif
-}
+public:
+	typedef enum {
+		FILTER_DISABLE,
+		FILTER_MEDIAN,
+		FILTER_LINREG,
+	} filter_type_t;
 
-__EXPORT int board_app_initialize(uintptr_t arg)
-{
-	return 0;
-}
+	Filter(int type = FILTER_MEDIAN, int loop = 1);
+	~Filter();
 
-void board_late_initialize(void)
-{
-	px4_platform_console_init();
-	sercon_main(0, NULL);
-}
+	float insert(int loop, float data);
 
-extern void sys_tick_handler(void);
-void board_timerhook(void)
-{
-	sys_tick_handler();
+private:
+	static const int REGRES_DATALEN = 50;
+	static const int MEDIAN_DATALEN = 15;
+	static const int MEDIAN_INDEX 	= MEDIAN_DATALEN/2;
+
+	typedef struct __attribute__((__packed__))  median_filter {
+		float buffer[MEDIAN_DATALEN];
+		uint64_t index;
+	} median_filter_t;
+
+	typedef struct __attribute__((__packed__))  regres_data {
+		float x;
+		float y;
+	} regres_data_t;
+
+	typedef struct __attribute__((__packed__)) regres_filter {
+		regres_data_t buffer[REGRES_DATALEN];
+		uint64_t index;
+	} regres_filter_t;
+
+	static float InvSqrt(float x);
+	static int Comparator(const void *v1, const void * v2);
+
+	float MedianInsert(int loop, float data);
+	void LinRegInsert(int loop, float x, float y);
+	int LinRegress(regres_data_t *xy, int n, float *a, float *b, float *r);
+
+	int _type{0};
+	int _loop{0};
+
+	median_filter_t * _median{nullptr};
+	regres_filter_t * _regres{nullptr};
+};
+
 }

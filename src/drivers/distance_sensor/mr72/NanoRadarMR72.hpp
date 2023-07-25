@@ -53,19 +53,26 @@
 #include <px4_platform_common/defines.h>
 #include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
 #include <lib/perf/perf_counter.h>
+#include <lib/filter/filter.h>
+#include <uORB/Publication.hpp>
+#include <uORB/topics/radar_status.h>
 
 using namespace time_literals;
 
-#define MR72_MEASURE_INTERVAL     	60_ms
-#define MR72_MAX_DISTANCE	        30.0f
-#define MR72_MIN_DISTANCE	        0.1f
-#define MR72_FIELD_OF_VIEW        	37.0f
+#define MR72_MEASURE_INTERVAL		60_ms
+#define MR72_MAX_DISTANCE			40.0f
+#define MR72_MIN_DISTANCE			0.2f
+#define MR72_AZIMUTH_FOV			112.0f
+#define MR72_ELEVATION_FOV			14.0f
+#define MR72_RESOLUTION				0.01f
 
 #define MR72_PACKET_STX1			0x54
 #define MR72_PACKET_STX2			0x48
-#define MR72_PAYLOAD_LEN     		16
-#define MR72_PACKET_LEN     		14
+#define MR72_PAYLOAD_LEN     		18
+#define MR72_PACKET_LEN     		19
 #define MR72_BUFFER_LEN     		256
+
+#define MR72_DIST_INVALID     		0xffff
 
 typedef struct __attribute__((__packed__)) message_frame {
 	uint16_t state;
@@ -73,6 +80,17 @@ typedef struct __attribute__((__packed__)) message_frame {
 	uint8_t  paybuf[MR72_PAYLOAD_LEN];
 	uint8_t  rawbuf[MR72_BUFFER_LEN];
 } message_frame_t;
+
+typedef struct __attribute__((__packed__)) target_info {
+	uint16_t sector1;
+	uint16_t sector2;
+	uint16_t sector3;
+	uint16_t dist_90;
+	uint16_t dist_135;
+	uint16_t dist_180;
+	uint16_t dist_225;
+	uint16_t dist_270;
+} target_info_t;
 
 class NanoRadarMR72 : public px4::ScheduledWorkItem
 {
@@ -82,7 +100,7 @@ public:
 	 * @param port The serial port to open for communicating with the sensor.
 	 * @param rotation The sensor rotation relative to the vehicle body.
 	 */
-	NanoRadarMR72(const char *port, uint8_t rotation = distance_sensor_s::ROTATION_DOWNWARD_FACING);
+	NanoRadarMR72(const char *port, uint8_t rotation = distance_sensor_s::ROTATION_FORWARD_FACING);
 	~NanoRadarMR72() override;
 
 	int init();
@@ -119,12 +137,17 @@ private:
 	/**
 	 * Get the message from collected data.
 	 */
-	int message();
+	int message(uint8_t crc);
 
 	/**
 	 * Reads data from serial UART and places it into a buffer.
 	 */
 	int collect();
+
+	/**
+	 * Calculates CRC8.
+	 */
+	uint8_t crc8(const uint8_t *p, uint8_t len);
 
 	/**
 	 * Opens and configures the UART serial communications port.
@@ -134,13 +157,20 @@ private:
 
 	void Run() override;
 
+	uORB::Publication<radar_status_s> _radar_status_pub{ORB_ID(radar_status)};
+
 	PX4Rangefinder _px4_rangefinder;
 	const char *_serial_port{nullptr};
 	int _file_descriptor{-1};
 
 	message_frame_t _message{0};
+	target_info_t _target_info{0};
 
-	perf_counter_t _comms_errors{perf_alloc(PC_COUNT, MODULE_NAME": comms_error")};
-	perf_counter_t _sample_perf{perf_alloc(PC_ELAPSED, MODULE_NAME": sample")};
+	perf_counter_t _cycle_perf{nullptr};
+	perf_counter_t _sample_perf{nullptr};
+	perf_counter_t _error_perf{nullptr};
+	perf_counter_t _packet_perf{nullptr};
 
+	int32_t _filterType{0};
+	filter::Filter * _filter{nullptr};
 };

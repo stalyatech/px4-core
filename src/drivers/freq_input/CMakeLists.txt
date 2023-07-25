@@ -34,8 +34,9 @@ px4_add_module(
 	MODULE drivers__freq_input
 	MAIN freq_input
 	COMPILE_FLAGS
-		-Wno-pmf-conversions
-		-Wno-cast-align # TODO: fix and enable
+	#	-O0
 	SRCS
 		freq_input.cpp
+	MODULE_CONFIG
+		module.yaml
 	)

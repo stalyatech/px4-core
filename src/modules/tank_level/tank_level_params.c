@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2020 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2013-2020 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -17,7 +17,7 @@
  *    without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * AS IS AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
  * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
  * COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
@@ -32,47 +32,43 @@
  ****************************************************************************/
 
 /**
- * @file bootloader_main.c
+ * @file tank_level_params.c
  *
- * FMU-specific early startup code for bootloader
+ * Parameters defined by the tank level estimator
+ *
+ * @author volvox <volvox@stalya.com>
+ */
+
+/**
+ * Maximum pump tank level (Liter)
+ *
+ *
+ * @group Tank Level Estimator
+ */
+PARAM_DEFINE_FLOAT(PUMP_TANK_LEV, 8.0f);
+
+/**
+ * Used input channel for the flowmeter
+ *
+ * Configure on which frequency measurement channel to use flowmeter input.
+ *
+ *
+ * @value 0 Disabled
+ * @value 1 FRQ1
+ * @value 2 FRQ2
+ * @value 3 FRQ3
+ * @group Tank Level Estimator
+ */
+PARAM_DEFINE_INT32(PUMP_FLOW_INP, 1);
+
+/*
+ * Frequency (Hz) = 7.5 * Flow rate (L/min)
 */
 
-#include "board_config.h"
-#include "bl.h"
-
-#include <nuttx/config.h>
-#include <nuttx/board.h>
-#include <chip.h>
-#include <stm32_uart.h>
-#include <arch/board/board.h>
-#include "arm_internal.h"
-#include <px4_platform_common/init.h>
-
-extern int sercon_main(int c, char **argv);
-
-__EXPORT void board_on_reset(int status) {}
-
-__EXPORT void stm32_boardinitialize(void)
-{
-	/* configure USB interfaces */
-#if !defined(BOARD_USB_VBUS_SENSE_DISABLED)
-	stm32_configgpio(GPIO_OTGFS_VBUS);
-#endif
-}
-
-__EXPORT int board_app_initialize(uintptr_t arg)
-{
-	return 0;
-}
-
-void board_late_initialize(void)
-{
-	px4_platform_console_init();
-	sercon_main(0, NULL);
-}
-
-extern void sys_tick_handler(void);
-void board_timerhook(void)
-{
-	sys_tick_handler();
-}
+/**
+ * Flowmeter conversion factor (Hz -> L/min)
+ *
+ *
+ * @group Tank Level Estimator
+ */
+PARAM_DEFINE_FLOAT(PUMP_FLOW_CONV, 0.133333333);

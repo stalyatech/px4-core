@@ -34,19 +34,25 @@
 #include "NanoRadarNRA15.hpp"
 
 #include <lib/drivers/device/Device.hpp>
+#include <lib/parameters/param.h>
+
+using namespace filter;
 
 NanoRadarNRA15::NanoRadarNRA15(const char *port, uint8_t rotation) :
 	ScheduledWorkItem(MODULE_NAME, px4::serial_port_to_wq(port)),
-	_px4_rangefinder(0, rotation)
+	_px4_rangefinder(0, rotation),
+	_cycle_perf(perf_alloc(PC_ELAPSED, MODULE_NAME": cycle")),
+	_sample_perf(perf_alloc(PC_INTERVAL, MODULE_NAME": sample")),
+	_error_perf(perf_alloc(PC_COUNT, MODULE_NAME": error"))
 {
 	/* store port name */
 	_serial_port = strdup(port);
 
-	device::Device::DeviceId device_id;
+	device::Device::DeviceId device_id{};
 	device_id.devid_s.bus_type = device::Device::DeviceBusType_SERIAL;
+	device_id.devid_s.devtype  = DRV_DIST_DEVTYPE_NRA15;
 
 	uint8_t bus_num = atoi(&_serial_port[strlen(_serial_port) - 1]); // Assuming '/dev/ttySx'
-
 	if (bus_num < 10) {
 		device_id.devid_s.bus = bus_num;
 	}
@@ -64,17 +70,27 @@ NanoRadarNRA15::~NanoRadarNRA15()
 {
 	stop();
 
+	delete _filter;
 	free((char *)_serial_port);
+	perf_free(_cycle_perf);
 	perf_free(_sample_perf);
-	perf_free(_comms_errors);
+	perf_free(_error_perf);
 }
 
 int NanoRadarNRA15::init()
 {
+	param_get(param_find("SENS_NRA15_FILT"), &_filterType);
+
+	if (_filter != nullptr) {
+		delete _filter;
+		_filter = nullptr;
+	}
+	_filter = new Filter(_filterType);
+
 	start();
 
 	return PX4_OK;
-}
+}//init
 
 int NanoRadarNRA15::message()
 {
@@ -84,7 +100,7 @@ int NanoRadarNRA15::message()
 		{
 			_sensor_conf.type  = (_message.paybuf[0] & 0x7f);
 			_sensor_conf.rw    = (_message.paybuf[0] & 0x80) >> 7;
-			_sensor_conf.param = (_message.paybuf[3] << 16U) | (_message.paybuf[2] << 8U) | (_message.paybuf[1]);
+			_sensor_conf.param = (_message.paybuf[1] << 16U) | (_message.paybuf[2] << 8U) | (_message.paybuf[3]);
 			return _message.msgid;
 		}//MSGID_SENSOR_CONFIG
 
@@ -92,7 +108,7 @@ int NanoRadarNRA15::message()
 		{
 			_sensor_back.type   = (_message.paybuf[0] & 0x7f);
 			_sensor_back.result = (_message.paybuf[0] & 0x80) >> 7;
-			_sensor_back.param  = (_message.paybuf[3] << 16U) | (_message.paybuf[2] << 8U) | (_message.paybuf[1]);
+			_sensor_back.param  = (_message.paybuf[1] << 16U) | (_message.paybuf[2] << 8U) | (_message.paybuf[3]);
 			return _message.msgid;
 		}//MSGID_SENSOR_BACK
 
@@ -114,7 +130,7 @@ int NanoRadarNRA15::message()
 		case MSGID_TARGET_INFO:
 		{
 			_target_info.id   	 = (_message.paybuf[0]);
-			_target_info.rcs  	 = (_message.paybuf[1]);
+			_target_info.rcs  	 = ((_message.paybuf[1]) * 0.05f) - 50;
 			_target_info.dist 	 = ((_message.paybuf[2] << 8U) | _message.paybuf[3]) * 0.01f;
 			_target_info.vrel 	 = (((_message.paybuf[5] & 7) << 3U) | _message.paybuf[6]) * 0.05f;
 			_target_info.rollcnt = (_message.paybuf[5] & 0xC0) >> 6;
@@ -194,20 +210,27 @@ int NanoRadarNRA15::parse(uint8_t inData)
 	return PX4_ERROR;
 }//parse
 
-
 int NanoRadarNRA15::collect()
 {
-	perf_begin(_sample_perf);
+	// start the performance counter
+	perf_begin(_cycle_perf);
 
-	const hrt_abstime timestamp_sample = hrt_absolute_time();
+	// get the current time stamp
+	const hrt_abstime now = hrt_absolute_time();
+
+	// read the data from device
 	int bytes_read = ::read(_file_descriptor, &_message.rawbuf[0], sizeof(_message.rawbuf));
 	int updated = 0;
 	int msgid;
 
+	// try to parse the data
 	for (int index = 0; index < bytes_read; index++) {
 
 		// try to parse frame
 		if ((msgid = parse(_message.rawbuf[index])) != PX4_ERROR) {
+
+			// performance counter for data sample
+			perf_count(_sample_perf);
 
 			// inform the application
 			switch (msgid) {
@@ -228,25 +251,36 @@ int NanoRadarNRA15::collect()
 
 				case MSGID_TARGET_STATUS:
 				{
+					// check the packet sequence
+					if (_target_stat.rollcnt == (_prev_rollcnt+1)) {
+						// increment the update counter
+						updated++;
+					} else {
+						// performance counter for error
+						perf_count(_error_perf);
+					}
+
+					// save the roll count
+					_prev_rollcnt = _target_stat.rollcnt;
 					break;
 				}//MSGID_TARGET_STATUS
 
 				case MSGID_TARGET_INFO:
 				{
-					_px4_rangefinder.update(timestamp_sample, _target_info.dist);
+					if (updated) {
+						_px4_rangefinder.update(now, _filter->insert(0, _target_info.dist), _target_info.snr);
+					}
 					break;
 				}//MSGID_TARGET_INFO
 			}//switch
-
-			// increment the update counter
-			updated++;
 		}//if
 	}//if
 
-	perf_end(_sample_perf);
+	// end the performance counter
+	perf_end(_cycle_perf);
 
 	return (updated) ? PX4_OK : -EAGAIN;
-}
+}//collect
 
 int NanoRadarNRA15::open_serial_port(const speed_t speed)
 {
@@ -323,7 +357,7 @@ int NanoRadarNRA15::open_serial_port(const speed_t speed)
 
 	PX4_INFO("opened UART port %s", _serial_port);
 	return PX4_OK;
-}
+}//open_serial_port
 
 void NanoRadarNRA15::Run()
 {
@@ -331,13 +365,13 @@ void NanoRadarNRA15::Run()
 	open_serial_port();
 
 	collect();
-}
+}//Run
 
 void NanoRadarNRA15::start()
 {
 	// Schedule the driver at regular intervals.
 	ScheduleOnInterval(NRA15_MEASURE_INTERVAL, 0);
-}
+}//start
 
 void NanoRadarNRA15::stop()
 {
@@ -347,10 +381,12 @@ void NanoRadarNRA15::stop()
 
 	// Clear the work queue schedule.
 	ScheduleClear();
-}
+}//stop
 
 void NanoRadarNRA15::print_info()
 {
+	PX4_INFO("DIST:%f, SNR:%d", (double)_target_info.dist, _target_info.snr);
+	perf_print_counter(_cycle_perf);
 	perf_print_counter(_sample_perf);
-	perf_print_counter(_comms_errors);
+	perf_print_counter(_error_perf);
 }

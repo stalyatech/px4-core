@@ -45,6 +45,7 @@
 #include <poll.h>
 #include <termios.h>
 #include <unistd.h>
+#include <stdlib.h>
 
 #include <drivers/drv_hrt.h>
 #include <lib/perf/perf_counter.h>
@@ -53,6 +54,7 @@
 #include <px4_platform_common/defines.h>
 #include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
 #include <lib/perf/perf_counter.h>
+#include <lib/filter/filter.h>
 
 using namespace time_literals;
 
@@ -191,8 +193,12 @@ private:
 	sensor_stat_t _sensor_stat{0};
 	target_stat_t _target_stat{0};
 	target_info_t _target_info{0};
+	int _prev_rollcnt{-1};
 
-	perf_counter_t _comms_errors{perf_alloc(PC_COUNT, MODULE_NAME": comms_error")};
-	perf_counter_t _sample_perf{perf_alloc(PC_ELAPSED, MODULE_NAME": sample")};
+	perf_counter_t _cycle_perf{nullptr};
+	perf_counter_t _sample_perf{nullptr};
+	perf_counter_t _error_perf{nullptr};
 
+	int32_t _filterType{0};
+	filter::Filter * _filter{nullptr};
 };

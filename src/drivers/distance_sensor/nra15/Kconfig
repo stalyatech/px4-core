@@ -2,4 +2,4 @@ menuconfig DRIVERS_DISTANCE_SENSOR_NRA15
 	bool "nra15"
 	default n
 	---help---
-		Enable support for nra15
+		Enable support for NRA15 Radar

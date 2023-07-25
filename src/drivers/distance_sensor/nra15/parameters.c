@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2020 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2018 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,47 +32,14 @@
  ****************************************************************************/
 
 /**
- * @file bootloader_main.c
+ * NRA15 Radar filter enable flag
  *
- * FMU-specific early startup code for bootloader
-*/
-
-#include "board_config.h"
-#include "bl.h"
-
-#include <nuttx/config.h>
-#include <nuttx/board.h>
-#include <chip.h>
-#include <stm32_uart.h>
-#include <arch/board/board.h>
-#include "arm_internal.h"
-#include <px4_platform_common/init.h>
-
-extern int sercon_main(int c, char **argv);
-
-__EXPORT void board_on_reset(int status) {}
-
-__EXPORT void stm32_boardinitialize(void)
-{
-	/* configure USB interfaces */
-#if !defined(BOARD_USB_VBUS_SENSE_DISABLED)
-	stm32_configgpio(GPIO_OTGFS_VBUS);
-#endif
-}
-
-__EXPORT int board_app_initialize(uintptr_t arg)
-{
-	return 0;
-}
-
-void board_late_initialize(void)
-{
-	px4_platform_console_init();
-	sercon_main(0, NULL);
-}
-
-extern void sys_tick_handler(void);
-void board_timerhook(void)
-{
-	sys_tick_handler();
-}
+ * @reboot_required true
+ *
+ * @value 0 Disable
+ * @value 1 Median
+ * @value 2 LinReg
+ *
+ * @group Sensors
+ */
+PARAM_DEFINE_INT32(SENS_NRA15_FILT, 0);

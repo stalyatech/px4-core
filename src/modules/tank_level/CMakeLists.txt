@@ -1,6 +1,6 @@
 ############################################################################
 #
-#   Copyright (c) 2016-2020 PX4 Development Team. All rights reserved.
+#   Copyright (c) 2017-2019 PX4 Development Team. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -31,18 +31,11 @@
 #
 ############################################################################
 px4_add_module(
-	MODULE drivers__distance_sensor__nra15
-	MAIN nra15
-	#COMPILE_FLAGS
-	#	-O0
+	MODULE modules__tank_level
+	MAIN tank_level
 	SRCS
-		NanoRadarNRA15.cpp
-		NanoRadarNRA15.hpp
-		nra15_main.cpp
-	MODULE_CONFIG
-		module.yaml
+		TankLevel.cpp
+		TankLevel.hpp
 	DEPENDS
-		drivers_rangefinder
 		px4_work_queue
-		filter
 	)

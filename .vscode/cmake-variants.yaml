@@ -266,23 +266,18 @@ CONFIG:
       buildType: MinSizeRel
       settings:
         CONFIG: raspberrypi_pico_default
-    stalya_trap_v2_ctrlalloc:
-      short: trap_v2_ctrlalloc
-      buildType: MinSizeRel
-      settings:
-        CONFIG: stalya_trap_v2_ctrlalloc
-    stalya_trap_v2_default:
-      short: stalya_trap_v2
-      buildType: MinSizeRel
-      settings:
-        CONFIG: stalya_trap_v2_default
-    stalya_trap_v2_debug:
-      short: stalya_trap_v2_debug
-      buildType: RelWithDebInfo
-      settings:
-        CONFIG: stalya_trap_v2_debug
     stalya_utrap_default:
-      short: utrap
+      short: utrap-default
       buildType: MinSizeRel
       settings:
         CONFIG: stalya_utrap_default
+    stalya_utrap_debug:
+      short: utrap-debug
+      buildType: RelWithDebInfo
+      settings:
+        CONFIG: stalya_utrap_debug
+    stalya_utrap_hema:
+      short: utrap-hema
+      buildType: MinSizeRel
+      settings:
+        CONFIG: stalya_utrap_hema
