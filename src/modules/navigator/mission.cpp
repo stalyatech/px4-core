@@ -191,7 +191,7 @@ Mission::on_activation()
 		updateCachedItemsUpToIndex(_current_mission_index - 1);
 	}
 
-	unsigned resume_index;
+	uint16_t resume_index;
 
 	if (_inactivation_index > 0 && cameraWasTriggering()
 	    && getPreviousPositionItemIndex(_mission, _inactivation_index - 1, resume_index)) {
@@ -199,13 +199,13 @@ Mission::on_activation()
 		// we restart the mission at the previous position item.
 		// We will replay the cached commands once we reach the previous position item and have yaw aligned.
 
-		checkClimbRequired();
+		checkClimbRequired(resume_index);
 		set_current_mission_index(resume_index);
 
 		_align_heading_necessary = true;
 
 	} else {
-		checkClimbRequired();
+		checkClimbRequired(resume_index);
 		set_mission_items();
 	}
 
@@ -1919,7 +1919,7 @@ void Mission::publish_navigator_mission_item()
 }
 
 bool Mission::getPreviousPositionItemIndex(const mission_s &mission, int inactivation_index,
-		unsigned &prev_pos_index) const
+		uint16_t &prev_pos_index) const
 {
 	struct mission_item_s missionitem = {};
 
@@ -2051,11 +2051,11 @@ void Mission::updateCachedItemsUpToIndex(const int end_index)
 	}
 }
 
-void Mission::checkClimbRequired()
+void Mission::checkClimbRequired(uint16_t mission_item_index)
 {
 	mission_item_s next_position_mission_item = {};
 
-	if (getNextPositionMissionItem(_mission, _current_mission_index, next_position_mission_item)) {
+	if (getNextPositionMissionItem(_mission, mission_item_index, next_position_mission_item)) {
 		const float altitude_amsl_next_position_item = get_absolute_altitude_for_item(next_position_mission_item);
 
 		const float error_below_setpoint = altitude_amsl_next_position_item -

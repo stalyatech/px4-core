@@ -121,7 +121,7 @@ Takeoff::set_takeoff_position()
 	} else {
 		takeoff_altitude_amsl = _navigator->get_home_position()->alt + _navigator->get_param_mis_takeoff_alt();
 		mavlink_log_info(_navigator->get_mavlink_log_pub(),
-				 "Using deault takeoff altitude: %.1f m\t", (double)_navigator->get_param_mis_takeoff_alt());
+				 "Using default takeoff altitude: %.1f m\t", (double)_navigator->get_param_mis_takeoff_alt());
 
 		events::send<float>(events::ID("navigator_takeoff_default_alt"), {events::Log::Info, events::LogInternal::Info},
 				    "Using default takeoff altitude: {1:.2m}",
