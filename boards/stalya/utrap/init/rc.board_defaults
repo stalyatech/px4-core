@@ -11,6 +11,7 @@ param set-default BAT2_A_PER_V 0
 
 # Enable IMU thermal control
 param set-default SENS_EN_THERMAL 1
+param set-default -s SENS_TEMP_ID 3932170
 
 set IOFW "/fs/microsd/etc/extras/stalya_io-v2_hema.bin"
 

@@ -47,12 +47,12 @@ else()
 	add_library(drivers_board
 		i2c.cpp
 		init.c
+		fdcan.c
 		led.c
+		manifest.c
 		spi.cpp
 		timer_config.cpp
 		usb.c
-		# fdcan.c
-		manifest.c
 	)
 	add_dependencies(drivers_board arch_board_hw_info)
 
