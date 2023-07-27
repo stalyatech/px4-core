@@ -281,3 +281,8 @@ CONFIG:
       buildType: MinSizeRel
       settings:
         CONFIG: stalya_utrap_hema
+    stalya_io-v2_hema:
+      short: io-v2-hema
+      buildType: MinSizeRel
+      settings:
+        CONFIG: stalya_io-v2_hema

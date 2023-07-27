@@ -47,8 +47,6 @@
 #include <nuttx/compiler.h>
 #include <stdint.h>
 
-#include <px4_platform_common/board_common.h>
-
 /******************************************************************************
  * Definitions
  ******************************************************************************/
@@ -72,12 +70,14 @@
 
 /* LEDS  **********************************************************************/
 
-#define GPIO_LED1 (GPIO_OUTPUT|GPIO_CNF_OUTOD|GPIO_MODE_50MHz|GPIO_OUTPUT_SET|GPIO_PORTB|GPIO_PIN15)
-#define GPIO_LED2 (GPIO_OUTPUT|GPIO_CNF_OUTOD|GPIO_MODE_50MHz|GPIO_OUTPUT_SET|GPIO_PORTB|GPIO_PIN14)
-#define GPIO_LED3 (GPIO_OUTPUT|GPIO_CNF_OUTOD|GPIO_MODE_50MHz|GPIO_OUTPUT_SET|GPIO_PORTB|GPIO_PIN13)
-#define GPIO_LED4 (GPIO_OUTPUT|GPIO_CNF_OUTOD|GPIO_MODE_50MHz|GPIO_OUTPUT_SET|GPIO_PORTA|GPIO_PIN11)
+#define GPIO_LED_BLUE 	(GPIO_OUTPUT|GPIO_CNF_OUTOD|GPIO_MODE_50MHz|GPIO_OUTPUT_SET|GPIO_PORTB|GPIO_PIN15)
+#define GPIO_LED_AMBER 	(GPIO_OUTPUT|GPIO_CNF_OUTOD|GPIO_MODE_50MHz|GPIO_OUTPUT_SET|GPIO_PORTB|GPIO_PIN14)
+#define GPIO_LED_SAFETY (GPIO_OUTPUT|GPIO_CNF_OUTOD|GPIO_MODE_50MHz|GPIO_OUTPUT_SET|GPIO_PORTB|GPIO_PIN13)
+#define GPIO_LED_GREEN 	(GPIO_OUTPUT|GPIO_CNF_OUTOD|GPIO_MODE_50MHz|GPIO_OUTPUT_SET|GPIO_PORTA|GPIO_PIN11)
 
-#define GPIO_HEATER_OFF (GPIO_OUTPUT|GPIO_CNF_OUTPP|GPIO_MODE_50MHz|GPIO_OUTPUT_SET|GPIO_PORTB|GPIO_PIN14)
+/* HEATER */
+#define GPIO_HEATER_OUTPUT (GPIO_OUTPUT|GPIO_CNF_OUTPP|GPIO_MODE_50MHz|GPIO_OUTPUT_SET|GPIO_PORTB|GPIO_PIN12)
+#define HEATER_OUTPUT_EN(on_true)  	stm32_gpiowrite(GPIO_HEATER_OUTPUT, 0)
 
 #define GPIO_PC14 (GPIO_INPUT|GPIO_CNF_INFLOAT|GPIO_MODE_INPUT|GPIO_PORTC|GPIO_PIN14)
 #define GPIO_PC15 (GPIO_INPUT|GPIO_CNF_INFLOAT|GPIO_MODE_INPUT|GPIO_PORTC|GPIO_PIN15)
@@ -95,6 +95,11 @@
 #define GPIO_SENSE_PC15_UP (GPIO_INPUT|GPIO_CNF_INPULLUP|GPIO_MODE_INPUT|GPIO_PORTC|GPIO_PIN15)
 # define SENSE_PH1 0b10 /* Floating pulled as set */
 # define SENSE_PH2 0b01 /* Driven as tied */
+
+#define LED_BLUE(on_true)   	stm32_gpiowrite(GPIO_LED_BLUE, !(on_true))
+#define LED_AMBER(on_true) 	 	stm32_gpiowrite(GPIO_LED_AMBER, !(on_true))
+#define LED_SAFETY(on_true) 	stm32_gpiowrite(GPIO_LED_SAFETY, !(on_true))
+#define LED_GREEN(on_true)   	stm32_gpiowrite(GPIO_LED_GREEN, (on_true))
 
 #define GPIO_USART1_RX_SPEKTRUM		(GPIO_OUTPUT|GPIO_CNF_OUTPP|GPIO_MODE_50MHz|GPIO_OUTPUT_SET|GPIO_PORTA|GPIO_PIN10)
 
@@ -135,6 +140,7 @@
 #define GPIO_PWM8 	(GPIO_OUTPUT|GPIO_CNF_OUTPP|GPIO_MODE_50MHz|GPIO_OUTPUT_CLEAR|GPIO_PORTA|GPIO_PIN0)
 
 #define DIRECT_PWM_OUTPUT_CHANNELS	8
+#define BOARD_HAS_NO_CAPTURE
 
 /* SBUS pins  *************************************************************/
 
@@ -151,25 +157,6 @@
 #define HRT_PPM_CHANNEL		1	/* use capture/compare channel 1 PA8 */
 #define GPIO_PPM_IN			(GPIO_ALT|GPIO_CNF_INPULLUP|GPIO_PORTA|GPIO_PIN8)
 
-/* If CONFIG_ARCH_LEDS is defined, the usage by the board port is defined in
- * include/board.h and src/stm32_leds.c. The LEDs are used to encode OS-related
- * events as follows:
- *
- *
- *   SYMBOL                     Meaning                      LED state
- *                                                        Red   Green Blue
- *   ----------------------  --------------------------  ------ ------ ----*/
-
-#define LED_STARTED        0 /* NuttX has been started   OFF    OFF   OFF  */
-#define LED_HEAPALLOCATE   1 /* Heap has been allocated  OFF    OFF   ON   */
-#define LED_IRQSENABLED    2 /* Interrupts enabled       OFF    ON    OFF  */
-#define LED_STACKCREATED   3 /* Idle stack created       OFF    ON    ON   */
-#define LED_INIRQ          4 /* In an interrupt          N/C    N/C   GLOW */
-#define LED_SIGNAL         5 /* In a signal handler      N/C    GLOW  N/C  */
-#define LED_ASSERTION      6 /* An assertion failed      GLOW   N/C   GLOW */
-#define LED_PANIC          7 /* The system has crashed   Blink  OFF   N/C  */
-#define LED_IDLE           8 /* MCU is is sleep mode     ON     OFF   OFF  */
-
 #define BOARD_NUM_IO_TIMERS 3
 
-#define BOARD_DISABLE_I2C_SPI
+#include <px4_platform_common/board_common.h>

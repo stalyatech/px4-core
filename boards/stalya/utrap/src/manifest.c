@@ -75,9 +75,28 @@ static const px4_hw_mft_item_t device_unsupported = {0, 0, 0};
 // declared in board_common.h
 static const px4_hw_mft_item_t hw_mft_list_v0002[] = {
 	{
+		//  PX4_MFT_PX4IO
+		.present     = 1,
+		.mandatory   = 1,
+		.connection  = px4_hw_con_unknown,
+	},
+	{
+		// PX4_MFT_USB
 		.present     = 1,
 		.mandatory   = 1,
 		.connection  = px4_hw_con_onboard,
+	},
+	{
+		// PX4_MFT_CAN2
+		.present     = 1,
+		.mandatory   = 1,
+		.connection  = px4_hw_con_onboard,
+	},
+	{
+		// PX4_MFT_CAN3
+		.present     = 0,
+		.mandatory   = 0,
+		.connection  = px4_hw_con_unknown,
 	},
 };
 
@@ -125,7 +144,7 @@ __EXPORT px4_hw_mft_item board_query_manifest(px4_hw_mft_item_id_t id)
 
 	if (boards_manifest != px4_hw_mft_list_uninitialized &&
 	    id < boards_manifest->entries) {
-		rv = &boards_manifest->mft[id];
+			rv = &boards_manifest->mft[id];
 	}
 
 	return rv;
