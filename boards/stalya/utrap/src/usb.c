@@ -73,5 +73,5 @@ __EXPORT void stm32_usbsuspend(FAR struct usbdev_s *dev, bool resume)
  ************************************************************************************/
 int board_read_VBUS_state(void)
 {
-	return BOARD_ADC_USB_CONNECTED ? 1 : 0;
+	return (BOARD_ADC_USB_CONNECTED != 0) ? 0 : 1;
 }//board_read_VBUS_state

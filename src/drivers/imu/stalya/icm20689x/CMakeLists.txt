@@ -32,8 +32,8 @@
 ############################################################################
 
 px4_add_module(
-	MODULE drivers__imu__stalya__icm20689
-	MAIN icm20689
+	MODULE drivers__imu__stalya__icm20689x
+	MAIN icm20689x
 	COMPILE_FLAGS
 	SRCS
 		icm20689_i2c.cpp

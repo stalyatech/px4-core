@@ -32,36 +32,36 @@
  ****************************************************************************/
 
 #include "ICM20689.hpp"
-#include <drivers/device/i2c.h>
+#include <drivers/device/spi.h>
 
 using namespace InvenSense_ICM20689;
 
-class ICM20689_I2C : public device::I2C
+class ICM20689_SPI : public device::SPI
 {
 public:
-	ICM20689_I2C(int bus, int bus_frequency, int bus_address);
-	virtual ~ICM20689_I2C() = default;
+	ICM20689_SPI(int bus, int bus_frequency, uint32_t devid, spi_mode_e spi_mode);
+	~ICM20689_SPI() override = default;
 
-	virtual int	init();
-	virtual int read(unsigned address, void *data, unsigned count);
-	virtual int write(unsigned address, void *data, unsigned count);
+	int init() override;
+	int read(unsigned address, void *data, unsigned count) override;
+	int write(unsigned address, void *data, unsigned count) override;
 
-protected:
-	virtual int probe();
+private:
+	uint8_t _buffer[FIFO::SIZE+4];
 };
 
 
 /*******************************************************************************
-* Function Name  : ICM20689_I2C_interface
+* Function Name  : ICM20689_SPI_interface
 * Description    : None
 * Input          : None
 * Output         : None
 * Return         : None
 *******************************************************************************/
-device::Device *ICM20689_I2C_interface(int bus, int bus_frequency, int bus_address)
+device::Device *ICM20689_SPI_interface(int bus, int bus_frequency, uint32_t devid, spi_mode_e spi_mode)
 {
-	return new ICM20689_I2C(bus, bus_frequency, bus_address);
-}//ICM20689_I2C_interface
+	return new ICM20689_SPI(bus, bus_frequency, devid, spi_mode);
+}//ICM20689_SPI_interface
 
 
 /*******************************************************************************
@@ -71,8 +71,8 @@ device::Device *ICM20689_I2C_interface(int bus, int bus_frequency, int bus_addre
 * Output         : None
 * Return         : None
 *******************************************************************************/
-ICM20689_I2C::ICM20689_I2C(int bus, int bus_frequency, int bus_address) :
-	I2C(DRV_IMU_DEVTYPE_ICM20689, MODULE_NAME, bus, bus_address, bus_frequency)
+ICM20689_SPI::ICM20689_SPI(int bus, int bus_frequency, uint32_t devid, spi_mode_e spi_mode) :
+	SPI(DRV_IMU_DEVTYPE_ICM20689, MODULE_NAME, bus, devid, spi_mode, bus_frequency)
 {
 }
 
@@ -84,43 +84,29 @@ ICM20689_I2C::ICM20689_I2C(int bus, int bus_frequency, int bus_address) :
 * Output         : None
 * Return         : None
 *******************************************************************************/
-int ICM20689_I2C::init()
+int ICM20689_SPI::init()
 {
-	int ret = I2C::init();
+	int ret = SPI::init();
 
 	if (ret != PX4_OK) {
-		PX4_DEBUG("I2C::init failed (%i)", ret);
-	}
-
-	return ret;
-}//init
-
-
-/*******************************************************************************
-* Function Name  : probe
-* Description    : None
-* Input          : None
-* Output         : None
-* Return         : None
-*******************************************************************************/
-int ICM20689_I2C::probe()
-{
-	uint8_t data = 0;
-
-	_retries = 10;
-	if (read(static_cast<unsigned int>(Register::WHO_AM_I), &data, 1) != PX4_OK) {
-		DEVICE_DEBUG("read_reg fail");
+		DEVICE_DEBUG("SPI init failed");
 		return -EIO;
 	}
 
-	_retries = 2;
+	/* read WHO_AM_I value */
+	uint8_t data = 0;
+
+	if (read(static_cast<unsigned int>(Register::WHO_AM_I), &data, 1) != PX4_OK) {
+		DEVICE_DEBUG("ICM20689 read fail");
+	}
+
 	if (data != WHOAMI) {
 		DEVICE_DEBUG("ICM20689 bad ID: %02x", data);
 		return -EIO;
 	}
 
 	return PX4_OK;
-}//probe
+}//init
 
 
 /*******************************************************************************
@@ -130,10 +116,25 @@ int ICM20689_I2C::probe()
 * Output         : None
 * Return         : None
 *******************************************************************************/
-int ICM20689_I2C::read(unsigned address, void *data, unsigned count)
+int ICM20689_SPI::read(unsigned address, void *data, unsigned count)
 {
-	uint8_t cmd = address;
-	return transfer(&cmd, 1, (uint8_t *)data, count);
+	int ret;
+
+	/* buffer bound check */
+	if (sizeof(_buffer) < (count + 4)) {
+		return -EIO;
+	}
+
+	/* mask the register */
+	_buffer[0] = static_cast<uint8_t>(address | DIR_READ);
+	_buffer[1] = 0;
+
+	/* transfer data */
+	if ((ret = transfer(_buffer, _buffer, count + 1)) == PX4_OK) {
+		memcpy(data, &_buffer[1], count);
+	}
+
+	return ret;
 }//read
 
 
@@ -144,16 +145,17 @@ int ICM20689_I2C::read(unsigned address, void *data, unsigned count)
 * Output         : None
 * Return         : None
 *******************************************************************************/
-int ICM20689_I2C::write(unsigned address, void *data, unsigned count)
+int ICM20689_SPI::write(unsigned address, void *data, unsigned count)
 {
-	uint8_t buf[32];
-
-	if (sizeof(buf) < (count + 1)) {
+	/* buffer bound check */
+	if (sizeof(_buffer) < (count + 4)) {
 		return -EIO;
 	}
 
-	buf[0] = address;
-	memcpy(&buf[1], data, count);
+	/* mask the register */
+	_buffer[0] = address;
+	memcpy(&_buffer[1], data, count);
 
-	return transfer(&buf[0], count + 1, nullptr, 0);
+	/* transfer data */
+	return transfer(_buffer, nullptr, count + 1);
 }//write

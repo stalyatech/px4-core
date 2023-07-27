@@ -107,14 +107,14 @@ USB2514::USB2514(const I2CSPIDriverConfig &config, SMBus *interface) :
 	I2CSPIDriver(config),
 	_interface(interface)
 {
-#if defined(USBHUB_PWR_IOE_PIN) || defined(USBHUB_RST_IOE_PIN)
+#if defined(IOE_USBPWR_OUTPUT) || defined(IOE_USBRST_OUTPUT)
 	_ioe_fd = px4_open(IOE_DEVICE_PATH, O_RDWR);
 
 	if (_ioe_fd < 0) {
 		PX4_ERR("Unable to open I/O expander device path");
 		return;
 	}
-#endif /* USBHUB_PWR_IOE_PIN || USBHUB_RST_IOE_PIN */
+#endif /* IOE_USBPWR_OUTPUT || IOE_USBRST_OUTPUT */
 
 #if defined(USBHUB_PWR_GPIO_PIN)
 	// Configure power pin
@@ -138,11 +138,11 @@ USB2514::USB2514(const I2CSPIDriverConfig &config, SMBus *interface) :
 *******************************************************************************/
 USB2514::~USB2514()
 {
-#if defined(USBHUB_PWR_IOE_PIN) || defined(USBHUB_RST_IOE_PIN)
+#if defined(IOE_USBPWR_OUTPUT) || defined(IOE_USBRST_OUTPUT)
 	if (_ioe_fd != -1) {
 		px4_close(_ioe_fd);
 	}
-#endif /* USBHUB_PWR_IOE_PIN || USBHUB_RST_IOE_PIN */
+#endif /* IOE_USBPWR_OUTPUT || IOE_USBRST_OUTPUT */
 
 	if (_interface != nullptr) {
 		delete _interface;
@@ -343,9 +343,9 @@ void USB2514::Reset(bool stat)
 {
 #if defined(USBHUB_RST_GPIO_PIN)
 	px4_arch_gpiowrite(USBHUB_RST_GPIO_PIN, !stat);
-#elif defined(USBHUB_RST_IOE_PIN)
+#elif defined(IOE_USBRST_OUTPUT)
    	if (_ioe_fd >= 0) {
-		px4_ioctl(_ioe_fd, IOE_RST_PIN, USBHUB_RST_IOE_PIN);
+		px4_ioctl(_ioe_fd, IOE_RST_PIN, IOE_USBRST_OUTPUT);
 	}
 #endif
 }//Reset
@@ -362,9 +362,9 @@ void USB2514::PowerOn()
 {
 #if defined(USBHUB_PWR_GPIO_PIN)
 	px4_arch_gpiowrite(USBHUB_PWR_GPIO_PIN, true);
-#elif defined(USBHUB_PWR_IOE_PIN)
+#elif defined(IOE_USBPWR_OUTPUT)
    	if (_ioe_fd >= 0) {
-		px4_ioctl(_ioe_fd, IOE_SET_PIN, USBHUB_PWR_IOE_PIN);
+		px4_ioctl(_ioe_fd, IOE_SET_PIN, IOE_USBPWR_OUTPUT);
 	}
 #endif
 }//PowerOn
@@ -381,9 +381,9 @@ void USB2514::PowerOff()
 {
 #if defined(USBHUB_PWR_GPIO_PIN)
 	px4_arch_gpiowrite(USBHUB_PWR_GPIO_PIN, false);
-#elif defined(USBHUB_PWR_IOE_PIN)
+#elif defined(IOE_USBPWR_OUTPUT)
    	if (_ioe_fd >= 0) {
-		px4_ioctl(_ioe_fd, IOE_RST_PIN, USBHUB_PWR_IOE_PIN);
+		px4_ioctl(_ioe_fd, IOE_RST_PIN, IOE_USBPWR_OUTPUT);
 	}
 #endif
 }//PowerOff

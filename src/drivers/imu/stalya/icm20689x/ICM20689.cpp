@@ -40,14 +40,20 @@ static constexpr int16_t combine(uint8_t msb, uint8_t lsb)
 	return (msb << 8u) | lsb;
 }
 
-ICM20689::ICM20689(device::Device *interface, I2CSPIBusOption bus_option, int bus, enum Rotation rotation, spi_drdy_gpio_t drdy_gpio) :
-	I2CSPIDriver(MODULE_NAME, px4::device_bus_to_wq(interface->get_device_id()), bus_option, bus),
-	_drdy_gpio(drdy_gpio),
-	_px4_accel(interface->get_device_id(), rotation),
-	_px4_gyro(interface->get_device_id(), rotation),
-	_interface(interface)
+ICM20689::ICM20689(device::Device *interface, const I2CSPIDriverConfig &config) :
+	I2CSPIDriver(config),
+	_interface(interface),
+	_drdy_gpio(config.drdy_gpio),
+	_px4_accel(interface->get_device_id(), config.rotation),
+	_px4_gyro(interface->get_device_id(), config.rotation),
+	_bad_register_perf(perf_alloc(PC_COUNT, MODULE_NAME": bad register")),
+	_bad_transfer_perf(perf_alloc(PC_COUNT, MODULE_NAME": bad transfer")),
+	_fifo_empty_perf(perf_alloc(PC_COUNT, MODULE_NAME": FIFO empty")),
+	_fifo_overflow_perf(perf_alloc(PC_COUNT, MODULE_NAME": FIFO overflow")),
+	_fifo_reset_perf(perf_alloc(PC_COUNT, MODULE_NAME": FIFO reset")),
+	_drdy_missed_perf(nullptr)
 {
-	if (drdy_gpio != 0) {
+	if (_drdy_gpio != 0) {
 		_drdy_missed_perf = perf_alloc(PC_COUNT, MODULE_NAME": DRDY missed");
 	}
 
@@ -68,14 +74,7 @@ ICM20689::~ICM20689()
 
 int ICM20689::init()
 {
-	int ret = _interface->init();
-
-	if (ret != PX4_OK) {
-		PX4_DEBUG("Interface init failed (%i)", ret);
-		return ret;
-	}
-
-	return Reset() ? 0 : -1;
+	return Reset() ? PX4_OK : PX4_ERROR;
 }
 
 bool ICM20689::Reset()
@@ -163,7 +162,12 @@ void ICM20689::RunImpl()
 			// Wakeup and reset digital signal path
 			RegisterWrite(Register::PWR_MGMT_1, PWR_MGMT_1_BIT::CLKSEL_0);
 			RegisterWrite(Register::SIGNAL_PATH_RESET, SIGNAL_PATH_RESET_BIT::ACCEL_RST | SIGNAL_PATH_RESET_BIT::TEMP_RST);
-			RegisterWrite(Register::USER_CTRL, USER_CTRL_BIT::SIG_COND_RST | USER_CTRL_BIT::I2C_IF_DIS);
+
+			if (_interface->get_device_bus_type() == device::Device::DeviceBusType_I2C) {
+				RegisterWrite(Register::USER_CTRL, USER_CTRL_BIT::SIG_COND_RST);
+			} else {
+				RegisterWrite(Register::USER_CTRL, USER_CTRL_BIT::SIG_COND_RST | USER_CTRL_BIT::I2C_IF_DIS);
+			}
 
 			// if reset succeeded then configure
 			_state = STATE::CONFIGURE;

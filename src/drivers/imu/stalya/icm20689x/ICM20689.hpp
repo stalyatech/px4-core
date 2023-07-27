@@ -46,7 +46,6 @@
 #include <lib/drivers/accelerometer/PX4Accelerometer.hpp>
 #include <lib/drivers/device/spi.h>
 #include <lib/drivers/gyroscope/PX4Gyroscope.hpp>
-#include <lib/ecl/geo/geo.h>
 #include <lib/perf/perf_counter.h>
 #include <px4_platform_common/atomic.h>
 #include <px4_platform_common/i2c_spi_buses.h>
@@ -60,16 +59,15 @@ extern device::Device *ICM20689_I2C_interface(int bus, int bus_frequency, int bu
 class ICM20689 : public I2CSPIDriver<ICM20689>
 {
 public:
-	ICM20689(device::Device *interface, I2CSPIBusOption bus_option, int bus, enum Rotation rotation, spi_drdy_gpio_t drdy_gpio = 0);
+	ICM20689(device::Device *interface, const I2CSPIDriverConfig &config);
 	~ICM20689() override;
 
-	static I2CSPIDriverBase *instantiate(const BusCLIArguments &cli, const BusInstanceIterator &iterator,
-					     int runtime_instance);
+	static I2CSPIDriverBase *instantiate(const I2CSPIDriverConfig &config, int runtime_instance);
 	static void print_usage();
 
 	void RunImpl();
 
-	virtual int init();
+	int init();
 
 	void print_status() override;
 
@@ -84,6 +82,8 @@ private:
 
 	// maximum FIFO samples per transfer is limited to the size of sensor_accel_fifo/sensor_gyro_fifo
 	static constexpr uint32_t FIFO_MAX_SAMPLES{math::min(math::min(FIFO::SIZE / sizeof(FIFO::DATA), sizeof(sensor_gyro_fifo_s::x) / sizeof(sensor_gyro_fifo_s::x[0])), sizeof(sensor_accel_fifo_s::x) / sizeof(sensor_accel_fifo_s::x[0]) * (int)(GYRO_RATE / ACCEL_RATE))};
+
+	device::Device *_interface{nullptr};
 
 	// Transfer data
 	struct FIFOTransferBuffer {
@@ -129,14 +129,13 @@ private:
 
 	PX4Accelerometer _px4_accel;
 	PX4Gyroscope _px4_gyro;
-	device::Device *_interface;
 
-	perf_counter_t _bad_register_perf{perf_alloc(PC_COUNT, MODULE_NAME": bad register")};
-	perf_counter_t _bad_transfer_perf{perf_alloc(PC_COUNT, MODULE_NAME": bad transfer")};
-	perf_counter_t _fifo_empty_perf{perf_alloc(PC_COUNT, MODULE_NAME": FIFO empty")};
-	perf_counter_t _fifo_overflow_perf{perf_alloc(PC_COUNT, MODULE_NAME": FIFO overflow")};
-	perf_counter_t _fifo_reset_perf{perf_alloc(PC_COUNT, MODULE_NAME": FIFO reset")};
-	perf_counter_t _drdy_missed_perf{nullptr};
+	perf_counter_t _bad_register_perf;
+	perf_counter_t _bad_transfer_perf;
+	perf_counter_t _fifo_empty_perf;
+	perf_counter_t _fifo_overflow_perf;
+	perf_counter_t _fifo_reset_perf;
+	perf_counter_t _drdy_missed_perf;
 
 	hrt_abstime _reset_timestamp{0};
 	hrt_abstime _last_config_check_timestamp{0};
@@ -168,7 +167,7 @@ private:
 		{ Register::FIFO_EN,       FIFO_EN_BIT::XG_FIFO_EN | FIFO_EN_BIT::YG_FIFO_EN | FIFO_EN_BIT::ZG_FIFO_EN | FIFO_EN_BIT::ACCEL_FIFO_EN, FIFO_EN_BIT::TEMP_FIFO_EN },
 		{ Register::INT_PIN_CFG,   INT_PIN_CFG_BIT::INT_LEVEL, INT_PIN_CFG_BIT::INT_OPEN },
 		{ Register::INT_ENABLE,    INT_ENABLE_BIT::DATA_RDY_INT_EN, 0 },
-		{ Register::USER_CTRL,     USER_CTRL_BIT::FIFO_EN | USER_CTRL_BIT::I2C_IF_DIS, 0 },
+		{ Register::USER_CTRL,     USER_CTRL_BIT::FIFO_EN, 0 },
 		{ Register::PWR_MGMT_1,    PWR_MGMT_1_BIT::CLKSEL_0, PWR_MGMT_1_BIT::SLEEP },
 		{ Register::XA_OFFSET_H,   0, 0 },
 		{ Register::XA_OFFSET_L,   0, 0 },

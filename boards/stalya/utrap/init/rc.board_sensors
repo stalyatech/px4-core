@@ -19,7 +19,7 @@ usleep 20000
 ###############################################
 
 # Yaw 90°
-icm20689 -s -b 1 -R 2 start
+icm20689x -s -b 1 -R 2 start
 
 # Yaw 90°
 bmi088 -s -b 1 -A -R 2 start
@@ -36,7 +36,7 @@ ms5611 -s -b 1 start
 ###############################################
 
 # Yaw 90°
-icm20689 -I -b 4 -f 400 -R 2 start
+icm20689x -I -b 4 -f 400 -R 2 start
 
 # Yaw 270°
 lis3mdl -I -b 4 -f 400 -R 6 start

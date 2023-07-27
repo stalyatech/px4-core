@@ -108,14 +108,14 @@ USB2517::USB2517(I2CSPIBusOption bus_option, const int bus, SMBus *interface) :
 	I2CSPIDriver(MODULE_NAME, px4::device_bus_to_wq(interface->get_device_id()), bus_option, bus),
 	_interface(interface)
 {
-#if defined(USBHUB_PWR_IOE_PIN) || defined(USBHUB_RST_IOE_PIN)
+#if defined(IOE_USBPWR_OUTPUT) || defined(IOE_USBRST_OUTPUT)
 	_ioe_fd = px4_open(IOE_DEVICE_PATH, O_RDWR);
 
 	if (_ioe_fd < 0) {
 		PX4_ERR("Unable to open I/O expander device path");
 		return;
 	}
-#endif /* USBHUB_PWR_IOE_PIN || USBHUB_RST_IOE_PIN */
+#endif /* IOE_USBPWR_OUTPUT || IOE_USBRST_OUTPUT */
 
 #if defined(USBHUB_PWR_GPIO_PIN)
 	// Configure power pin
@@ -339,9 +339,9 @@ void USB2517::Reset(bool stat)
 {
 #if defined(USBHUB_RST_GPIO_PIN)
 	px4_arch_gpiowrite(USBHUB_RST_GPIO_PIN, !stat);
-#elif defined(USBHUB_RST_IOE_PIN)
+#elif defined(IOE_USBRST_OUTPUT)
    	if (_ioe_fd >= 0) {
-		px4_ioctl(_ioe_fd, IOE_RST_PIN, USBHUB_RST_IOE_PIN);
+		px4_ioctl(_ioe_fd, IOE_RST_PIN, IOE_USBRST_OUTPUT);
 	}
 #endif
 }//Reset
@@ -358,9 +358,9 @@ void USB2517::PowerOn()
 {
 #if defined(USBHUB_PWR_GPIO_PIN)
 	px4_arch_gpiowrite(USBHUB_PWR_GPIO_PIN, true);
-#elif defined(USBHUB_PWR_IOE_PIN)
+#elif defined(IOE_USBPWR_OUTPUT)
    	if (_ioe_fd >= 0) {
-		px4_ioctl(_ioe_fd, IOE_SET_PIN, USBHUB_PWR_IOE_PIN);
+		px4_ioctl(_ioe_fd, IOE_SET_PIN, IOE_USBPWR_OUTPUT);
 	}
 #endif
 }//PowerOn
@@ -377,9 +377,9 @@ void USB2517::PowerOff()
 {
 #if defined(USBHUB_PWR_GPIO_PIN)
 	px4_arch_gpiowrite(USBHUB_PWR_GPIO_PIN, false);
-#elif defined(USBHUB_PWR_IOE_PIN)
+#elif defined(IOE_USBPWR_OUTPUT)
    	if (_ioe_fd >= 0) {
-		px4_ioctl(_ioe_fd, IOE_RST_PIN, USBHUB_PWR_IOE_PIN);
+		px4_ioctl(_ioe_fd, IOE_RST_PIN, IOE_USBPWR_OUTPUT);
 	}
 #endif
 }//PowerOff

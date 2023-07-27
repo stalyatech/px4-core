@@ -38,7 +38,7 @@
 
 void ICM20689::print_usage()
 {
-	PRINT_MODULE_USAGE_NAME("icm20689", "driver");
+	PRINT_MODULE_USAGE_NAME("icm20689x", "driver");
 	PRINT_MODULE_USAGE_SUBCATEGORY("imu");
 	PRINT_MODULE_USAGE_COMMAND("start");
 	PRINT_MODULE_USAGE_PARAMS_I2C_SPI_DRIVER(true, true);
@@ -47,16 +47,15 @@ void ICM20689::print_usage()
 	PRINT_MODULE_USAGE_DEFAULT_COMMANDS();
 }
 
-I2CSPIDriverBase *ICM20689::instantiate(const BusCLIArguments &cli, const BusInstanceIterator &iterator,
-					int runtime_instance)
+I2CSPIDriverBase *ICM20689::instantiate(const I2CSPIDriverConfig &config, int runtime_instance)
 {
 	device::Device *interface = nullptr;
 
-	if (iterator.busType() == BOARD_I2C_BUS) {
-		interface = ICM20689_I2C_interface(iterator.bus(), cli.bus_frequency, cli.i2c_address);
+	if (config.bus_type == BOARD_I2C_BUS) {
+		interface = ICM20689_I2C_interface(config.bus, config.bus_frequency, config.i2c_address);
 
-	} else if (iterator.busType() == BOARD_SPI_BUS) {
-		interface = ICM20689_SPI_interface(iterator.bus(), cli.bus_frequency, iterator.devid(), cli.spi_mode);
+	} else if (config.bus_type == BOARD_SPI_BUS) {
+		interface = ICM20689_SPI_interface(config.bus, config.bus_frequency, config.spi_devid, config.spi_mode);
 	}
 
 	if (interface == nullptr) {
@@ -66,11 +65,11 @@ I2CSPIDriverBase *ICM20689::instantiate(const BusCLIArguments &cli, const BusIns
 
 	if (interface->init() != OK) {
 		delete interface;
-		PX4_DEBUG("no device on bus %i (devid 0x%x)", iterator.bus(), iterator.devid());
+		PX4_DEBUG("no device on bus %i (devid 0x%x)", config.bus, config.spi_devid);
 		return nullptr;
 	}
 
-	ICM20689 *instance = new ICM20689(interface, iterator.configuredBusOption(), iterator.bus(), cli.rotation, iterator.DRDYGPIO());
+	ICM20689 *instance = new ICM20689(interface, config);
 
 	if (instance == nullptr) {
 		delete interface;
@@ -86,7 +85,7 @@ I2CSPIDriverBase *ICM20689::instantiate(const BusCLIArguments &cli, const BusIns
 	return instance;
 }
 
-extern "C" int icm20689_main(int argc, char *argv[])
+extern "C" int icm20689x_main(int argc, char *argv[])
 {
 	int ch;
 	using ThisDriver = ICM20689;

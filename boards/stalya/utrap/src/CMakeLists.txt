@@ -47,7 +47,7 @@ else()
 	add_library(drivers_board
 		i2c.cpp
 		init.c
-		fdcan.c
+		# fdcan.c
 		led.c
 		manifest.c
 		spi.cpp
