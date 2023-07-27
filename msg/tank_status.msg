@@ -1,0 +1,5 @@
+uint64  timestamp		# time since system update (microseconds)
+float32 maxlevel		# maximum liquid level (liter)
+float32 remlevel		# remaining liquid level (liter)
+float32 consumed		# consumed liquid level (liter)
+float32 flowrate		# consumed liquid flow rate (liter/minute)

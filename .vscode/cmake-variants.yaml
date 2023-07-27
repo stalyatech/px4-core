@@ -266,3 +266,18 @@ CONFIG:
       buildType: MinSizeRel
       settings:
         CONFIG: raspberrypi_pico_default
+    stalya_utrap_default:
+      short: utrap-default
+      buildType: MinSizeRel
+      settings:
+        CONFIG: stalya_utrap_default
+    stalya_utrap_debug:
+      short: utrap-debug
+      buildType: RelWithDebInfo
+      settings:
+        CONFIG: stalya_utrap_debug
+    stalya_utrap_hema:
+      short: utrap-hema
+      buildType: MinSizeRel
+      settings:
+        CONFIG: stalya_utrap_hema

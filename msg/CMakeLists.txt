@@ -132,6 +132,7 @@ set(msg_files
 	pwm_input.msg
 	px4io_status.msg
 	radio_status.msg
+	radar_status.msg
 	rate_ctrl_status.msg
 	rc_channels.msg
 	rc_parameter_map.msg
@@ -157,6 +158,8 @@ set(msg_files
 	sensors_status.msg
 	system_power.msg
 	takeoff_status.msg
+	tank_status.msg
+	tank_event.msg
 	task_stack_info.msg
 	tecs_status.msg
 	telemetry_status.msg
@@ -205,6 +208,8 @@ set(msg_files
 	wheel_encoders.msg
 	wind.msg
 	yaw_estimator_status.msg
+	ioe_status.msg
+	freq_input.msg
 )
 
 if(NOT px4_constrained_flash_build)

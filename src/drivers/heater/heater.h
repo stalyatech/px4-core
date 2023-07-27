@@ -137,6 +137,10 @@ private:
 #if defined(PX4IO_HEATER_ENABLED)
 	int _io_fd {-1};
 #endif
+	/** File descriptor for I/O expander for heater ioctl's */
+#if defined(IOE_HEATER_ENABLED)
+	int _ioe_fd {-1};
+#endif
 
 	bool _heater_initialized     = false;
 	bool _heater_on              = false;

@@ -1,0 +1,39 @@
+#!/bin/sh
+#
+# Board specific applications init
+#------------------------------------------------------------------------------
+
+#
+# Dummy check the pump parameters
+#
+if param greater PWM_PUMP_MIN 0
+then
+fi
+if param greater PWM_PUMP_MAX 0
+then
+fi
+if param greater PWM_PUMP_DISARM 0
+then
+fi
+
+#
+# Check the frequency measurement config
+#
+if param greater SENS_FREQ_CONFIG 0
+then
+	#
+	# Start the Frequency Measurement module
+	#
+	freq_input start &
+
+	#
+	# Check the tank level estimator config
+	#
+	if param greater PUMP_FLOW_INP 0
+	then
+		#
+		# Start Tank Level Estimator
+		#
+		tank_level start
+	fi
+fi
