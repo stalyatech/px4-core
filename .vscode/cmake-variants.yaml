@@ -277,12 +277,12 @@ CONFIG:
       settings:
         CONFIG: stalya_utrap_debug
     stalya_utrap_hema:
-      short: utrap-hema
+      short: uTRAP-Hema
       buildType: MinSizeRel
       settings:
         CONFIG: stalya_utrap_hema
     stalya_io-v2_hema:
-      short: io-v2-hema
+      short: IO-v2-Hema
       buildType: MinSizeRel
       settings:
         CONFIG: stalya_io-v2_hema
