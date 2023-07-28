@@ -1,6 +1,6 @@
 ############################################################################
 #
-#   Copyright (c) 2019-2020 PX4 Development Team. All rights reserved.
+#   Copyright (c) 2019-2021 PX4 Development Team. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -32,21 +32,16 @@
 ############################################################################
 
 px4_add_module(
-	MODULE drivers__imu__stalya__bmi088
-	MAIN bmi088
+	MODULE drivers__imu__invensense__icm20689x
+	MAIN icm20689x
 	COMPILE_FLAGS
 	SRCS
-		Bosch_BMI088_Accelerometer_Registers.hpp
-		Bosch_BMI088_Gyroscope_Registers.hpp
-		BMI088.cpp
-		BMI088.hpp
-		BMI088_SPI.cpp
-		BMI088_I2C.cpp
-		BMI088_Accelerometer.cpp
-		BMI088_Accelerometer.hpp
-		BMI088_Gyroscope.cpp
-		BMI088_Gyroscope.hpp
-		bmi088_main.cpp
+		icm20689_i2c.cpp
+		icm20689_spi.cpp
+		icm20689_main.cpp
+		ICM20689.cpp
+		ICM20689.hpp
+		InvenSense_ICM20689_registers.hpp
 	DEPENDS
 		drivers_accelerometer
 		drivers_gyroscope

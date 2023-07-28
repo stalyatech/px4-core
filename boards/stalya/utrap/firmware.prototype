@@ -1,10 +1,10 @@
 {
     "board_id": 96,
-    "magic": "PX4FWv2",
-    "description": "Firmware for the Stalya uTRAP board",
+    "magic": "UTRAPFMUv2",
+    "description": "Firmware for the Stalya uTRAP FMU v2",
     "image": "",
     "build_time": 0,
-    "summary": "uTRAP",
+    "summary": "UTRAPFMUv2",
     "version": "0.2",
     "image_size": 0,
     "image_maxsize": 1966080,

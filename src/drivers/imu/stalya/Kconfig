@@ -1,3 +1,0 @@
-menu "Stalya"
-rsource "*/Kconfig"
-endmenu #Stalya

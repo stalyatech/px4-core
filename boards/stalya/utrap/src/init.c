@@ -211,11 +211,9 @@ __EXPORT int board_app_initialize(uintptr_t arg)
 #endif /* CONFIG_MMCSD */
 
 #ifdef CONFIG_CAN
-	#if 0
 	if (can_devinit() != OK) {
 		syslog(LOG_ERR, "[boot] Failed to bind CAN bus(es) to the FDCAN driver\n");
 	}
-	#endif
 #endif /* CONFIG_CAN */
 
 	/* Configure the HW based on the manifest */
