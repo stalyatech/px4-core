@@ -90,6 +90,7 @@
 #define BOOTLOADER_DELAY               3000
 #define INTERFACE_USB                  1
 #define INTERFACE_USB_CONFIG           "/dev/ttyACM0"
+#define BOARD_USB_VBUS_SENSE_DISABLED
 
 #define INTERFACE_USART                0
 #define INTERFACE_USART_CONFIG         "/dev/ttyS0,115200"
@@ -102,8 +103,8 @@
 
 #define OSC_FREQ                       12
 
-#define BOARD_PIN_LED_ACTIVITY         GPIO_LED_BLUE
-#define BOARD_PIN_LED_BOOTLOADER       GPIO_LED_GREEN
+#define BOARD_PIN_LED_ACTIVITY         GPIO_LED_ACT
+#define BOARD_PIN_LED_BOOTLOADER       GPIO_LED_BOOT
 #define BOARD_LED_ON                   1
 #define BOARD_LED_OFF                  0
 
