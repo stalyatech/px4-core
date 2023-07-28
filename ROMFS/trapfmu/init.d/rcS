@@ -25,7 +25,7 @@ set AUTOCNF no
 set FCONFIG /fs/microsd/etc/config.txt
 set FEXTRAS /fs/microsd/etc/extras.txt
 set FRC /fs/microsd/etc/rc.txt
-set IOFW "/etc/extras/stalya_io-v2_hema.bin"
+set IOFW "/etc/extras/stalya_io-v2_default.bin"
 set IO_PRESENT yes
 set LOGGER_ARGS ""
 set LOGGER_BUF 8
