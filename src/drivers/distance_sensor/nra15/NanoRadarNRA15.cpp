@@ -276,6 +276,11 @@ int NanoRadarNRA15::collect()
 		}//if
 	}//if
 
+	if (!updated) {
+		// send last data to keep the sensor fusion algoritm is working
+		_px4_rangefinder.update(now, _target_info.dist, _target_info.snr);
+	}
+
 	// end the performance counter
 	perf_end(_cycle_perf);
 
