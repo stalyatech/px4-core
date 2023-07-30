@@ -24,12 +24,21 @@
 
 . ${R}etc/init.d/rc.mc_defaults
 
-set MIXER g410
-set PWM_OUT 12345678
+###############################################
+# Geometry parameters
+###############################################
 
-# AUX mixer
-set MIXER_AUX g410
-set PWM_AUX_OUT 1234
+param set-default CA_ROTOR_COUNT 4
+param set-default CA_ROTOR0_PX 0.42
+param set-default CA_ROTOR0_PY 0.64
+param set-default CA_ROTOR1_PX -0.42
+param set-default CA_ROTOR1_PY -0.64
+param set-default CA_ROTOR2_PX 0.42
+param set-default CA_ROTOR2_PY -0.64
+param set-default CA_ROTOR2_KM -0.05
+param set-default CA_ROTOR3_PX -0.42
+param set-default CA_ROTOR3_PY 0.64
+param set-default CA_ROTOR3_KM -0.05
 
 ###############################################
 # System parameters
@@ -125,13 +134,27 @@ param set-default SER_GPS2_BAUD 0
 param set-default GPS_UBX_DYNMODEL 6
 param set-default GPS_UBX_MODE 1
 
+# RTCM correction comes from TELEM4
+param set-default GPS_RTCM_INJECT 1
+
+# Deprecated
+param set-default EKF2_AID_MASK 0
+
 # GPS as Yaw/Heading Source
-# Bit 0: use GPS
-# Bit 7: GPS yaw fusion
-param set-default EKF2_AID_MASK 129
+# Bit 0: use GPS Lon/Lat
+# Bit 1: use GPS Altitude
+# Bit 2: use GPS 3D Velocity
+# Bit 3: use GPS Dual Antenna Heading
+param set-default EKF2_GPS_CTRL 15
 
 # Heading/Yaw offset for dual antenna GPS
 param set-default GPS_YAW_OFFSET 270
+
+# Disable Barometric sensor height aiding
+param set-default EKF2_BARO_CTRL 0
+
+# Enable Range sensor height aiding
+param set-default EKF2_RNG_CTRL 1
 
 ###############################################
 # Telemetry Ports
