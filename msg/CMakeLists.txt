@@ -88,6 +88,7 @@ set(msg_files
 	FollowTarget.msg
 	FollowTargetEstimator.msg
 	FollowTargetStatus.msg
+	FreqInput.msg
 	GeneratorStatus.msg
 	GeofenceResult.msg
 	GimbalDeviceAttitudeStatus.msg
@@ -107,6 +108,7 @@ set(msg_files
 	HoverThrustEstimate.msg
 	InputRc.msg
 	InternalCombustionEngineStatus.msg
+	IoeStatus.msg
 	IridiumsbdStatus.msg
 	IrlockReport.msg
 	LandingGear.msg
@@ -151,6 +153,7 @@ set(msg_files
 	QshellReq.msg
 	QshellRetval.msg
 	RadioStatus.msg
+	RadarStatus.msg
 	RateCtrlStatus.msg
 	RcChannels.msg
 	RcParameterMap.msg
@@ -177,6 +180,8 @@ set(msg_files
 	SensorUwb.msg
 	SystemPower.msg
 	TakeoffStatus.msg
+	TankStatus.msg
+	TankEvent.msg
 	TaskStackInfo.msg
 	TecsStatus.msg
 	TelemetryStatus.msg

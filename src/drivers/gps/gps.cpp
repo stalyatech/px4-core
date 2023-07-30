@@ -76,6 +76,7 @@
 
 #endif // CONSTRAINED_FLASH
 #include "devices/src/ubx.h"
+#include <drivers/drv_ioe.h>
 
 #ifdef __PX4_LINUX
 #include <linux/spi/spidev.h>
@@ -169,6 +170,7 @@ public:
 	void reset_if_scheduled();
 
 private:
+	int 	 		_ioe_fd {-1};					///< I/O expander file descriptor
 	int				_serial_fd{-1};					///< serial interface to GPS
 	unsigned			_baudrate{0};					///< current baudrate
 	const unsigned			_configured_baudrate{0};			///< configured baudrate (0=auto-detect)
@@ -360,6 +362,37 @@ GPS::GPS(const char *path, gps_driver_mode_t mode, GPSHelper::Interface interfac
 	}
 
 	_mode_auto = _mode == gps_driver_mode_t::None;
+
+#ifdef IOE_GPSPWR_OUTPUT
+	if (_ioe_fd == -1) {
+		_ioe_fd = px4_open(IOE_DEVICE_PATH, O_RDWR);
+	}
+
+	if (_ioe_fd < 0) {
+		PX4_ERR("Unable to open I/O expander device path");
+	} else {
+		px4_ioctl(_ioe_fd, IOE_SET_PIN, IOE_GPSPWR_OUTPUT);
+	}
+#endif /* IOE_GPSPWR_OUTPUT */
+
+#ifdef IOE_RTCMSEL_OUTPUT
+	int32_t gps_rtcm_inj = 0; // default to 0
+	param_t handle = param_find("GPS_RTCM_INJECT");
+
+	if (handle != PARAM_INVALID) {
+		param_get(handle, &gps_rtcm_inj);
+
+		if (_ioe_fd == -1) {
+			_ioe_fd = px4_open(IOE_DEVICE_PATH, O_RDWR);
+		}
+
+		if (_ioe_fd < 0) {
+			PX4_ERR("Unable to open I/O expander device path");
+		} else {
+			px4_ioctl(_ioe_fd, gps_rtcm_inj ? IOE_SET_PIN : IOE_RST_PIN, IOE_RTCMSEL_OUTPUT);
+		}
+	}
+#endif /* IOE_RTCMSEL_OUTPUT */
 }
 
 GPS::~GPS()
