@@ -55,6 +55,7 @@ else()
 		usb.c
 	)
 	add_dependencies(drivers_board arch_board_hw_info)
+	#target_compile_options(drivers_board PRIVATE -O0)
 
 	target_link_libraries(drivers_board
 		PRIVATE

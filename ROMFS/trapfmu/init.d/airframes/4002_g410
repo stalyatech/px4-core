@@ -29,15 +29,15 @@
 ###############################################
 
 param set-default CA_ROTOR_COUNT 4
-param set-default CA_ROTOR0_PX 0.42
+param set-default CA_ROTOR0_PX 0.53
 param set-default CA_ROTOR0_PY 0.64
-param set-default CA_ROTOR1_PX -0.42
-param set-default CA_ROTOR1_PY -0.64
-param set-default CA_ROTOR2_PX 0.42
+param set-default CA_ROTOR1_PX -0.29
+param set-default CA_ROTOR1_PY -0.63
+param set-default CA_ROTOR2_PX 0.53
 param set-default CA_ROTOR2_PY -0.64
 param set-default CA_ROTOR2_KM -0.05
-param set-default CA_ROTOR3_PX -0.42
-param set-default CA_ROTOR3_PY 0.64
+param set-default CA_ROTOR3_PX -0.29
+param set-default CA_ROTOR3_PY 0.63
 param set-default CA_ROTOR3_KM -0.05
 
 ###############################################
@@ -57,88 +57,11 @@ param set-default EKF2_GPS_POS_X 0.0
 param set-default EKF2_GPS_POS_Y 0.0
 param set-default EKF2_GPS_POS_Z 0.0
 
-# Select the primary source of height data as GPS
-param set-default EKF2_HGT_MODE 1
-
-# Enable high rate data logging
-param set-default SDLOG_PROFILE 17
-
-# Configure IMU priorities
-param set-default CAL_ACC0_PRIO  75
-param set-default CAL_GYRO0_PRIO 75
-param set-default CAL_ACC1_PRIO  50
-param set-default CAL_GYRO1_PRIO 50
-param set-default CAL_ACC2_PRIO  25
-param set-default CAL_GYRO2_PRIO 25
-param set-default CAL_MAG0_PRIO  75
-param set-default CAL_MAG1_PRIO  50
-
-###############################################
-# Attitude & rate gains
-###############################################
-
-# Roll
-param set-default MC_ROLLRATE_P 0.24
-param set-default MC_ROLLRATE_I 0.32
-param set-default MC_ROLLRATE_D 0.007
-# Pitch
-param set-default MC_PITCHRATE_P 0.24
-param set-default MC_PITCHRATE_I 0.32
-param set-default MC_PITCHRATE_D 0.007
-# Yaw
-param set-default MC_YAWRATE_P 0.6
-param set-default MC_YAWRATE_I 0.2
-param set-default MC_YAWRATE_D 0
-
-param set-default MPC_THR_MIN 0.12
-param set-default MPC_MANTHR_MIN 0.08
-
-###############################################
-# Multirotor Position Gains
-###############################################
-
-# Filter settings
-param set-default IMU_DGYRO_CUTOFF 20
-param set-default IMU_GYRO_CUTOFF 25
-param set-default IMU_GYRO_NF_FREQ 40
-param set-default IMU_GYRO_NF_BW 10
-param set-default IMU_GYRO_RATEMAX 2000
-
-# System
-param set-default PWM_MAIN_MAX 1940
-param set-default PWM_MAIN_MIN 1140
-param set-default PWM_MAIN_DISARM 900
-param set-default PWM_MAIN_RATE 400
-
-param set-default PWM_AUX_MAX 1940
-param set-default PWM_AUX_MIN 1140
-param set-default PWM_AUX_DISARM 900
-param set-default PWM_AUX_RATE 400
-
-###############################################
-# GPS Ports
-###############################################
-
-# GPS1
-param set-default GPS_1_CONFIG 201
-param set-default GPS_1_GNSS 31
-param set-default GPS_1_PROTOCOL 1
-param set-default SER_GPS1_BAUD 0
-
-# GPS2
-param set-default GPS_2_CONFIG 202
-param set-default GPS_2_GNSS 31
-param set-default GPS_2_PROTOCOL 1
-param set-default SER_GPS2_BAUD 0
-
-param set-default GPS_UBX_DYNMODEL 6
-param set-default GPS_UBX_MODE 1
-
-# RTCM correction comes from TELEM4
-param set-default GPS_RTCM_INJECT 1
-
 # Deprecated
 param set-default EKF2_AID_MASK 0
+
+# Select the primary source of height data as GPS
+param set-default EKF2_HGT_REF  1
 
 # GPS as Yaw/Heading Source
 # Bit 0: use GPS Lon/Lat
@@ -147,14 +70,116 @@ param set-default EKF2_AID_MASK 0
 # Bit 3: use GPS Dual Antenna Heading
 param set-default EKF2_GPS_CTRL 15
 
-# Heading/Yaw offset for dual antenna GPS
-param set-default GPS_YAW_OFFSET 270
-
-# Disable Barometric sensor height aiding
-param set-default EKF2_BARO_CTRL 0
+# Enable Barometric sensor height aiding
+param set-default EKF2_BARO_CTRL 1
 
 # Enable Range sensor height aiding
 param set-default EKF2_RNG_CTRL 1
+
+# Enable high rate data logging
+param set-default SDLOG_PROFILE 17
+
+# Configure IMU priorities
+param set-default CAL_ACC0_PRIO  50
+param set-default CAL_GYRO0_PRIO 50
+param set-default CAL_ACC1_PRIO  50
+param set-default CAL_GYRO1_PRIO 50
+param set-default CAL_ACC2_PRIO  50
+param set-default CAL_GYRO2_PRIO 50
+param set-default CAL_MAG0_PRIO  50
+param set-default CAL_MAG1_PRIO  50
+
+###############################################
+# Attitude & rate gains
+###############################################
+
+# Roll
+param set-default MC_ROLLRATE_P   0.220
+param set-default MC_ROLLRATE_I   0.320
+param set-default MC_ROLLRATE_D   0.008
+param set-default MC_ROLLRATE_MAX 200
+
+# Pitch
+param set-default MC_PITCHRATE_P   0.220
+param set-default MC_PITCHRATE_I   0.340
+param set-default MC_PITCHRATE_D   0.008
+param set-default MC_PITCHRATE_MAX 200
+
+# Yaw
+param set-default MC_YAWRATE_P   0.50
+param set-default MC_YAWRATE_I   0.20
+param set-default MC_YAWRATE_D   0
+param set-default MC_YAWRATE_MAX 50
+
+param set-default MPC_THR_MIN    0.08
+param set-default MPC_THR_MAX    0.80
+param set-default MPC_THR_HOVER  0.55
+param set-default MPC_MANTHR_MIN 0.08
+
+###############################################
+# Multirotor Position Gains
+###############################################
+
+# Filter settings
+param set-default IMU_DGYRO_CUTOFF   20
+param set-default IMU_GYRO_CUTOFF    25
+param set-default IMU_GYRO_NF0_FREQ  80
+param set-default IMU_GYRO_NF0_BW    40
+param set-default IMU_GYRO_NF1_FREQ  0
+param set-default IMU_GYRO_NF1_BW    40
+param set-default IMU_GYRO_RATEMAX   2000
+
+# System
+param set-default PWM_MAIN_DIS1 900
+param set-default PWM_MAIN_MIN1 1140
+param set-default PWM_MAIN_MAX1 1940
+param set-default PWM_MAIN_DIS2 900
+param set-default PWM_MAIN_MIN2 1140
+param set-default PWM_MAIN_MAX2 1940
+param set-default PWM_MAIN_DIS3 900
+param set-default PWM_MAIN_MIN3 1140
+param set-default PWM_MAIN_MAX3 1940
+param set-default PWM_MAIN_DIS4 900
+param set-default PWM_MAIN_MIN4 1140
+param set-default PWM_MAIN_MAX4 1940
+
+param set-default PWM_AUX_DIS1  900
+param set-default PWM_AUX_MIN1  1100
+param set-default PWM_AUX_MAX1  1940
+param set-default PWM_AUX_DIS2  900
+param set-default PWM_AUX_MIN2  1100
+param set-default PWM_AUX_MAX2  1940
+param set-default PWM_AUX_DIS3  900
+param set-default PWM_AUX_MIN3  1100
+param set-default PWM_AUX_MAX3  1940
+param set-default PWM_AUX_DIS4  900
+param set-default PWM_AUX_MIN4  1100
+param set-default PWM_AUX_MAX4  1940
+
+###############################################
+# GPS Ports
+###############################################
+
+# GPS1
+param set-default GPS_1_CONFIG   201
+param set-default GPS_1_GNSS     31
+param set-default GPS_1_PROTOCOL 1
+param set-default SER_GPS1_BAUD  0
+
+# GPS2
+param set-default GPS_2_CONFIG   202
+param set-default GPS_2_GNSS     31
+param set-default GPS_2_PROTOCOL 1
+param set-default SER_GPS2_BAUD  0
+
+param set-default GPS_UBX_DYNMODEL 6
+param set-default GPS_UBX_MODE     1
+
+# RTCM correction comes from TELEM4
+param set-default GPS_RTCM_INJECT  1
+
+# Heading/Yaw offset for dual antenna GPS
+param set-default GPS_YAW_OFFSET   270
 
 ###############################################
 # Telemetry Ports
@@ -162,28 +187,28 @@ param set-default EKF2_RNG_CTRL 1
 
 # TELEM1 (MR72 Radar)
 param set-default SER_TEL1_BAUD 115200
-param set-default MAV_0_CONFIG 101
+param set-default MAV_0_CONFIG  101
 param set-default MAV_0_FORWARD 1
-param set-default MAV_0_MODE 0
-param set-default MAV_0_RATE 0
+param set-default MAV_0_MODE    0
+param set-default MAV_0_RATE    0
 
 # TELEM2 (NRA15 Radar)
 param set-default SER_TEL2_BAUD 115200
-param set-default MAV_1_CONFIG 102
+param set-default MAV_1_CONFIG  102
 param set-default MAV_1_FORWARD 1
-param set-default MAV_1_MODE 0
-param set-default MAV_1_RATE 0
+param set-default MAV_1_MODE    0
+param set-default MAV_1_RATE    0
 
 # TELEM3 (MK15 Radio link)
 param set-default SER_TEL3_BAUD 57600
-param set-default MAV_2_CONFIG 103
+param set-default MAV_2_CONFIG  103
 param set-default MAV_2_FORWARD 1
-param set-default MAV_2_MODE 0
-param set-default MAV_2_RATE 0
+param set-default MAV_2_MODE    0
+param set-default MAV_2_RATE    0
 
 # TELEM4 (XBee SX RF Module)
 param set-default SER_TEL4_BAUD 115200
-param set-default MAV_3_CONFIG 104
+param set-default MAV_3_CONFIG  104
 param set-default MAV_3_FORWARD 1
-param set-default MAV_3_MODE 0
-param set-default MAV_3_RATE 0
+param set-default MAV_3_MODE    0
+param set-default MAV_3_RATE    0

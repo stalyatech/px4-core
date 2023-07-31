@@ -60,13 +60,23 @@ uint16_t board_get_can_interfaces(void)
 
 #include <errno.h>
 #include <debug.h>
+#include <unistd.h>
 
-#include <nuttx/can/can.h>
-#include <arch/board/board.h>
+#include <nuttx/arch.h>
+#include <nuttx/sched.h>
+#include <nuttx/signal.h>
+#include <nuttx/can.h>
+
+#include <sys/ioctl.h>
+#include <sys/socket.h>
+
+#include <net/if.h>
+#include <netpacket/can.h>
 
 #include "chip.h"
 #include "stm32_fdcan_sock.h"
 #include "board_config.h"
+
 
 /************************************************************************************
  * Pre-processor Definitions
@@ -75,6 +85,133 @@ uint16_t board_get_can_interfaces(void)
 /************************************************************************************
  * Private Functions
  ************************************************************************************/
+
+/****************************************************************************
+ * Name: socketcan_test
+ *
+ ****************************************************************************/
+
+int socketcan_test(int bus)
+{
+	struct can_frame frame_config;
+	struct sockaddr_can addr;
+	struct ifreq ifr;
+	int sock;
+	int ret = 0;
+
+	/* Select interface and pins */
+
+	switch (bus)
+	{
+	case 0:
+		strlcpy(ifr.ifr_name, "can0", IFNAMSIZ);
+		break;
+
+	case 1:
+		strlcpy(ifr.ifr_name, "can1", IFNAMSIZ);
+		break;
+	}
+
+	/* Find network interface */
+
+	ifr.ifr_ifindex = if_nametoindex(ifr.ifr_name);
+	if (!ifr.ifr_ifindex)
+	{
+		canerr("CAN%d : if_nametoindex failed\n", bus);
+		return -1;
+	}
+
+	/* Configure pins */
+
+	/* Init CAN frames, e.g. LEN = 0 */
+
+	memset(&frame_config, 0, sizeof(frame_config));
+
+	/* Prepare CAN frames. Refer to the TJA1153 datasheets and application
+	* hints available on NXP.com for details.
+	*/
+
+	frame_config.can_id  = 0x18da00f1 | CAN_EFF_FLAG;
+	frame_config.can_dlc = 6;
+	frame_config.data[0] = 0x10;
+	frame_config.data[1] = 0x00;
+	frame_config.data[2] = 0x50;
+	frame_config.data[3] = 0x00;
+	frame_config.data[4] = 0x07;
+	frame_config.data[5] = 0xff;
+
+	/* Open socket */
+
+	if ((sock = socket(PF_CAN, SOCK_RAW, CAN_RAW)) < 0)
+	{
+		canerr("CAN%d : Failed to open socket\n", bus);
+		return -1;
+	}
+
+	/* Bring up the interface */
+
+	ifr.ifr_flags = IFF_UP;
+	ret = ioctl(sock, SIOCSIFFLAGS, (unsigned long)&ifr);
+	if (ret < 0)
+	{
+		canerr("CAN%d : ioctl failed (can't set interface flags)\n", bus);
+		close(sock);
+		return -1;
+	}
+
+	/* Initialize sockaddr struct */
+
+	memset(&addr, 0, sizeof(addr));
+	addr.can_family  = AF_CAN;
+	addr.can_ifindex = ifr.ifr_ifindex;
+
+	/* Disable default receive filter on this RAW socket
+	*
+	* This is obsolete as we do not read from the socket at all, but for this
+	* reason we can remove the receive list in the kernel to save a little
+	* (really very little!) CPU usage.
+	*/
+
+	setsockopt(sock, SOL_CAN_RAW, CAN_RAW_FILTER, NULL, 0);
+
+	/* Bind socket and send the CAN frames */
+
+	if (bind(sock, (struct sockaddr *)&addr, sizeof(addr)) < 0)
+	{
+		canerr("CAN%d : Failed to bind socket\n", bus);
+		close(sock);
+		return -1;
+	}
+
+	if (write(sock, &frame_config, CAN_MTU) != CAN_MTU)
+	{
+		canerr("CAN%d : Failed to write frame_config\n", bus);
+		close(sock);
+		return -1;
+	}
+
+	/* Sleep for 100 ms to ensure that CAN frames have been transmitted */
+
+	nxsig_usleep(100 * 1000);
+
+	/* TJA1153 must be taken out of STB mode */
+
+	/* Bring down the interface */
+
+	ifr.ifr_flags = IFF_DOWN;
+	ret = ioctl(sock, SIOCSIFFLAGS, (unsigned long)&ifr);
+	if (ret < 0)
+	{
+		canerr("CAN%d : ioctl failed (can't set interface flags)\n", bus);
+		close(sock);
+		return -1;
+	}
+
+	close(sock);
+	caninfo("CAN%d configuration successful\n", bus);
+	return 0;
+}
+
 
 /************************************************************************************
  * Public Functions
@@ -109,6 +246,9 @@ int can_devinit(void)
 			return ret;
 			}
 
+		/* test the socket */
+		socketcan_test(0);
+
 		/* Now we are initialized */
 		initialized++;
 		#endif
@@ -123,6 +263,9 @@ int can_devinit(void)
 			canerr("ERROR:  Failed to get FDCAN interface %d\n", ret);
 			return ret;
 			}
+
+		/* test the socket */
+		socketcan_test(1);
 
 		/* Now we are initialized */
 		initialized++;
