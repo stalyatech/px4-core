@@ -39,7 +39,7 @@ using namespace InvenSense_ICM20689;
 class ICM20689_SPI : public device::SPI
 {
 public:
-	ICM20689_SPI(int bus, int bus_frequency, uint32_t devid, spi_mode_e spi_mode);
+	ICM20689_SPI(const I2CSPIDriverConfig &config);
 	~ICM20689_SPI() override = default;
 
 	int init() override;
@@ -58,9 +58,9 @@ private:
 * Output         : None
 * Return         : None
 *******************************************************************************/
-device::Device *ICM20689_SPI_interface(int bus, int bus_frequency, uint32_t devid, spi_mode_e spi_mode)
+device::Device *ICM20689_SPI_interface(const I2CSPIDriverConfig &config)
 {
-	return new ICM20689_SPI(bus, bus_frequency, devid, spi_mode);
+	return new ICM20689_SPI(config);
 }//ICM20689_SPI_interface
 
 
@@ -71,8 +71,8 @@ device::Device *ICM20689_SPI_interface(int bus, int bus_frequency, uint32_t devi
 * Output         : None
 * Return         : None
 *******************************************************************************/
-ICM20689_SPI::ICM20689_SPI(int bus, int bus_frequency, uint32_t devid, spi_mode_e spi_mode) :
-	SPI(DRV_IMU_DEVTYPE_ICM20689, MODULE_NAME, bus, devid, spi_mode, bus_frequency)
+ICM20689_SPI::ICM20689_SPI(const I2CSPIDriverConfig &config) :
+	SPI(config)
 {
 }
 

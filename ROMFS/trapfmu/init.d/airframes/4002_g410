@@ -127,7 +127,7 @@ param set-default IMU_GYRO_NF0_FREQ  80
 param set-default IMU_GYRO_NF0_BW    40
 param set-default IMU_GYRO_NF1_FREQ  0
 param set-default IMU_GYRO_NF1_BW    40
-param set-default IMU_GYRO_RATEMAX   2000
+param set-default IMU_GYRO_RATEMAX   400
 
 # System
 param set-default PWM_MAIN_DIS1 900

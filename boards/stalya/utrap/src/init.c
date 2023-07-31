@@ -187,9 +187,11 @@ __EXPORT int board_app_initialize(uintptr_t arg)
 	/* initial LED state */
 	drv_led_start();
 
+#ifdef CONFIG_BOARD_CRASHDUMP
 	if (board_hardfault_init(2, true) != 0) {
 		led_on(LED_RED);
 	}
+#endif
 
 #ifdef CONFIG_MMCSD
 	/* Mount the SDIO-based MMC/SD block driver */

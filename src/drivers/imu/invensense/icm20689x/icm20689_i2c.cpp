@@ -39,7 +39,7 @@ using namespace InvenSense_ICM20689;
 class ICM20689_I2C : public device::I2C
 {
 public:
-	ICM20689_I2C(int bus, int bus_frequency, int bus_address);
+	ICM20689_I2C(const I2CSPIDriverConfig &config);
 	~ICM20689_I2C() override = default;
 
 	int	init() override;
@@ -58,9 +58,9 @@ protected:
 * Output         : None
 * Return         : None
 *******************************************************************************/
-device::Device *ICM20689_I2C_interface(int bus, int bus_frequency, int bus_address)
+device::Device *ICM20689_I2C_interface(const I2CSPIDriverConfig &config)
 {
-	return new ICM20689_I2C(bus, bus_frequency, bus_address);
+	return new ICM20689_I2C(config);
 }//ICM20689_I2C_interface
 
 
@@ -71,8 +71,8 @@ device::Device *ICM20689_I2C_interface(int bus, int bus_frequency, int bus_addre
 * Output         : None
 * Return         : None
 *******************************************************************************/
-ICM20689_I2C::ICM20689_I2C(int bus, int bus_frequency, int bus_address) :
-	I2C(DRV_IMU_DEVTYPE_ICM20689, MODULE_NAME, bus, bus_address, bus_frequency)
+ICM20689_I2C::ICM20689_I2C(const I2CSPIDriverConfig &config) :
+	I2C(config)
 {
 }
 

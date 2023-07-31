@@ -52,10 +52,10 @@ I2CSPIDriverBase *ICM20689::instantiate(const I2CSPIDriverConfig &config, int ru
 	device::Device *interface = nullptr;
 
 	if (config.bus_type == BOARD_I2C_BUS) {
-		interface = ICM20689_I2C_interface(config.bus, config.bus_frequency, config.i2c_address);
+		interface = ICM20689_I2C_interface(config);
 
 	} else if (config.bus_type == BOARD_SPI_BUS) {
-		interface = ICM20689_SPI_interface(config.bus, config.bus_frequency, config.spi_devid, config.spi_mode);
+		interface = ICM20689_SPI_interface(config);
 	}
 
 	if (interface == nullptr) {

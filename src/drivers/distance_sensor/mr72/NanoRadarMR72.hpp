@@ -70,7 +70,7 @@ using namespace time_literals;
 #define MR72_PACKET_STX2			0x48
 #define MR72_PAYLOAD_LEN     		18
 #define MR72_PACKET_LEN     		19
-#define MR72_BUFFER_LEN     		256
+#define MR72_BUFFER_LEN     		1024
 
 #define MR72_DIST_INVALID     		0xffff
 
@@ -171,6 +171,7 @@ private:
 	perf_counter_t _error_perf{nullptr};
 	perf_counter_t _packet_perf{nullptr};
 
-	int32_t _filterType{0};
+	uint16_t _lastDist{0};
+	int32_t  _filterType{0};
 	filter::Filter * _filter{nullptr};
 };

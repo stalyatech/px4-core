@@ -69,7 +69,7 @@ using namespace time_literals;
 #define NRA15_PACKET_ETX2			0x55
 #define NRA15_PAYLOAD_LEN     		8
 #define NRA15_PACKET_LEN     		14
-#define NRA15_BUFFER_LEN     		256
+#define NRA15_BUFFER_LEN     		1024
 
 typedef struct __attribute__((__packed__)) message_frame {
 	uint16_t state;

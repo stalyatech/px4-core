@@ -228,7 +228,7 @@ int NanoRadarMR72::collect()
 			perf_count(_sample_perf);
 
 			// nearest object distance
-			uint32_t dist = 0xffffffff;
+			uint16_t dist = 0xffff;
 
 			// check the sector 1 for nearest object
 			if (_target_info.sector1 != MR72_DIST_INVALID) {
@@ -253,11 +253,12 @@ int NanoRadarMR72::collect()
 
 			// inform the application
 			if (dist < 0xffff) {
+
 				// increment the update counter
 				updated++;
 
-				// update the range finder data
-				_px4_rangefinder.update(now, _filter->insert(0, dist * MR72_RESOLUTION));
+				// update the last distance
+				_lastDist = dist;
 			}
 
 			// prepare the nanoradar status
@@ -274,6 +275,13 @@ int NanoRadarMR72::collect()
 			_radar_status_pub.publish(radar_status);
 		}//if
 	}//if
+
+	// is there any valid data ?
+	if (updated) {
+		_px4_rangefinder.update(now, _filter->insert(0, _lastDist * MR72_RESOLUTION), 10);
+	} else {
+		_px4_rangefinder.update(now, _lastDist * MR72_RESOLUTION, 0);
+	}
 
 	// end the performance counter
 	perf_end(_cycle_perf);
