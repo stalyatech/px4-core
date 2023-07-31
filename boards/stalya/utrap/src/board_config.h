@@ -115,10 +115,12 @@
 #define GPIO_HW_REV_SENSE    	/* PA4 */ PIN_ADC1_INP18
 #define HW_INFO_INIT_PREFIX    "V2X"
 
-// Base                   FMUM
+// Base          	FMUM
 #define V2X00		HW_VER_REV(0x0,0x0) // FMU Gen2,	Ver 0, Rev 0
 #define V2X01		HW_VER_REV(0x0,0x1) // FMU Gen2,	Ver 0, Rev 1
 #define V2X02		HW_VER_REV(0x0,0x2) // FMU Gen2,	Ver 0, Rev 2
+
+#define UAVCAN_NUM_IFACES_RUNTIME  1
 
 /* CAN Silence Silent mode control */
 #define GPIO_CAN1_SILENT_S0  	/* PD3 */ (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_CLEAR|GPIO_PORTD|GPIO_PIN3)
@@ -234,10 +236,6 @@
 
 #define PX4_GPIO_INIT_LIST { \
 		PX4_ADC_GPIO,                     \
-		GPIO_FDCAN1_TX,                   \
-		GPIO_FDCAN1_RX,                   \
-		GPIO_FDCAN2_TX,                   \
-		GPIO_FDCAN2_RX,                   \
 		GPIO_CAN1_SILENT_S0,              \
 		GPIO_CAN2_SILENT_S0,              \
 		GPIO_I2C4_SCL_RESET,			  \

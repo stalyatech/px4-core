@@ -210,13 +210,11 @@ __EXPORT int board_app_initialize(uintptr_t arg)
 	sdio_mediachange(sdio_dev, true);
 #endif /* CONFIG_MMCSD */
 
-#if 0
 #ifdef CONFIG_CAN
 	if (can_devinit() != OK) {
 		syslog(LOG_ERR, "[boot] Failed to bind CAN bus(es) to the FDCAN driver\n");
 	}
 #endif /* CONFIG_CAN */
-#endif
 
 	/* Configure the HW based on the manifest */
 

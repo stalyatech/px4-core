@@ -205,9 +205,8 @@
 #define STM32_RCC_D3CCIPR_SPI6SRC    RCC_D3CCIPR_SPI6SEL_PLL2    	/* SPI6 clock source */
 #define STM32_RCC_D2CCIP2R_USBSRC    RCC_D2CCIP2R_USBSEL_PLL3    	/* USB 1 and 2 clock source */
 #define STM32_RCC_D3CCIPR_ADCSEL     RCC_D3CCIPR_ADCSEL_PLL2     	/* ADC 1 2 3 clock source */
-#define STM32_RCC_D2CCIP1R_FDCANSEL  RCC_D2CCIP1R_FDCANSEL_PLL2  	/* FDCAN 1 2 clock source */
+#define STM32_RCC_D2CCIP1R_FDCANSEL  RCC_D2CCIP1R_FDCANSEL_HSE  	/* FDCAN 1 2 clock source */
 
-#define STM32_FDCANCLK               STM32_PLL2Q_FREQUENCY
 
 /* FLASH wait states
  *
@@ -280,11 +279,11 @@
 
 
 /* CAN */
-#define GPIO_FDCAN1_RX   GPIO_CAN1_RX_3        /* PD0  */
-#define GPIO_FDCAN1_TX   GPIO_CAN1_TX_3        /* PD1  */
+#define GPIO_CAN1_RX   GPIO_CAN1_RX_3        /* PD0  */
+#define GPIO_CAN1_TX   GPIO_CAN1_TX_3        /* PD1  */
 
-#define GPIO_FDCAN2_RX   GPIO_CAN2_RX_2        /* PB5  */
-#define GPIO_FDCAN2_TX   GPIO_CAN2_TX_2        /* PB6  */
+#define GPIO_CAN2_RX   GPIO_CAN2_RX_2        /* PB5  */
+#define GPIO_CAN2_TX   GPIO_CAN2_TX_2        /* PB6  */
 
 
 /* SPI */
