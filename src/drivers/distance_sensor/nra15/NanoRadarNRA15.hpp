@@ -71,6 +71,8 @@ using namespace time_literals;
 #define NRA15_PACKET_LEN     		14
 #define NRA15_BUFFER_LEN     		1024
 
+#define NRA15_FAULT_COUNT     		80
+
 typedef struct __attribute__((__packed__)) message_frame {
 	uint16_t state;
 	uint16_t paycnt;
@@ -200,5 +202,6 @@ private:
 	perf_counter_t _error_perf{nullptr};
 
 	int32_t _filterType{0};
+	int32_t _sensorFault{0};
 	filter::Filter * _filter{nullptr};
 };

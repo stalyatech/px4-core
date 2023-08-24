@@ -162,6 +162,28 @@ bool FlightTaskAuto::update()
 				_yawspeed_setpoint);
 	}
 
+	if (_param_cp_mission.get()) {
+		const float max_speed_from_estimator = _sub_vehicle_local_position.get().vxy_max;
+
+		float velocity_scale = _param_mpc_xy_cruise.get();
+
+		if (PX4_ISFINITE(max_speed_from_estimator)) {
+			// Constrain with optical flow limit but leave 0.3 m/s for repositioning
+			velocity_scale = math::constrain(velocity_scale, 0.3f, max_speed_from_estimator);
+		}
+
+		// scale velocity to its maximum limits
+		Vector2f vel_sp_xy = _position.xy() * velocity_scale;
+
+		// Rotate setpoint into local frame
+		Sticks::rotateIntoHeadingFrameXY(vel_sp_xy, _yaw, _yaw_setpoint);
+
+		// collision prevention
+		if (_collision_prevention.is_active()) {
+			_collision_prevention.modifySetpoint(vel_sp_xy, velocity_scale, _position.xy(), _velocity.xy());
+		}
+	}
+
 	_checkEmergencyBraking();
 	Vector3f waypoints[] = {_prev_wp, _position_setpoint, _next_wp};
 

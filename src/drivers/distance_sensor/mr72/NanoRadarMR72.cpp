@@ -109,6 +109,7 @@ NanoRadarMR72::~NanoRadarMR72()
 int NanoRadarMR72::init()
 {
 	param_get(param_find("SENS_MR72_FILT"), &_filterType);
+	param_get(param_find("SENS_MR72_MASK"), &_sectionMask);
 
 	if (_filter != nullptr) {
 		delete _filter;
@@ -230,24 +231,36 @@ int NanoRadarMR72::collect()
 			// nearest object distance
 			uint16_t dist = 0xffff;
 
-			// check the sector 1 for nearest object
-			if (_target_info.sector1 != MR72_DIST_INVALID) {
-				if (_target_info.sector1 < dist) {
-					dist = _target_info.sector1;
+			// check the section enable mask
+			if (_sectionMask & MR72_SECTION1_MASK) {
+
+				// check the sector 1 for nearest object
+				if (_target_info.sector1 != MR72_DIST_INVALID) {
+					if (_target_info.sector1 < dist) {
+						dist = _target_info.sector1;
+					}
 				}
 			}
 
-			// check the sector 2 for nearest object
-			if (_target_info.sector2 != MR72_DIST_INVALID) {
-				if (_target_info.sector2 < dist) {
-					dist = _target_info.sector2;
+			// check the section enable mask
+			if (_sectionMask & MR72_SECTION2_MASK) {
+
+				// check the sector 2 for nearest object
+				if (_target_info.sector2 != MR72_DIST_INVALID) {
+					if (_target_info.sector2 < dist) {
+						dist = _target_info.sector2;
+					}
 				}
 			}
 
-			// check the sector 3 for nearest object
-			if (_target_info.sector3 != MR72_DIST_INVALID) {
-				if (_target_info.sector3 < dist) {
-					dist = _target_info.sector3;
+			// check the section enable mask
+			if (_sectionMask & MR72_SECTION3_MASK) {
+
+				// check the sector 3 for nearest object
+				if (_target_info.sector3 != MR72_DIST_INVALID) {
+					if (_target_info.sector3 < dist) {
+						dist = _target_info.sector3;
+					}
 				}
 			}
 
@@ -276,11 +289,22 @@ int NanoRadarMR72::collect()
 		}//if
 	}//if
 
+	// calculate and the bound the current distance
+	float cdist = _lastDist * MR72_RESOLUTION;
+	if (cdist > MR72_MAX_DISTANCE) {
+		cdist = MR72_MAX_DISTANCE;
+	}
+
 	// is there any valid data ?
 	if (updated) {
-		_px4_rangefinder.update(now, _filter->insert(0, _lastDist * MR72_RESOLUTION), 10);
+		_sensorFault = 0;
+		_px4_rangefinder.update(now, _filter->insert(0, cdist), 100);
 	} else {
-		_px4_rangefinder.update(now, _lastDist * MR72_RESOLUTION, 0);
+		if (++_sensorFault < MR72_FAULT_COUNT) {
+			_px4_rangefinder.update(now, cdist, 50);
+		} else {
+			_px4_rangefinder.update(now, MR72_MAX_DISTANCE, 0);
+		}
 	}
 
 	// end the performance counter

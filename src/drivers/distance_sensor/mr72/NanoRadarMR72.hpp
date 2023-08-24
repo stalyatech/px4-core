@@ -74,6 +74,12 @@ using namespace time_literals;
 
 #define MR72_DIST_INVALID     		0xffff
 
+#define MR72_SECTION1_MASK     		(1)
+#define MR72_SECTION2_MASK     		(2)
+#define MR72_SECTION3_MASK     		(4)
+
+#define MR72_FAULT_COUNT     		(20)
+
 typedef struct __attribute__((__packed__)) message_frame {
 	uint16_t state;
 	uint16_t paycnt;
@@ -171,7 +177,9 @@ private:
 	perf_counter_t _error_perf{nullptr};
 	perf_counter_t _packet_perf{nullptr};
 
-	uint16_t _lastDist{0};
+	uint16_t _lastDist{0xffff};
 	int32_t  _filterType{0};
+	int32_t  _sectionMask{0};
+	int32_t  _sensorFault{0};
 	filter::Filter * _filter{nullptr};
 };

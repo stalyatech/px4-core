@@ -283,7 +283,7 @@ CONFIG:
         CONFIG: raspberrypi_pico_default
     stalya_utrap_debug:
       short: uTRAP FMU Debug
-      buildType: RelWithDebInfo
+      buildType: Sanitizer
       settings:
         CONFIG: stalya_utrap_debug
     stalya_utrap_default:

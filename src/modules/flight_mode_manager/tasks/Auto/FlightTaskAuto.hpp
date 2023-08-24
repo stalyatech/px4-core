@@ -59,6 +59,7 @@
 #else
 #include <lib/avoidance/ObstacleAvoidance.hpp>
 #endif
+#include <lib/collision_prevention/CollisionPrevention.hpp>
 
 /**
  * This enum has to agree with position_setpoint_s type definition
@@ -139,6 +140,7 @@ protected:
 	bool _yaw_sp_aligned{false};
 
 	ObstacleAvoidance _obstacle_avoidance{this}; /**< class adjusting setpoints according to external avoidance module's input */
+	CollisionPrevention _collision_prevention{this}; /**< collision avoidance setpoint amendment */
 
 	PositionSmoothing _position_smoothing;
 	Vector3f _unsmoothed_velocity_setpoint;
@@ -152,6 +154,7 @@ protected:
 	bool _want_takeoff{false};
 
 	DEFINE_PARAMETERS_CUSTOM_PARENT(FlightTask,
+					(ParamBool<px4::params::CP_MISSION>) _param_cp_mission, 	// collision prevention mission mode
 					(ParamFloat<px4::params::MPC_XY_CRUISE>) _param_mpc_xy_cruise,
 					(ParamFloat<px4::params::NAV_MC_ALT_RAD>)
 					_param_nav_mc_alt_rad, //vertical acceptance radius at which waypoints are updated

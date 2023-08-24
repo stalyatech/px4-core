@@ -66,8 +66,8 @@ void FakeGps::Run()
 	sensor_gps.alt_ellipsoid = _altitude;
 	sensor_gps.s_variance_m_s = 0.3740f;
 	sensor_gps.c_variance_rad = 0.6737f;
-	sensor_gps.eph = 2.1060f;
-	sensor_gps.epv = 3.8470f;
+	sensor_gps.eph = 0.02f;
+	sensor_gps.epv = 0.05f;
 	sensor_gps.hdop = 0.8800f;
 	sensor_gps.vdop = 1.3300f;
 	sensor_gps.noise_per_ms = 101;
@@ -84,7 +84,7 @@ void FakeGps::Run()
 	sensor_gps.jamming_state = 0;
 	sensor_gps.spoofing_state = 0;
 	sensor_gps.vel_ned_valid = true;
-	sensor_gps.satellites_used = 14;
+	sensor_gps.satellites_used = 21;
 	sensor_gps.timestamp = hrt_absolute_time();
 	_sensor_gps_pub.publish(sensor_gps);
 }

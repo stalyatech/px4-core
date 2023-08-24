@@ -84,3 +84,11 @@ PARAM_DEFINE_FLOAT(CP_GUIDE_ANG, 30.f);
  * @group Multicopter Position Control
  */
 PARAM_DEFINE_INT32(CP_GO_NO_DATA, 0);
+
+/**
+ * Boolean to enable collision prevention control at Mission mode
+ *
+ * @boolean
+ * @group Multicopter Position Control
+ */
+PARAM_DEFINE_INT32(CP_MISSION, 0);

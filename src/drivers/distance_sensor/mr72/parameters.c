@@ -43,3 +43,22 @@
  * @group Sensors
  */
 PARAM_DEFINE_INT32(SENS_MR72_FILT, 0);
+
+/**
+ * MR72 Radar Section Mask.
+ *
+ * @reboot_required true
+ *
+ * Set bits in the following positions to enable which section will be used.
+ * 0 : Set to true to enable Section 1
+ * 1 : Set to true to enable Section 2
+ * 2 : Set to true to enable Section 3
+ *
+ * @group Sensors
+ * @min 0
+ * @max 7
+ * @bit 0 Section 1 (Left)
+ * @bit 1 Section 2 (Mid)
+ * @bit 2 Section 3 (Right)
+ */
+PARAM_DEFINE_INT32(SENS_MR72_MASK, 7);
