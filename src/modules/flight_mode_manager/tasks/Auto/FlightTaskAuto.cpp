@@ -171,28 +171,6 @@ bool FlightTaskAuto::update()
 				_yawspeed_setpoint);
 	}
 
-	if (_param_cp_mission.get() && _collision_prevention.is_active() && follow_line) {
-
-		// store the current velocity setpoint
-		Vector2f vel_sp_original = _velocity_setpoint.xy();
-
-		// limit the velocity setpoint
-		_collision_prevention_limit_setpoint();
-
-		// update the position lock
-		Vector2f vel_sp_modified = _velocity_setpoint.xy();
-
-		if (vel_sp_modified.norm() < 0.01f && vel_sp_original.norm() > 0.01f) {
-			_request_position_lock = true;
-		}
-
-		// re-calculate the yaw setpoint according to limited values
-		_compute_heading_from_2D_vector(_yaw_setpoint, _velocity_setpoint.xy());
-
-		// lock the position if necessary
-		_checkPositionLock();
-	}
-
 	_checkEmergencyBraking();
 	Vector3f waypoints[] = {_prev_wp, _position_setpoint, _next_wp};
 
@@ -228,6 +206,28 @@ bool FlightTaskAuto::update()
 		if (!_generateHeadingAlongTraj()) {
 			_yaw_setpoint = PX4_ISFINITE(_yaw_sp_prev) ? _yaw_sp_prev : _yaw;
 		}
+	}
+
+	if (_param_cp_mission.get() && _collision_prevention.is_active() && follow_line) {
+
+		// store the current velocity setpoint
+		Vector2f vel_sp_original = _velocity_setpoint.xy();
+
+		// limit the velocity setpoint
+		_collision_prevention_limit_setpoint();
+
+		// update the position lock
+		Vector2f vel_sp_modified = _velocity_setpoint.xy();
+
+		if (vel_sp_modified.norm() < 0.01f && vel_sp_original.norm() > 0.01f) {
+			_request_position_lock = true;
+		}
+
+		// re-calculate the yaw setpoint according to limited values
+		_compute_heading_from_2D_vector(_yaw_setpoint, _velocity_setpoint.xy());
+
+		// lock the position if necessary
+		_checkPositionLock();
 	}
 
 	// update previous type
