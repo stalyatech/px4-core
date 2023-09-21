@@ -97,7 +97,7 @@
                     "PX4_SIM_SPEED_FACTOR": "1"
                 }
             },
-            "command": "gzserver --verbose ${workspaceFolder}/Tools/simulation/gazebo-classic/sitl_gazebo-classic/worlds/empty.world",
+            "command": "gzserver --verbose ${workspaceFolder}/Tools/simulation/gazebo-classic/sitl_gazebo-classic/worlds/baylands.world",
             "isBackground": true,
             "presentation": {
                 "echo": true,
@@ -139,7 +139,7 @@
                     "PX4_SIM_SPEED_FACTOR": "1"
                 }
             },
-            "command": "gz model --verbose --spawn-file=${workspaceFolder}/Tools/simulation/gazebo-classic/sitl_gazebo-classic/models/iris/iris.sdf --model-name=iris -x 1.01 -y 0.98 -z 0.83",
+            "command": "gz model --verbose --spawn-file=${workspaceFolder}/Tools/simulation/gazebo-classic/sitl_gazebo-classic/models/iris_hema/iris_hema.sdf --model-name=iris_hema -x 1.01 -y 0.98 -z 0.83",
             "isBackground": false,
             "presentation": {
                 "echo": true,

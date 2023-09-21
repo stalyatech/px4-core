@@ -97,6 +97,7 @@ public:
 protected:
 	void _updateInternalWaypoints(); /**< Depending on state of vehicle, the internal waypoints might differ from target (for instance if offtrack). */
 	bool _compute_heading_from_2D_vector(float &heading, matrix::Vector2f v); /**< Computes and sets heading a 2D vector */
+	void _collision_prevention_limit_setpoint(); /**< Limits the final velocity setpoint respecting collision prevention constraints */
 
 	/** Reset position or velocity setpoints in case of EKF reset event */
 	void _ekfResetHandlerPositionXY(const matrix::Vector2f &delta_xy) override;
@@ -215,4 +216,11 @@ private:
 	bool _evaluateGlobalReference(); /**< Check is global reference is available. */
 	State _getCurrentState(); /**< Computes the current vehicle state based on the vehicle position and navigator triplets. */
 	void _set_heading_from_mode(); /**< @see  MPC_YAW_MODE */
+
+	void _reset(); /**< Resets member variables to current vehicle state */
+	void _checkPositionLock(); /**< check whether position should be locked */
+
+	bool _position_locked{false};
+	bool _request_position_lock{false};
+	matrix::Vector3f _locked_position; /**< position at which vehicle is locked */
 };
