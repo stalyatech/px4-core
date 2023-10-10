@@ -311,6 +311,31 @@ void FlightModeManager::handleCommand()
 			    && (command.param2 > 0.f)) {
 				_current_task.task->overrideCruiseSpeed(command.param2);
 			}
+
+			if ((command.command == vehicle_command_s::VEHICLE_CMD_DO_SET_MODE)
+			    && (static_cast<uint8_t>(command.param2) == PX4_CUSTOM_MAIN_MODE_AUTO))
+			{
+				switch (static_cast<uint8_t>(command.param3)) {
+					case PX4_CUSTOM_SUB_MODE_AUTO_MISSION:
+						_current_task.task->overrideCruiseSpeed(command.param2);
+						break;
+
+					case PX4_CUSTOM_SUB_MODE_AUTO_LOITER:
+						break;
+
+					case PX4_CUSTOM_SUB_MODE_AUTO_RTL:
+						break;
+
+					case PX4_CUSTOM_SUB_MODE_AUTO_TAKEOFF:
+						break;
+
+					case PX4_CUSTOM_SUB_MODE_AUTO_LAND:
+						break;
+
+					case PX4_CUSTOM_SUB_MODE_AUTO_PRECLAND:
+						break;
+				}
+			}
 		}
 	}
 }

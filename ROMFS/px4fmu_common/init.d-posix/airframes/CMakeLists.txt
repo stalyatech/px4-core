@@ -46,6 +46,7 @@ px4_add_romfs_files(
 	1020_gazebo-classic_iris_hema
 	1021_gazebo-classic_uuv_hippocampus
 	1022_gazebo-classic_uuv_bluerov2_heavy
+	1023_gazebo-classic_g410
 	1030_gazebo-classic_plane
 	1031_gazebo-classic_plane_cam
 	1032_gazebo-classic_plane_catapult
@@ -81,6 +82,7 @@ px4_add_romfs_files(
 
 	6011_gazebo-classic_typhoon_h480
 	6011_gazebo-classic_typhoon_h480.post
+	6020_gazebo-classic_x6100
 
 	10015_gazebo-classic_iris
 	10016_none_iris

@@ -1,0 +1,56 @@
+#!/bin/sh
+#
+# @name 3DR Iris Quadrotor SITL (Optical Flow)
+#
+# @type Quadrotor Wide
+#
+
+. ${R}etc/init.d/rc.mc_defaults
+
+param set-default MPC_VEL_MANUAL 8
+
+param set-default EKF2_IMU_POS_X 0.09
+param set-default EKF2_IMU_POS_Y 0
+param set-default EKF2_IMU_POS_Z -0.1
+
+param set-default EKF2_GPS_POS_X -0.3
+param set-default EKF2_GPS_POS_Y 0.1
+param set-default EKF2_GPS_POS_Z -0.14
+
+param set-default MC_PITCHRATE_P 0.220
+param set-default MC_PITCHRATE_I 0.250
+param set-default MC_PITCHRATE_D 0.0048
+param set-default MC_PITCH_P 4.60
+
+param set-default MC_ROLLRATE_P 0.220
+param set-default MC_ROLLRATE_I 0.250
+param set-default MC_ROLLRATE_D 0.0048
+param set-default MC_ROLL_P 4.0
+
+param set-default CA_AIRFRAME 0
+param set-default CA_ROTOR_COUNT 4
+
+param set-default CA_ROTOR0_PX 0.35
+param set-default CA_ROTOR0_PY 0.64
+param set-default CA_ROTOR0_PZ -0.32
+param set-default CA_ROTOR0_KM 0.0955
+
+param set-default CA_ROTOR1_PX -0.35
+param set-default CA_ROTOR1_PY -0.64
+param set-default CA_ROTOR1_PZ -0.32
+param set-default CA_ROTOR1_KM 0.0955
+
+param set-default CA_ROTOR2_PX 0.35
+param set-default CA_ROTOR2_PY -0.64
+param set-default CA_ROTOR2_PZ -0.32
+param set-default CA_ROTOR2_KM -0.0955
+
+param set-default CA_ROTOR3_PX -0.35
+param set-default CA_ROTOR3_PY 0.64
+param set-default CA_ROTOR3_PZ -0.32
+param set-default CA_ROTOR3_KM -0.0955
+
+param set-default PWM_MAIN_FUNC1 101
+param set-default PWM_MAIN_FUNC2 102
+param set-default PWM_MAIN_FUNC3 103
+param set-default PWM_MAIN_FUNC4 104
