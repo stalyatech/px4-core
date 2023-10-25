@@ -7,52 +7,67 @@
 
 . ${R}etc/init.d/rc.mc_defaults
 
-param set-default MPC_VEL_MANUAL 8
+param set-default MPC_ACC_HOR 3
+param set-default MPC_ACC_HOR_MAX 5
+param set-default MPC_JERK_AUTO 4
+param set-default MPC_JERK_MAX 8
+param set-default MPC_POS_MODE 3
+param set-default MPC_VEL_MANUAL 5
+param set-default MPC_THR_HOVER 55
+param set-default MPC_THR_MAX 80
+param set-default MPC_THR_MIN 8
 
-param set-default EKF2_IMU_POS_X 0.183
+param set-default MPC_MAN_TILT_MAX 30
+param set-default MPC_TILTMAX_AIR 35
+param set-default MPC_XY_P 0.6
+
+param set-default MPC_YAWRAUTO_MAX 30
+param set-default MPC_YAW_MODE 4
+
+param set-default EKF2_IMU_POS_X 0.2
 param set-default EKF2_IMU_POS_Y 0
-param set-default EKF2_IMU_POS_Z -0.044
+param set-default EKF2_IMU_POS_Z -0.124
 
-param set-default EKF2_GPS_POS_X -0.207
-param set-default EKF2_GPS_POS_Y 0.105
-param set-default EKF2_GPS_POS_Z -0.084
+param set-default EKF2_GPS_POS_X -0.246
+param set-default EKF2_GPS_POS_Y 0.123
+param set-default EKF2_GPS_POS_Z -0.172
 
-param set-default MC_PITCHRATE_P 0.115
-param set-default MC_PITCHRATE_I 0.250
-param set-default MC_PITCHRATE_D 0.0042
-param set-default MC_PITCH_P 6.5
+param set-default MC_PITCHRATE_P 0.2
+param set-default MC_PITCHRATE_I 0.3
+param set-default MC_PITCHRATE_D 0.004
+param set-default MC_PITCH_P 5.0
 
-param set-default MC_ROLLRATE_P 0.193
-param set-default MC_ROLLRATE_I 0.317
-param set-default MC_ROLLRATE_D 0.0058
-param set-default MC_ROLL_P 4.95
+param set-default MC_ROLLRATE_P 0.2
+param set-default MC_ROLLRATE_I 0.3
+param set-default MC_ROLLRATE_D 0.004
+param set-default MC_ROLL_P 5.0
 
-param set-default MC_YAWRATE_P 0.10
+param set-default MC_YAWRATE_P 0.05
 param set-default MC_YAWRATE_I 0.20
-param set-default MC_YAWRATE_D 0.01
-param set-default MC_YAW_P 6.5
+param set-default MC_YAWRATE_D 0
+param set-default MC_YAW_P 5.0
 
 param set-default CA_AIRFRAME 0
 param set-default CA_ROTOR_COUNT 4
 
-param set-default CA_ROTOR0_PX 0.35
-param set-default CA_ROTOR0_PY 0.64
-param set-default CA_ROTOR0_PZ -0.08
+param set-default CA_ROTOR0_PX 0.44
+param set-default CA_ROTOR0_PY 0.73
+param set-default CA_ROTOR0_PZ 0
 param set-default CA_ROTOR0_KM 0.05
 
-param set-default CA_ROTOR1_PX -0.35
-param set-default CA_ROTOR1_PY -0.64
-param set-default CA_ROTOR1_PZ -0.08
+param set-default CA_ROTOR1_PX -0.44
+param set-default CA_ROTOR1_PY -0.73
+param set-default CA_ROTOR1_PZ 0
 param set-default CA_ROTOR1_KM 0.05
 
-param set-default CA_ROTOR2_PX 0.35
-param set-default CA_ROTOR2_PY -0.64
-param set-default CA_ROTOR2_PZ -0.08
+param set-default CA_ROTOR2_PX 0.44
+param set-default CA_ROTOR2_PY -0.73
+param set-default CA_ROTOR2_PZ 0
 param set-default CA_ROTOR2_KM -0.05
 
-param set-default CA_ROTOR3_PX -0.35
-param set-default CA_ROTOR3_PY 0.64
-param set-default CA_ROTOR3_PZ -0.08
+param set-default CA_ROTOR3_PX -0.44
+param set-default CA_ROTOR3_PY 0.73
+param set-default CA_ROTOR3_PZ 0
 param set-default CA_ROTOR3_KM -0.05
 
 param set-default PWM_MAIN_FUNC1 101
