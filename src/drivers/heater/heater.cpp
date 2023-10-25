@@ -46,9 +46,18 @@
 #include <px4_platform_common/getopt.h>
 #include <px4_platform_common/log.h>
 #include <drivers/drv_hrt.h>
+#include <drivers/drv_ioe.h>
 #include <drivers/drv_io_heater.h>
 
-#if defined(BOARD_USES_PX4IO_VERSION) and defined(PX4IO_HEATER_ENABLED)
+#if defined(IOE_HEATER_ENABLED)
+// Heater on some boards is on IO expander
+// Use ioctl calls to IO driver to turn heater on/off
+# ifndef IOE_HEATER_OUTPUT
+#  error "To use the heater driver, the board_config.h must define and initialize IOE_HEATER_OUTPUT"
+# else
+#  define HEATER_IOE
+# endif
+#elif defined(BOARD_USES_PX4IO_VERSION) and defined(PX4IO_HEATER_ENABLED)
 // Heater on some boards is on IO MCU
 // Use ioctl calls to IO driver to turn heater on/off
 #  define HEATER_PX4IO
@@ -71,7 +80,13 @@ Heater::Heater() :
 		PX4_ERR("Unable to open heater device path");
 		return;
 	}
+#elif defined(HEATER_IOE)
+	_ioe_fd = px4_open(IOE_DEVICE_PATH, O_RDWR);
 
+	if (_ioe_fd < 0) {
+		PX4_ERR("Unable to open heater device path");
+		return;
+	}
 #endif
 
 	_heater_status_pub.advertise();
@@ -96,22 +111,7 @@ int Heater::custom_command(int argc, char *argv[])
 void Heater::disable_heater()
 {
 	// Reset heater to off state.
-#ifdef HEATER_PX4IO
-	if (_io_fd >= 0) {
-		px4_ioctl(_io_fd, PX4IO_HEATER_CONTROL, HEATER_MODE_DISABLED);
-	}
-
-#endif
-
-#ifdef HEATER_GPIO
-	px4_arch_configgpio(GPIO_HEATER_OUTPUT);
-#endif
-}
-
-void Heater::initialize_heater_io()
-{
-	// Initialize heater to off state.
-#ifdef HEATER_PX4IO
+#if defined(HEATER_PX4IO)
 	if (_io_fd < 0) {
 		_io_fd = px4_open(IO_HEATER_DEVICE_PATH, O_RDWR);
 	}
@@ -119,41 +119,70 @@ void Heater::initialize_heater_io()
 	if (_io_fd >= 0) {
 		px4_ioctl(_io_fd, PX4IO_HEATER_CONTROL, HEATER_MODE_OFF);
 	}
+#elif defined(HEATER_IOE)
+	if (_ioe_fd < 0) {
+		_ioe_fd = px4_open(IOE_DEVICE_PATH, O_RDWR);
+	}
 
+	if (_ioe_fd >= 0) {
+		px4_ioctl(_ioe_fd, IOE_RST_PIN, IOE_HEATER_OUTPUT);
+	}
+#elif defined(HEATER_GPIO)
+	px4_arch_configgpio(GPIO_HEATER_OUTPUT);
 #endif
+}
 
-#ifdef HEATER_GPIO
+void Heater::initialize_heater_io()
+{
+	// Initialize heater to off state.
+#if defined(HEATER_PX4IO)
+	if (_io_fd < 0) {
+		_io_fd = px4_open(IO_HEATER_DEVICE_PATH, O_RDWR);
+	}
+
+	if (_io_fd >= 0) {
+		px4_ioctl(_io_fd, PX4IO_HEATER_CONTROL, HEATER_MODE_OFF);
+	}
+#elif defined(HEATER_IOE)
+	if (_ioe_fd < 0) {
+		_ioe_fd = px4_open(IOE_DEVICE_PATH, O_RDWR);
+	}
+
+	if (_ioe_fd >= 0) {
+		px4_ioctl(_ioe_fd, IOE_RST_PIN, IOE_HEATER_OUTPUT);
+	}
+#elif defined(HEATER_GPIO)
 	px4_arch_configgpio(GPIO_HEATER_OUTPUT);
 #endif
 }
 
 void Heater::heater_off()
 {
-#ifdef HEATER_PX4IO
-
+#if defined(HEATER_PX4IO)
 	if (_io_fd >= 0) {
 		px4_ioctl(_io_fd, PX4IO_HEATER_CONTROL, HEATER_MODE_OFF);
 	}
-
-#endif
-
-#ifdef HEATER_GPIO
-	HEATER_OUTPUT_EN(false);
+#elif defined(HEATER_IOE)
+	if (_ioe_fd >= 0) {
+		px4_ioctl(_ioe_fd, IOE_RST_PIN, IOE_HEATER_OUTPUT);
+	}
+#elif defined(HEATER_GPIO)
+	px4_arch_gpiowrite(GPIO_HEATER_OUTPUT, 0);
 #endif
 }
 
 void Heater::heater_on()
 {
-#ifdef HEATER_PX4IO
-
+#if defined(HEATER_PX4IO)
 	if (_io_fd >= 0) {
 		px4_ioctl(_io_fd, PX4IO_HEATER_CONTROL, HEATER_MODE_ON);
 	}
-
-#endif
-
-#ifdef HEATER_GPIO
-	HEATER_OUTPUT_EN(true);
+#elif defined(HEATER_IOE)
+	if (_ioe_fd >= 0) {
+		px4_ioctl(_ioe_fd, IOE_SET_PIN, IOE_HEATER_OUTPUT);
+	}
+#elif defined(HEATER_GPIO)
+	px4_arch_gpiowrite(GPIO_HEATER_OUTPUT, 1);
 #endif
 }
 
@@ -266,6 +295,9 @@ void Heater::publish_status()
 #endif
 #ifdef HEATER_GPIO
 	status.mode = heater_status_s::MODE_GPIO;
+#endif
+#ifdef HEATER_IOE
+	status.mode = heater_status_s::MODE_IOE;
 #endif
 
 	status.timestamp = hrt_absolute_time();

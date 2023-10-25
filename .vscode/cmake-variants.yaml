@@ -281,3 +281,23 @@ CONFIG:
       buildType: MinSizeRel
       settings:
         CONFIG: raspberrypi_pico_default
+    stalya_utrap_debug:
+      short: uTRAP FMU Debug
+      buildType: Sanitizer
+      settings:
+        CONFIG: stalya_utrap_debug
+    stalya_utrap_default:
+      short: uTRAP FMU
+      buildType: MinSizeRel
+      settings:
+        CONFIG: stalya_utrap_default
+    stalya_utrap_bootloader:
+      short: uTRAP FMU BL
+      buildType: MinSizeRel
+      settings:
+        CONFIG: stalya_utrap_bootloader
+    stalya_io-v2_default:
+      short: uTRAP IOP
+      buildType: MinSizeRel
+      settings:
+        CONFIG: stalya_io-v2_default

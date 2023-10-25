@@ -74,6 +74,7 @@ bool FlightTaskAuto::activate(const trajectory_setpoint_s &last_setpoint)
 	_updateTrajConstraints();
 	_is_emergency_braking_active = false;
 	_time_last_cruise_speed_override = 0;
+	_reset();
 
 	return ret;
 }
@@ -107,6 +108,14 @@ bool FlightTaskAuto::update()
 	bool ret = FlightTask::update();
 	// always reset constraints because they might change depending on the type
 	_setDefaultConstraints();
+
+	bool follow_line = (_type == WaypointType::loiter) || (_type == WaypointType::position);
+	bool follow_line_prev = (_type_previous == WaypointType::loiter) || (_type_previous == WaypointType::position);
+
+	// 1st time that vehicle starts to follow line. Reset all setpoints to current vehicle state.
+	if (follow_line && !follow_line_prev) {
+		_reset();
+	}
 
 	// The only time a thrust set-point is sent out is during
 	// idle. Hence, reset thrust set-point to NAN in case the
@@ -197,6 +206,28 @@ bool FlightTaskAuto::update()
 		if (!_generateHeadingAlongTraj()) {
 			_yaw_setpoint = PX4_ISFINITE(_yaw_sp_prev) ? _yaw_sp_prev : _yaw;
 		}
+	}
+
+	if (_param_cp_mission.get() && _collision_prevention.is_active() && follow_line) {
+
+		// store the current velocity setpoint
+		Vector2f vel_sp_original = _velocity_setpoint.xy();
+
+		// limit the velocity setpoint
+		_collision_prevention_limit_setpoint();
+
+		// update the position lock
+		Vector2f vel_sp_modified = _velocity_setpoint.xy();
+
+		if (vel_sp_modified.norm() < 0.01f && vel_sp_original.norm() > 0.01f) {
+			_request_position_lock = true;
+		}
+
+		// re-calculate the yaw setpoint according to limited values
+		_compute_heading_from_2D_vector(_yaw_setpoint, _velocity_setpoint.xy());
+
+		// lock the position if necessary
+		_checkPositionLock();
 	}
 
 	// update previous type
@@ -860,4 +891,60 @@ void FlightTaskAuto::updateParams()
 
 	// make sure that alt1 is above alt2
 	_param_mpc_land_alt1.set(math::max(_param_mpc_land_alt1.get(), _param_mpc_land_alt2.get()));
+}
+
+void FlightTaskAuto::_reset()
+{
+	// Set setpoints equal current state.
+	_velocity_setpoint = _velocity;
+	_position_setpoint = _position;
+}
+
+void FlightTaskAuto::_checkPositionLock()
+{
+	if ((_param_mpc_yaw_mode.get() == 4 && !_yaw_sp_aligned) || _request_position_lock) {
+
+		// Wait for the yaw setpoint to be aligned
+		if (!_position_locked) {
+			_locked_position = _position;
+		}
+
+		_velocity_setpoint.setAll(0.f);
+		_position_setpoint = _locked_position;
+		_position_locked = true;
+		_request_position_lock = false;
+
+	} else {
+		_position_locked = false;
+	}
+}
+
+void FlightTaskAuto::_collision_prevention_limit_setpoint()
+{
+	// get velocity setpoints in case only positions are set
+	if (!PX4_ISFINITE(_velocity_setpoint(0)) || !PX4_ISFINITE(_velocity_setpoint(1))) {
+		_velocity_setpoint = _position_setpoint - _position;
+	}
+
+	// get the estimator maximum velocity
+	const float max_speed_from_estimator = _sub_vehicle_local_position.get().vxy_max;
+
+	// get the current cruise velocity
+	float velocity_scale = _mc_cruise_speed;
+
+	if (PX4_ISFINITE(max_speed_from_estimator)) {
+
+		// Constrain with optical flow limit but leave 0.3 m/s for repositioning
+		velocity_scale = math::constrain(velocity_scale, 0.3f, max_speed_from_estimator);
+	}
+
+	// scale velocity to its maximum limits
+	Vector2f vel_sp_xy = _velocity_setpoint.xy();
+
+	// collision prevention
+	_collision_prevention.modifySetpoint(vel_sp_xy, velocity_scale, _position.xy(), _velocity.xy());
+
+	// update the current velocity and position
+	_velocity_setpoint.xy() = vel_sp_xy;
+	_position_setpoint.xy() = NAN;
 }

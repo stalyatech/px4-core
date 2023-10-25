@@ -59,6 +59,7 @@
 #else
 #include <lib/avoidance/ObstacleAvoidance.hpp>
 #endif
+#include <lib/collision_prevention/CollisionPrevention.hpp>
 
 /**
  * This enum has to agree with position_setpoint_s type definition
@@ -96,6 +97,7 @@ public:
 protected:
 	void _updateInternalWaypoints(); /**< Depending on state of vehicle, the internal waypoints might differ from target (for instance if offtrack). */
 	bool _compute_heading_from_2D_vector(float &heading, matrix::Vector2f v); /**< Computes and sets heading a 2D vector */
+	void _collision_prevention_limit_setpoint(); /**< Limits the final velocity setpoint respecting collision prevention constraints */
 
 	/** Reset position or velocity setpoints in case of EKF reset event */
 	void _ekfResetHandlerPositionXY(const matrix::Vector2f &delta_xy) override;
@@ -139,6 +141,7 @@ protected:
 	bool _yaw_sp_aligned{false};
 
 	ObstacleAvoidance _obstacle_avoidance{this}; /**< class adjusting setpoints according to external avoidance module's input */
+	CollisionPrevention _collision_prevention{this}; /**< collision avoidance setpoint amendment */
 
 	PositionSmoothing _position_smoothing;
 	Vector3f _unsmoothed_velocity_setpoint;
@@ -152,6 +155,7 @@ protected:
 	bool _want_takeoff{false};
 
 	DEFINE_PARAMETERS_CUSTOM_PARENT(FlightTask,
+					(ParamBool<px4::params::CP_MISSION>) _param_cp_mission, 	// collision prevention mission mode
 					(ParamFloat<px4::params::MPC_XY_CRUISE>) _param_mpc_xy_cruise,
 					(ParamFloat<px4::params::NAV_MC_ALT_RAD>)
 					_param_nav_mc_alt_rad, //vertical acceptance radius at which waypoints are updated
@@ -212,4 +216,11 @@ private:
 	bool _evaluateGlobalReference(); /**< Check is global reference is available. */
 	State _getCurrentState(); /**< Computes the current vehicle state based on the vehicle position and navigator triplets. */
 	void _set_heading_from_mode(); /**< @see  MPC_YAW_MODE */
+
+	void _reset(); /**< Resets member variables to current vehicle state */
+	void _checkPositionLock(); /**< check whether position should be locked */
+
+	bool _position_locked{false};
+	bool _request_position_lock{false};
+	matrix::Vector3f _locked_position; /**< position at which vehicle is locked */
 };

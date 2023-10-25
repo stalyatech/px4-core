@@ -290,3 +290,17 @@ PARAM_DEFINE_INT32(GPS_1_GNSS, 0);
  * @group GPS
  */
 PARAM_DEFINE_INT32(GPS_2_GNSS, 0);
+
+/**
+ * Enable GPS RTCM injection from the RTK add-on module.
+ *
+ * If this is set to 1, RTK add-on module sends RTCM data to the
+ * GPS module directly without interrupts the FMU.
+ *
+ * @value 0 Disable
+ * @value 1 Enable
+ *
+ * @reboot_required true
+ * @group GPS
+ */
+PARAM_DEFINE_INT32(GPS_RTCM_INJECT, 0);
