@@ -845,6 +845,7 @@ PARAM_DEFINE_INT32(MPC_POS_MODE, 4);
  * @value 2 away from home
  * @value 3 along trajectory
  * @value 4 towards waypoint (yaw first)
+ * @value 5 towards nose
  * @group Mission
  */
 PARAM_DEFINE_INT32(MPC_YAW_MODE, 0);

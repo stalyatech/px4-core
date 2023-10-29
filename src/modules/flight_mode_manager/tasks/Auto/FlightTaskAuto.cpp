@@ -563,8 +563,9 @@ void FlightTaskAuto::_set_heading_from_mode()
 {
 
 	Vector2f v; // Vector that points towards desired location
+	int yaw_mode = _param_mpc_yaw_mode.get();
 
-	switch (_param_mpc_yaw_mode.get()) {
+	switch (yaw_mode) {
 
 	case 0: // Heading points towards the current waypoint.
 	case 4: // Same as 0 but yaw first and then go
@@ -590,6 +591,10 @@ void FlightTaskAuto::_set_heading_from_mode()
 		// in the subclasses where the velocity setpoints are generated.
 		v.setAll(NAN);
 		break;
+
+	case 5: // Heading points towards nose.
+		v.setAll(NAN);
+		break;
 	}
 
 	if (v.isAllFinite()) {
@@ -610,6 +615,13 @@ void FlightTaskAuto::_set_heading_from_mode()
 	} else {
 		_yaw_lock = false;
 		_yaw_setpoint = NAN;
+
+		if (yaw_mode == 5) {
+			if (_sub_home_position.get().valid_lpos) {
+				_yaw_setpoint = _sub_home_position.get().yaw;
+				_yaw_lock = true;
+			}
+		}
 	}
 
 	_yawspeed_setpoint = NAN;
