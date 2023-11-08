@@ -49,10 +49,6 @@ bool FlightTaskAuto::activate(const trajectory_setpoint_s &last_setpoint)
 	_yaw_setpoint = _yaw;
 	_yawspeed_setpoint = 0.0f;
 
-	// Set setpoints equal current state.
-	_velocity_setpoint = _velocity;
-	_position_setpoint = _position;
-
 	Vector3f vel_prev{last_setpoint.velocity};
 	Vector3f pos_prev{last_setpoint.position};
 	Vector3f accel_prev{last_setpoint.acceleration};
@@ -219,15 +215,12 @@ bool FlightTaskAuto::update()
 		// update the position lock
 		Vector2f vel_sp_modified = _velocity_setpoint.xy();
 
-		if (vel_sp_modified.norm() < 0.01f && vel_sp_original.norm() > 0.01f) {
+		if ((vel_sp_modified.norm() < 0.01f) && (vel_sp_original.norm() > 0.01f)) {
 			_request_position_lock = true;
+			_position_setpoint(0) = NAN;
+			_position_setpoint(1) = NAN;
+			_collision_prevention._publishVehicleCmdDoPosition();
 		}
-
-		// re-calculate the yaw setpoint according to limited values
-		_compute_heading_from_2D_vector(_yaw_setpoint, _velocity_setpoint.xy());
-
-		// lock the position if necessary
-		_checkPositionLock();
 	}
 
 	// update previous type
@@ -938,17 +931,11 @@ void FlightTaskAuto::_collision_prevention_limit_setpoint()
 		_velocity_setpoint = _position_setpoint - _position;
 	}
 
-	// get the estimator maximum velocity
-	const float max_speed_from_estimator = _sub_vehicle_local_position.get().vxy_max;
+	// use the minimum of the estimator and user specified limit
+	float velocity_scale = fminf(_mc_cruise_speed, _sub_vehicle_local_position.get().vxy_max);
 
-	// get the current cruise velocity
-	float velocity_scale = _mc_cruise_speed;
-
-	if (PX4_ISFINITE(max_speed_from_estimator)) {
-
-		// Constrain with optical flow limit but leave 0.3 m/s for repositioning
-		velocity_scale = math::constrain(velocity_scale, 0.3f, max_speed_from_estimator);
-	}
+	// Allow for a minimum of 0.3 m/s for repositioning
+	velocity_scale = fmaxf(velocity_scale, 0.3f);
 
 	// scale velocity to its maximum limits
 	Vector2f vel_sp_xy = _velocity_setpoint.xy();
@@ -958,5 +945,4 @@ void FlightTaskAuto::_collision_prevention_limit_setpoint()
 
 	// update the current velocity and position
 	_velocity_setpoint.xy() = vel_sp_xy;
-	_position_setpoint.xy() = NAN;
 }

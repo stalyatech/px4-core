@@ -82,6 +82,11 @@ public:
 	void modifySetpoint(matrix::Vector2f &original_setpoint, const float max_speed,
 			    const matrix::Vector2f &curr_pos, const matrix::Vector2f &curr_vel);
 
+	/**
+	 * Publishes vehicle command.
+	 */
+	void _publishVehicleCmdDoPosition();
+
 protected:
 
 	obstacle_distance_s _obstacle_map_body_frame {};
