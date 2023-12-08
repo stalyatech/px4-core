@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2020 Technology Innovation Institute. All rights reserved.
+ *   Copyright (C) 2020 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,84 +31,52 @@
  *
  ****************************************************************************/
 
-/**
- * @file public_key.h
- *
- * File holds public keys for signed firmware.
- *
- *
- */
-
-#pragma once
-
-#define XSTR(x) #x
-#define STR(x) XSTR(x)
-
-#ifndef PUBLIC_KEY0
-#error "At least one key (PUBLIC_KEY0) must be defined"
-#endif
-
-typedef struct {
-	const size_t key_size;
-	const uint8_t *key;
-} persistent_key_t;
-
-/* This constant only exists to calculate size of the
-   key. It will be removed by the linker */
-static const uint8_t public_key0[] = {
-#include STR(PUBLIC_KEY0)
+#include <nuttx/spi/spi.h>
+#include <px4_platform_common/px4_manifest.h>
+//                                                              KiB BS    nB
+static const px4_mft_device_t spi4 = {             // FM25V02A on FMUM 32K 512 X 64
+	.bus_type = px4_mft_device_t::SPI,
+	.devid    = SPIDEV_FLASH(0)
 };
 
-#ifdef PUBLIC_KEY1
+static const px4_mtd_entry_t fmum_fram = {
+	.device = &spi4,
+	.npart = 2,
+	.partd = {
+		{
+			.type = MTD_PARAMETERS,
+			.path = "/fs/mtd_params",
+			.nblocks = 32
+		},
+		{
+			.type = MTD_WAYPOINTS,
+			.path = "/fs/mtd_waypoints",
+			.nblocks = 32
 
-static const uint8_t public_key1[] = {
-#include STR(PUBLIC_KEY1)
+		}
+	},
 };
-#endif
 
-#ifdef PUBLIC_KEY2
-static const uint8_t public_key2[] = {
-#include STR(PUBLIC_KEY2)
-};
-#endif
-
-#ifdef PUBLIC_KEY3
-static const uint8_t public_key3[] = {
-#include STR(PUBLIC_KEY3)
-};
-#endif
-
-
-static const persistent_key_t public_keys[] = {
-	{
-		.key = public_key0,
-		.key_size = sizeof(public_key0)
+static const px4_mtd_manifest_t board_mtd_config = {
+	.nconfigs = 1,
+	.entries  = {
+		&fmum_fram
 	}
-
-#ifdef PUBLIC_KEY1
-	,
-	{
-		.key = public_key1,
-		.key_size = sizeof(public_key1)
-	}
-#endif
-
-#ifdef PUBLIC_KEY2
-	,
-	{
-		.key = public_key2,
-		.key_size = sizeof(public_key2)
-	}
-#endif
-
-#ifdef PUBLIC_KEY3
-	,
-	{
-		.key = public_key3,
-		.key_size = sizeof(public_key3)
-	}
-#endif
-
 };
 
-#define NPERSISTENT_KEYS (sizeof(public_keys) / sizeof(persistent_key_t))
+static const px4_mft_entry_s mtd_mft = {
+	.type = MTD,
+	.pmft = (void *) &board_mtd_config,
+};
+
+static const px4_mft_s mft = {
+	.nmft = 1,
+	.mfts = {
+		&mtd_mft
+	}
+};
+
+const px4_mft_s *board_get_manifest(void)
+{
+	return &mft;
+}

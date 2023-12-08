@@ -49,6 +49,7 @@ else()
 		init.c
 		fdcan.c
 		led.c
+		mtd.cpp
 		manifest.c
 		spi.cpp
 		timer_config.cpp

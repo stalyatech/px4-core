@@ -295,7 +295,8 @@ uint32_t ADC::sample(unsigned channel)
 	perf_begin(_sample_perf);
 	uint32_t result = px4_arch_adc_sample(_base_address, channel);
 
-	if (result == UINT32_MAX) {
+	if ((result == UINT32_MAX) &&
+		(channel != PX4_ADC_INTERNAL_TEMP_SENSOR_CHANNEL)) {
 		PX4_ERR("sample timeout");
 	}
 

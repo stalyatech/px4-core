@@ -121,13 +121,13 @@ param set-default MPC_MANTHR_MIN 0.08
 ###############################################
 
 # Filter settings
-param set-default IMU_DGYRO_CUTOFF   20
-param set-default IMU_GYRO_CUTOFF    25
-param set-default IMU_GYRO_NF0_FREQ  80
-param set-default IMU_GYRO_NF0_BW    40
-param set-default IMU_GYRO_NF1_FREQ  0
-param set-default IMU_GYRO_NF1_BW    40
-param set-default IMU_GYRO_RATEMAX   400
+param set-default IMU_DGYRO_CUTOFF 20
+param set-default IMU_GYRO_CUTOFF  25
+param set-default IMU_GYRO_NF0_FRQ 80
+param set-default IMU_GYRO_NF0_BW  40
+param set-default IMU_GYRO_NF1_FRQ 0
+param set-default IMU_GYRO_NF1_BW  40
+param set-default IMU_GYRO_RATEMAX 400
 
 # System
 param set-default PWM_MAIN_DIS1 900
