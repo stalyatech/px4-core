@@ -17,6 +17,25 @@ then
 fi
 
 #
+# Dummy check the spray parameters
+#
+if param greater SPRAY_VOLUME 0
+then
+fi
+
+if param greater SPRAY_LENGHT 0
+then
+fi
+
+if param greater SPRAY_PUMP_SPEED 0
+then
+	#
+	# Start the Spraying module
+	#
+	spray start &
+fi
+
+#
 # Check the frequency measurement config
 #
 if param greater SENS_FREQ_CONFIG 0

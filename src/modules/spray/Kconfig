@@ -1,0 +1,5 @@
+menuconfig MODULES_SPRAY
+	bool "spray"
+	default n
+	---help---
+		Enable support for smart spray module.

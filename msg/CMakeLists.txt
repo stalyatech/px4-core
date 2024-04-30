@@ -178,6 +178,8 @@ set(msg_files
 	SensorsStatus.msg
 	SensorsStatusImu.msg
 	SensorUwb.msg
+	SprayStatus.msg
+	SprayEvent.msg
 	SystemPower.msg
 	TakeoffStatus.msg
 	TankStatus.msg
