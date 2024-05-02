@@ -40,12 +40,12 @@
  */
 
 /**
- * Maximum pump tank level (Liter)
+ * Maximum tank volume (Liter)
  *
  *
  * @group Tank Level Estimator
  */
-PARAM_DEFINE_FLOAT(PUMP_TANK_LEV, 8.0f);
+PARAM_DEFINE_FLOAT(TANK_VOL_MAX, 8.0f);
 
 /**
  * Used input channel for the flowmeter
@@ -59,7 +59,7 @@ PARAM_DEFINE_FLOAT(PUMP_TANK_LEV, 8.0f);
  * @value 3 FRQ3
  * @group Tank Level Estimator
  */
-PARAM_DEFINE_INT32(PUMP_FLOW_INP, 1);
+PARAM_DEFINE_INT32(TANK_FLOW_INP, 1);
 
 /*
  * Frequency (Hz) = 7.5 * Flow rate (L/min)
@@ -71,4 +71,4 @@ PARAM_DEFINE_INT32(PUMP_FLOW_INP, 1);
  *
  * @group Tank Level Estimator
  */
-PARAM_DEFINE_FLOAT(PUMP_FLOW_CONV, 0.133333333);
+PARAM_DEFINE_FLOAT(TANK_FLOW_CONV, 0.133333333);

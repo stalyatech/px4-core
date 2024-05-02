@@ -33,21 +33,69 @@
 
 #include "freq_input.h"
 
-int FREQIN::task_spawn(int argc, char *argv[])
-{
-	auto *freqin = new FREQIN();
+using namespace time_literals;
 
-	if (!freqin) {
-		PX4_ERR("driver allocation failed");
-		return PX4_ERROR;
+FREQIN::FREQIN() :
+	ScheduledWorkItem(MODULE_NAME, px4::wq_configurations::hp_default)
+{
+	_freq_input_pub.advertise();
+}
+
+FREQIN::~FREQIN()
+{
+
+}
+
+bool FREQIN::init()
+{
+	start();
+
+	return true;
+}
+
+void FREQIN::Run()
+{
+	if (should_exit()) {
+		ScheduleClear();
+		exit_and_cleanup();
+		return;
 	}
 
-	_object.store(freqin);
-	_task_id = task_id_is_work_queue;
+	/* calculate all periods */
+	for (uint8_t i=0; i<MAX_CHANNEL; i++) {
 
-	freqin->start();
+		if (_meas[i].captured > 0) {
 
-	return PX4_OK;
+			/* clear the counters */
+			_meas[i].captured = 0;
+		} else if (++_meas[i].timeout >= MAX_TMOCOUNT) {
+
+			/* reset the channel values */
+			reset(i);
+		}
+	}
+}
+
+int FREQIN::task_spawn(int argc, char *argv[])
+{
+	FREQIN *instance = new FREQIN();
+
+	if (instance) {
+		_object.store(instance);
+		_task_id = task_id_is_work_queue;
+
+		if (instance->init()) {
+			return PX4_OK;
+		}
+	} else {
+		PX4_ERR("driver allocation failed");
+	}
+
+	delete instance;
+	_object.store(nullptr);
+	_task_id = -1;
+
+	return PX4_ERROR;
 }//task_spawn
 
 void FREQIN::start()
@@ -60,6 +108,9 @@ void FREQIN::start()
 
 	/* initialize the timer isr for measuring pulse widths. Publishing is done inside the isr. */
 	timer_init();
+
+	/* Start the scheduler */
+	ScheduleOnInterval(100_ms); // 10 Hz
 }//start
 
 void FREQIN::timer_init(void)
@@ -147,6 +198,7 @@ int FREQIN::freqin_tim_isr(int irq, void *context, void *arg)
 {
 	/* get the timer status */
 	uint16_t status = rSR;
+	uint32_t period = 0;
 
 	/* ack the interrupts we just read */
 	rSR = 0;
@@ -215,8 +267,15 @@ int FREQIN::freqin_tim_isr(int irq, void *context, void *arg)
 	  	if (meas[i].capNumber >= 2) {
 
 			/* Compute the period length and frequency */
-			meas[i].perValue = ((meas[i].capValue[1] - meas[i].capValue[0] + 1)) * 10.0f;			// uS
+			if (meas[i].capValue[0] < meas[i].capValue[1]) {
+				period = meas[i].capValue[1] - meas[i].capValue[0];
+			} else {
+				period = (0x10000 - meas[i].capValue[0]) + meas[i].capValue[1] + 1;
+			}
+
+			meas[i].perValue  = period * 10.0f;														// uS
 			meas[i].frequency = (meas[i].perValue > 0.0f) ? (1000000.0f / meas[i].perValue) : (-1);	// Hz
+			meas[i].timeout   = 0;
 			meas[i].capNumber = 0;
 			meas[i].capValue[0] = 0;
 			meas[i].capValue[1] = 0;
@@ -241,33 +300,51 @@ void FREQIN::publish(uint8_t channel)
 	_freq_input_pub.publish(_freq);
 }//publish
 
-void FREQIN::print_info(void)
+void FREQIN::print_info(uint8_t channel)
 {
-	for (uint8_t i=0; i<MAX_CHANNEL; i++) {
+	/* print the channel variables */
+	if (channel < MAX_CHANNEL) {
 		PX4_INFO("chan=%u count=%u error=%u period=%uuS freq=%uHz",
-			static_cast<unsigned>(i),
-			static_cast<unsigned>(_meas[i].captured),
-			static_cast<unsigned>(_meas[i].error),
-			static_cast<unsigned>(_meas[i].perValue),
-			static_cast<unsigned>(_meas[i].frequency));
+			static_cast<unsigned>(channel),
+			static_cast<unsigned>(_meas[channel].captured),
+			static_cast<unsigned>(_meas[channel].error),
+			static_cast<unsigned>(_meas[channel].perValue),
+			static_cast<unsigned>(_meas[channel].frequency));
 	}
 }//print_info
 
+void FREQIN::print_info(void)
+{
+	for (uint8_t i=0; i<MAX_CHANNEL; i++) {
+		/* print the channel variables */
+		print_info(i);
+	}
+}//print_info
+
+void FREQIN::reset(uint8_t channel)
+{
+	/* reset the channel variables */
+	if (channel < MAX_CHANNEL) {
+		_meas[channel].perValue = 0;
+		_meas[channel].capNumber = 0;
+		_meas[channel].capValue[0] = 0;
+		_meas[channel].capValue[1] = 0;
+		_meas[channel].captured = 0;
+		_meas[channel].error = 0;
+		_meas[channel].timeout = 0;
+		_meas[channel].frequency = 0;
+	}
+}//reset
+
 void FREQIN::reset(void)
 {
-	// reset the variables
 	for (uint8_t i=0; i<MAX_CHANNEL; i++) {
-		_meas[i].perValue = 0;
-		_meas[i].capNumber = 0;
-		_meas[i].capValue[0] = 0;
-		_meas[i].capValue[1] = 0;
-		_meas[i].captured = 0;
-		_meas[i].error = 0;
-		_meas[i].frequency = 0;
-	}
+		/* reset the channel variables */
+		reset(i);
 
-	// print info
-	print_info();
+		/* print the channel variables */
+		print_info(i);
+	}
 }//reset
 
 int FREQIN::print_usage(const char *reason)

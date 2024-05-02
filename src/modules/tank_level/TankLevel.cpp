@@ -83,10 +83,10 @@ int TankLevel::values()
 
 int TankLevel::reset()
 {
-	_tank_status.maxlevel  = _param_pump_tank_lev.get();
+	_tank_status.maxlevel  = _param_tank_vol_max.get();
 	_tank_status.consumed  = 0;
 	_tank_status.flowrate  = 0;
-	_tank_status.remlevel  = _tank_status.maxlevel - _tank_status.consumed;
+	_tank_status.remlevel  = _tank_status.maxlevel;
 	_tank_status.timestamp = hrt_absolute_time();
 
 	return values();
@@ -117,34 +117,34 @@ void TankLevel::Run()
 	if (_freq_input_sub.update(&freq_input)) {
 
 		// check the flowmeter channel
-		if (freq_input.channel == static_cast<uint32_t>(_param_pump_flow_inp.get())) {
+		if (freq_input.channel == static_cast<uint32_t>(_param_tank_flow_inp.get())) {
 
-			// performance counter for debimeter
+			// performance counter for flow meter
 			perf_count(_flowmeter_perf);
 
 			// update the tank status using flow rate
 			if (_tank_status.remlevel > 0.0f) {
 
-				struct timespec diff;
+				// get the difference time (second)
+				float diff = (now - _tank_status.timestamp) / 1000000.0f;
 
-				// get the difference time
-				abstime_to_ts(&diff, now - _tank_status.timestamp);
+				if (diff > 0) {
+					// calculate the flow rate (Liter/minute)
+					_flow_rate = freq_input.frequency * _param_tank_flow_conv.get();
 
-				// calculate the flow rate (Liter/minute)
-				_flow_rate = freq_input.frequency * _param_pump_flow_conv.get();
+					// calculate flow rate as Liter/second
+					float flowrate = (_flow_rate / (60.0f * diff));
 
-				// calculate flow rate as Liter/second
-				float flowrate = (_flow_rate / (60.0f * diff.tv_sec));
-
-				_tank_status.maxlevel  = _param_pump_tank_lev.get();
-				_tank_status.consumed += flowrate;
-				_tank_status.flowrate  = flowrate * 60.0f;
-				_tank_status.remlevel  = _tank_status.maxlevel - _tank_status.consumed;
-				if (_tank_status.remlevel < 0.0f) {
-					_tank_status.remlevel = 0;
+					_tank_status.maxlevel  = _param_tank_vol_max.get();
+					_tank_status.consumed += flowrate;
+					_tank_status.flowrate  = flowrate * 60.0f;
+					_tank_status.remlevel  = _tank_status.maxlevel - _tank_status.consumed;
+					if (_tank_status.remlevel < 0.0f) {
+						_tank_status.remlevel = 0;
+					}
+					_tank_status.timestamp = now;
+					_tank_status_pub.publish(_tank_status);
 				}
-				_tank_status.timestamp = now;
-				_tank_status_pub.publish(_tank_status);
 			}
 		}
 	}
@@ -157,7 +157,7 @@ void TankLevel::Run()
 
 		// is it clear request ?
 		if (tank_event.event & tank_event_s::EVENT_CLEAR) {
-			_tank_status.maxlevel  = _param_pump_tank_lev.get();
+			_tank_status.maxlevel  = _param_tank_vol_max.get();
 			_tank_status.consumed  = 0;
 			_tank_status.flowrate  = 0;
 			_tank_status.remlevel  = _tank_status.maxlevel - _tank_status.consumed;

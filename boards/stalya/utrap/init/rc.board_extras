@@ -17,22 +17,47 @@ then
 fi
 
 #
+# Dummy check the tank parameters
+#
+if param greater TANK_VOL_MAX 0
+then
+fi
+if param greater TANK_FLOW_INP 0
+then
+fi
+if param greater TANK_FLOW_CONV 0
+then
+fi
+
+#
 # Dummy check the spray parameters
 #
+if param greater SPRAY_MODE 0
+then
+fi
+
 if param greater SPRAY_VOLUME 0
 then
 fi
 
-if param greater SPRAY_LENGHT 0
+if param greater SPRAY_WIDTH 0
 then
 fi
 
-if param greater SPRAY_PUMP_SPEED 0
+if param greater SPRAY_VELOCITY 0
+then
+fi
+
+if param greater SPRAY_SPEED_CUR 0
+then
+fi
+
+if param greater SPRAY_SPEED_MAX 0
 then
 	#
 	# Start the Spraying module
 	#
-	spray start &
+	spray start
 fi
 
 #
@@ -43,12 +68,12 @@ then
 	#
 	# Start the Frequency Measurement module
 	#
-	freq_input start &
+	freq_input start
 
 	#
 	# Check the tank level estimator config
 	#
-	if param greater PUMP_FLOW_INP 0
+	if param greater TANK_FLOW_INP 0
 	then
 		#
 		# Start Tank Level Estimator

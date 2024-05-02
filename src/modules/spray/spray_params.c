@@ -40,7 +40,19 @@
  */
 
 /**
- * Spray volume (Liter/Dekar)
+ * Spray mode
+ *
+ *
+ * @value 0 Disable
+ * @value 1 Manuel
+ * @value 2 Auto
+ *
+ * @group Spraying
+ */
+PARAM_DEFINE_INT32(SPRAY_MODE, 0);
+
+/**
+ * Spray volume (Mililiter/Acres)
  *
  *
  * @group Spraying
@@ -48,18 +60,36 @@
 PARAM_DEFINE_FLOAT(SPRAY_VOLUME, 1.0f);
 
 /**
- * Spray lenght (m)
+ * Spray Track Width (m)
  *
  *
  * @group Spraying
  */
-PARAM_DEFINE_FLOAT(SPRAY_LENGHT, 4.0f);
-
+PARAM_DEFINE_FLOAT(SPRAY_WIDTH, 4.0f);
 
 /**
- * Spraying pump speed (Liter/Minute)
+ * Spraying minumum speed (m/s)
  *
  *
  * @group Spraying
  */
-PARAM_DEFINE_FLOAT(SPRAY_PUMP_SPEED, 5.0f);
+PARAM_DEFINE_FLOAT(SPRAY_VELOCITY, 2.0f);
+
+/**
+ * Maximum spraying speed (Liter/Minute)
+ *
+ *
+ * @group Spraying
+ */
+PARAM_DEFINE_FLOAT(SPRAY_SPEED_MAX, 5.0f);
+
+/**
+ * Current spraying speed in manuel mode (Liter/Minute)
+ *
+ * @min 0
+ * @max 100
+ * @increment 1
+ *
+ * @group Spraying
+ */
+PARAM_DEFINE_INT32(SPRAY_SPEED_CUR, 0);

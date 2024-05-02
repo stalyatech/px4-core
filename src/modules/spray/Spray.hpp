@@ -52,8 +52,10 @@
 #include <uORB/Subscription.hpp>
 #include <uORB/SubscriptionCallback.hpp>
 #include <uORB/topics/parameter_update.h>
+#include <uORB/topics/tank_status.h>
 #include <uORB/topics/spray_status.h>
 #include <uORB/topics/spray_event.h>
+#include <uORB/topics/vehicle_command.h>
 #include <uORB/topics/vehicle_local_position.h>
 
 using namespace time_literals;
@@ -100,10 +102,12 @@ public:
 
 	/**
 	 * Calculate dynamic spraying speed
-	 * l : İz genişliği
-	 * t : litre/dekar
+	 * fly_vel		 : Uçuş hızı (m/s)
+	 * fly_height	 : Uçuş yüksekliği (m)
+	 * track_width   : İz genişliği (m)
+	 * vol_per_acres : İlaçlama miktarı (Mililitre/Dekar)
 	 */
-	void Calculate(float vel, float l, float t);
+	void Calculate(float fly_velocity, float fly_height, float track_width, float vol_per_acres, int mode);
 
 private:
 
@@ -125,24 +129,41 @@ private:
 	 */
 	int reset();
 
+	/**
+	 * Publishes vehicle command.
+	 */
+	void publishVehicleCmdDoSetActuator(float flowrate);
+
 	uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
 
+	uORB::SubscriptionCallbackWorkItem _tank_stat_sub{this, ORB_ID(tank_status)};
 	uORB::SubscriptionCallbackWorkItem _spray_event_sub{this, ORB_ID(spray_event)};
 	uORB::SubscriptionCallbackWorkItem _vehicle_pos_sub{this, ORB_ID(vehicle_local_position)};
 
-	uORB::Publication<spray_status_s> _spray_status_pub{ORB_ID(spray_status)};
+	uORB::Publication<spray_status_s> _spray_stat_pub{ORB_ID(spray_status)};
+	uORB::Publication<vehicle_command_s> _vehicle_cmd_pub{ORB_ID(vehicle_command)};
 
-	struct spray_status_s _spray_status{0};
-
-	float _flow_rate{0};
+	spray_status_s _spray_stat{0};
 
 	perf_counter_t _cycle_perf{nullptr};
-	perf_counter_t _event_perf{nullptr};
+	perf_counter_t _tank_stat_perf{nullptr};
+	perf_counter_t _vehicle_pos_perf{nullptr};
+	perf_counter_t _spray_event_perf{nullptr};
 
 	DEFINE_PARAMETERS(
-		(ParamFloat<px4::params::SPRAY_VOLUME>)  _param_spray_volume,
-		(ParamFloat<px4::params::SPRAY_LENGHT>)  _param_spray_length,
-		(ParamFloat<px4::params::SPRAY_PUMP_SPEED>)  _param_spray_pump_speed
-
+		(ParamInt  <px4::params::SPRAY_MODE>)    	_param_spray_mode,
+		(ParamFloat<px4::params::SPRAY_VOLUME>)  	_param_spray_volume,
+		(ParamFloat<px4::params::SPRAY_WIDTH>)  	_param_spray_width,
+		(ParamFloat<px4::params::SPRAY_VELOCITY>)  	_param_spray_velocity,
+		(ParamInt  <px4::params::SPRAY_SPEED_CUR>)	_param_spray_speed_cur,
+		(ParamFloat<px4::params::SPRAY_SPEED_MAX>)	_param_spray_speed_max
 	)
+
+	/* Spraying Modes */
+	enum
+	{
+		MODE_DISABLE,
+		MODE_MANUEL,
+		MODE_AUTO
+	};
 };

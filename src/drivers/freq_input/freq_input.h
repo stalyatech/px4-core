@@ -35,6 +35,7 @@
 #include <drivers/device/device.h>
 
 #include <px4_platform_common/module.h>
+#include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
 
 #include <uORB/uORB.h>
 #include <uORB/Publication.hpp>
@@ -97,28 +98,43 @@ typedef struct
     uint32_t capValue[2];
     uint32_t captured;
     uint32_t error;
+	uint32_t timeout;
 } freq_meas_t;
 
-class FREQIN : public ModuleBase<FREQIN>
+class FREQIN : public ModuleBase<FREQIN>, public px4::ScheduledWorkItem
 {
 public:
+	FREQIN();
+	virtual ~FREQIN();
+
+	/** @see ModuleBase */
+	static int task_spawn(int argc, char *argv[]);
+
+	/** @see ModuleBase */
+	static int custom_command(int argc, char *argv[]);
+
+	/** @see ModuleBase */
+	static int print_usage(const char *reason = nullptr);
+
+	bool init();
+
 	void start();
 	void publish(uint8_t channel);
 	void print_info(void);
+	void print_info(uint8_t channel);
 
 	static int freqin_tim_isr(int irq, void *context, void *arg);
 
-	static int custom_command(int argc, char *argv[]);
-	static int print_usage(const char *reason = nullptr);
-	static int task_spawn(int argc, char *argv[]);
-
-
 private:
+	void Run() override;
 	void timer_init(void);
 	void reset(void);
+	void reset(uint8_t channel);
 
 	static constexpr uint32_t MAX_CHANNEL{3};
+	static constexpr uint32_t MAX_TMOCOUNT{10};
 
+	uint32_t 	 _heartbeat[MAX_CHANNEL] {0};
 	freq_meas_t  _meas[MAX_CHANNEL] {0};
 	freq_input_s _freq {};
 

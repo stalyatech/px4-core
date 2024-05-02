@@ -34,6 +34,7 @@ px4_add_module(
 	MODULE modules__local_position_estimator
 	MAIN local_position_estimator
 	COMPILE_FLAGS
+	#-Werror=frame-larger-than=5172
 	STACK_MAIN 5700
 	STACK_MAX 3700
 	SRCS

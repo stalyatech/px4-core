@@ -134,8 +134,8 @@ private:
 	perf_counter_t _flowmeter_perf{nullptr};
 
 	DEFINE_PARAMETERS(
-		(ParamFloat<px4::params::PUMP_TANK_LEV>)  _param_pump_tank_lev,
-		(ParamInt  <px4::params::PUMP_FLOW_INP>)  _param_pump_flow_inp,
-		(ParamFloat<px4::params::PUMP_FLOW_CONV>) _param_pump_flow_conv
+		(ParamFloat<px4::params::TANK_VOL_MAX>)   _param_tank_vol_max,
+		(ParamInt  <px4::params::TANK_FLOW_INP>)  _param_tank_flow_inp,
+		(ParamFloat<px4::params::TANK_FLOW_CONV>) _param_tank_flow_conv
 	)
 };
