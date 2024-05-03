@@ -67,6 +67,7 @@
 #include "checks/rcAndDataLinkCheck.hpp"
 #include "checks/vtolCheck.hpp"
 #include "checks/offboardCheck.hpp"
+#include "checks/tanklevelCheck.hpp"
 
 class HealthAndArmingChecks : public ModuleParams
 {
@@ -139,6 +140,7 @@ private:
 	RcAndDataLinkChecks _rc_and_data_link_checks;
 	VtolChecks _vtol_checks;
 	OffboardChecks _offboard_checks;
+	TankLevelChecks _tank_level_checks;
 
 	HealthAndArmingCheckBase *_checks[30] = {
 		&_accelerometer_checks,
@@ -168,6 +170,7 @@ private:
 		&_flight_time_checks,
 		&_rc_and_data_link_checks,
 		&_vtol_checks,
+		&_tank_level_checks,
 	};
 };
 

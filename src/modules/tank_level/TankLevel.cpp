@@ -125,19 +125,17 @@ void TankLevel::Run()
 			// update the tank status using flow rate
 			if (_tank_status.remlevel > 0.0f) {
 
-				// get the difference time (second)
-				float diff = (now - _tank_status.timestamp) / 1000000.0f;
+				// get the difference time (minute)
+				float diff = (now - _tank_status.timestamp) / (60 * 1000000.0f);
 
 				if (diff > 0) {
 					// calculate the flow rate (Liter/minute)
-					_flow_rate = freq_input.frequency * _param_tank_flow_conv.get();
+					float flowrate = freq_input.frequency * _param_tank_flow_conv.get() * diff;
 
-					// calculate flow rate as Liter/second
-					float flowrate = (_flow_rate / (60.0f * diff));
-
+					_tank_status.empty_action = _param_tank_empty_act.get();
 					_tank_status.maxlevel  = _param_tank_vol_max.get();
 					_tank_status.consumed += flowrate;
-					_tank_status.flowrate  = flowrate * 60.0f;
+					_tank_status.flowrate  = flowrate;
 					_tank_status.remlevel  = _tank_status.maxlevel - _tank_status.consumed;
 					if (_tank_status.remlevel < 0.0f) {
 						_tank_status.remlevel = 0;

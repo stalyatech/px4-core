@@ -4,8 +4,12 @@
 #param set-default MAV_SYS_ID $((px4_instance+1))
 #param set-default IMU_INTEG_RATE 250
 
-# Auto Mode
+# Manuel Mode
 param set-default SPRAY_MODE 1
+# Spraying disabled at manuel mode
+param set-default SPRAY_ENABLE 0
+# Spraying actuator output channel
+param set-default SPRAY_CHANNEL 1
 # 1000 mililiter/acres
 param set-default SPRAY_VOLUME 1000.0
 # Track width (m)
@@ -18,3 +22,12 @@ param set-default SPRAY_SPEED_CUR 0.0
 
 # Start the Spraying module
 spray start
+
+
+param set-default TANK_FLOW_INP 1
+param set-default TANK_EMPTY_ACT 1
+param set-default TANK_VOL_MAX 8.0
+param set-default TANK_FLOW_CONV 0.133333333
+
+# Start the tank level module
+tank_level start

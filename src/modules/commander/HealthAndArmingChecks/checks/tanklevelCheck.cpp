@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2013-2020 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2022 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -17,7 +17,7 @@
  *    without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * AS IS AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
  * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
  * COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
@@ -31,61 +31,41 @@
  *
  ****************************************************************************/
 
-/**
- * @file tank_level_params.c
- *
- * Parameters defined by the tank level estimator
- *
- * @author volvox <volvox@stalya.com>
- */
+#include "tanklevelCheck.hpp"
 
-/**
- * Used input channel for the flowmeter
- *
- * Configure on which frequency measurement channel to use flowmeter input.
- *
- *
- * @value 0 Disabled
- * @value 1 FRQ1
- * @value 2 FRQ2
- * @value 3 FRQ3
- * @group Tank Level Estimator
- */
-PARAM_DEFINE_INT32(TANK_FLOW_INP, 1);
+void TankLevelChecks::checkAndReport(const Context &context, Report &reporter)
+{
+	tank_status_s tank_status;
 
-/**
- * Tank empty action
- *
- * Configure which action will be taken at mission mode if the tank is empty.
- *
- *
- * @value 0 Disabled
- * @value 1 Warning
- * @value 2 Loiter
- * @value 3 Return Home
- * @value 4 Terminate
- * @value 5 Land
- *
- * @group Tank Level Estimator
- */
-PARAM_DEFINE_INT32(TANK_EMPTY_ACT, 1);
+	/* get the tank status values from system */
+	if (!_tank_status_sub.copy(&tank_status)) {
+		tank_status = {};
+	}
 
-/**
- * Maximum tank volume (Liter)
- *
- *
- * @group Tank Level Estimator
- */
-PARAM_DEFINE_FLOAT(TANK_VOL_MAX, 8.0f);
+	/* update the failsafe flags */
+	reporter.failsafeFlags().tank_level_empty = (tank_status.remlevel > 0.0f) ? (0) : (1);
 
-/*
- * Frequency (Hz) = 7.5 * Flow rate (L/min)
-*/
+	/* get the tank empty action */
+	int action = _param_tank_empty_act.get();
 
-/**
- * Flowmeter conversion factor (Hz -> L/min)
- *
- *
- * @group Tank Level Estimator
- */
-PARAM_DEFINE_FLOAT(TANK_FLOW_CONV, 0.133333333f);
+	/* check the empty status */
+	if (action != 0 && reporter.failsafeFlags().tank_level_empty) {
+
+		if (action == tank_status_s::TS_ACTION_RTL
+			&& reporter.failsafeFlags().home_position_invalid) {
+
+			/* EVENT
+			* @description
+			* <profile name="dev">
+			* This check can be configured via <param>TANK_EMPTY_ACT</param> parameter.
+			* </profile>
+			*/
+			reporter.armingCheckFailure(NavModes::All, health_component_t::system, events::ID("check_tank_level_no_home"),
+							events::Log::Error, "Tank Level RTL requires valid home");
+
+			if (reporter.mavlink_log_pub()) {
+				mavlink_log_critical(reporter.mavlink_log_pub(), "Preflight Fail: Tank Level RTL requires valid home");
+			}
+		}
+	}
+}

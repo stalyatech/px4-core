@@ -80,7 +80,7 @@ bool Spray::init()
 
 int Spray::values()
 {
-	const char *Modes[] = {"DIS", "MAN", "AUTO"};
+	const char *Modes[] = {"MAN", "AUTO"};
 
 	PX4_INFO("Mode:%s Speed:%f Height:%f Flowrate:%f",
 		Modes[_spray_stat.spraymode],
@@ -93,7 +93,7 @@ int Spray::values()
 
 int Spray::reset()
 {
-	_spray_stat.spraymode = MODE_DISABLE;
+	_spray_stat.spraymode = MODE_MANUEL;
 	_spray_stat.flyspeed  = 0;
 	_spray_stat.flyheight = 0;
 	_spray_stat.flowrate  = 0;
@@ -103,7 +103,7 @@ int Spray::reset()
 }//reset
 
 /*
- * fly_vel 		 : m/s
+ * flyspeed 	 : m/s
  * flyheight	 : m
  * track_width   : m
  * vol_per_acres : mililiter/acres
@@ -114,10 +114,6 @@ void Spray::Calculate(float flyspeed, float flyheight, float track_width, float 
 
 	switch (mode)
 	{
-		case MODE_DISABLE: {
-			break;
-		}
-
 		case MODE_MANUEL: {
 			int percent = _param_spray_speed_cur.get();
 			if ((percent >= 0) && (percent <= 100)) {
@@ -161,24 +157,61 @@ void Spray::Calculate(float flyspeed, float flyheight, float track_width, float 
 void Spray::publishVehicleCmdDoSetActuator(float flowrate)
 {
 	vehicle_command_s command{};
+	float act_out = -1;
 
-	/* get the maximum pump speed */
-	float pump_speed = _param_spray_speed_max.get();
+	/* check for enable status */
+	if (_param_spray_enab.get() == 0) {
+		act_out = -1;
+	} else {
+
+		/* get the maximum pump speed */
+		float max_pump_speed = _param_spray_speed_max.get();
+
+		/* check for valid pump speed */
+		if (max_pump_speed > 0.0f) {
+			/* scale the flow rate to -1 .. +1 */
+			act_out = ((flowrate/max_pump_speed) * 2) - 1.0f;
+		} else {
+			act_out = -1;
+		}
+	}
 
 	command.timestamp = hrt_absolute_time();
 	command.command = vehicle_command_s::VEHICLE_CMD_DO_SET_ACTUATOR;
-	if (pump_speed > 0.0f) {
-		/* scale the flow rate to -1 .. +1 */
-		command.param1 = ((flowrate/pump_speed) * 2) - 1.0f;	// Actuator 1
-	} else {
-		command.param1 = -1;
-	}
-	command.param2 = 0; 	// Actuator 2
-	command.param3 = 0; 	// Actuator 3
-	command.param4 = 0; 	// Actuator 4
-	command.param5 = 0; 	// Actuator 5
-	command.param6 = 0; 	// Actuator 6
+	command.param1 = -1;	// Actuator 1
+	command.param2 = -1; 	// Actuator 2
+	command.param3 = -1; 	// Actuator 3
+	command.param4 = -1; 	// Actuator 4
+	command.param5 = -1; 	// Actuator 5
+	command.param6 = -1; 	// Actuator 6
 	command.param7 = 0; 	// Index
+
+	/* update the actuator channel */
+	switch (_param_spray_chan.get()) {
+		case CHAN_ACT1:
+			command.param1 = act_out;
+			break;
+
+		case CHAN_ACT2:
+			command.param2 = act_out;
+			break;
+
+		case CHAN_ACT3:
+			command.param3 = act_out;
+			break;
+
+		case CHAN_ACT4:
+			command.param4 = act_out;
+			break;
+
+		case CHAN_ACT5:
+			command.param5 = act_out;
+			break;
+
+		case CHAN_ACT6:
+			command.param6 = act_out;
+			break;
+	}
 
 	command.target_system = 1;
 	command.target_component = 1;

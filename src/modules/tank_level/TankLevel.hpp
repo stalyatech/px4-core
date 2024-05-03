@@ -127,15 +127,14 @@ private:
 
 	struct tank_status_s _tank_status{0};
 
-	float _flow_rate{0};
-
 	perf_counter_t _cycle_perf{nullptr};
 	perf_counter_t _event_perf{nullptr};
 	perf_counter_t _flowmeter_perf{nullptr};
 
 	DEFINE_PARAMETERS(
-		(ParamFloat<px4::params::TANK_VOL_MAX>)   _param_tank_vol_max,
 		(ParamInt  <px4::params::TANK_FLOW_INP>)  _param_tank_flow_inp,
+		(ParamInt  <px4::params::TANK_EMPTY_ACT>) _param_tank_empty_act,
+		(ParamFloat<px4::params::TANK_VOL_MAX>)   _param_tank_vol_max,
 		(ParamFloat<px4::params::TANK_FLOW_CONV>) _param_tank_flow_conv
 	)
 };

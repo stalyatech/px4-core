@@ -19,10 +19,13 @@ fi
 #
 # Dummy check the tank parameters
 #
-if param greater TANK_VOL_MAX 0
+if param greater TANK_FLOW_INP 0
 then
 fi
-if param greater TANK_FLOW_INP 0
+if param greater TANK_EMPTY_ACT 0
+then
+fi
+if param greater TANK_VOL_MAX 0
 then
 fi
 if param greater TANK_FLOW_CONV 0
@@ -33,6 +36,14 @@ fi
 # Dummy check the spray parameters
 #
 if param greater SPRAY_MODE 0
+then
+fi
+
+if param greater SPRAY_ENABLE 0
+then
+fi
+
+if param greater SPRAY_CHANNEL 0
 then
 fi
 

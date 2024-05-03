@@ -123,12 +123,22 @@ private:
 		Hold_mode = 2,
 	};
 
+	enum class tank_empty_actions : int32_t {
+		None = 0,
+		Warning = 1,
+		Hold_mode = 2,
+		Return_mode = 3,
+		Terminate = 4,
+		Land_mode = 5,
+	};
+
 	static ActionOptions fromNavDllOrRclActParam(int param_value);
 
 	static ActionOptions fromGfActParam(int param_value);
 	static ActionOptions fromImbalancedPropActParam(int param_value);
 	static ActionOptions fromActuatorFailureActParam(int param_value);
 	static ActionOptions fromBatteryWarningActParam(int param_value, uint8_t battery_warning);
+	static ActionOptions fromTankLevelActParam(int param_value);
 	static ActionOptions fromQuadchuteActParam(int param_value);
 	static Action fromOffboardLossActParam(int param_value, uint8_t &user_intended_mode);
 
@@ -162,7 +172,8 @@ private:
 					(ParamInt<px4::params::COM_ACT_FAIL_ACT>) _param_com_actuator_failure_act,
 					(ParamInt<px4::params::COM_LOW_BAT_ACT>) _param_com_low_bat_act,
 					(ParamInt<px4::params::COM_OBL_RC_ACT>) _param_com_obl_rc_act,
-					(ParamInt<px4::params::COM_QC_ACT>) _param_com_qc_act
+					(ParamInt<px4::params::COM_QC_ACT>) _param_com_qc_act,
+					(ParamInt<px4::params::TANK_EMPTY_ACT>) _param_tank_empty_action
 				       );
 
 };

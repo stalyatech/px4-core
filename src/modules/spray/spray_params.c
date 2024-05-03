@@ -43,13 +43,39 @@
  * Spray mode
  *
  *
- * @value 0 Disable
- * @value 1 Manuel
- * @value 2 Auto
+ * @value 0 Manuel
+ * @value 1 Auto
  *
  * @group Spraying
  */
 PARAM_DEFINE_INT32(SPRAY_MODE, 0);
+
+/**
+ * Spray enable/disable
+ *
+ *
+ * @value 0 Disabled
+ * @value 1 Enabled
+ *
+ * @group Spraying
+ */
+PARAM_DEFINE_INT32(SPRAY_ENABLE, 0);
+
+/**
+ * Spray pump output channel number
+ *
+ *
+ * @value 0 Disabled
+ * @value 1 Actuator 1
+ * @value 2 Actuator 2
+ * @value 3 Actuator 3
+ * @value 4 Actuator 4
+ * @value 5 Actuator 5
+ * @value 6 Actuator 6
+ *
+ * @group Spraying
+ */
+PARAM_DEFINE_INT32(SPRAY_CHANNEL, 0);
 
 /**
  * Spray volume (Mililiter/Acres)
@@ -57,7 +83,7 @@ PARAM_DEFINE_INT32(SPRAY_MODE, 0);
  *
  * @group Spraying
  */
-PARAM_DEFINE_FLOAT(SPRAY_VOLUME, 1.0f);
+PARAM_DEFINE_FLOAT(SPRAY_VOLUME, 1000.0f);
 
 /**
  * Spray Track Width (m)

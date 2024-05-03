@@ -245,6 +245,48 @@ FailsafeBase::ActionOptions Failsafe::fromBatteryWarningActParam(int param_value
 	return options;
 }
 
+FailsafeBase::ActionOptions Failsafe::fromTankLevelActParam(int param_value)
+{
+	ActionOptions options{};
+
+	switch (tank_empty_actions(param_value)) {
+	case tank_empty_actions::None:
+		options.action = Action::None;
+		break;
+
+	case tank_empty_actions::Warning:
+		options.action = Action::Warn;
+		break;
+
+	case tank_empty_actions::Hold_mode:
+		options.allow_user_takeover = UserTakeoverAllowed::AlwaysModeSwitchOnly; // ensure the user can escape again
+		options.action = Action::Hold;
+		options.clear_condition = ClearCondition::OnModeChangeOrDisarm;
+		break;
+
+	case tank_empty_actions::Return_mode:
+		options.action = Action::RTL;
+		options.clear_condition = ClearCondition::OnModeChangeOrDisarm;
+		break;
+
+	case tank_empty_actions::Terminate:
+		options.allow_user_takeover = UserTakeoverAllowed::Never;
+		options.action = Action::Terminate;
+		options.clear_condition = ClearCondition::Never;
+		break;
+
+	case tank_empty_actions::Land_mode:
+		options.action = Action::Land;
+		break;
+
+	default:
+		options.action = Action::Warn;
+		break;
+	}
+
+	return options;
+}
+
 FailsafeBase::ActionOptions Failsafe::fromQuadchuteActParam(int param_value)
 {
 	ActionOptions options{};
@@ -429,6 +471,10 @@ void Failsafe::checkStateAndMode(const hrt_abstime &time_us, const State &state,
 		break;
 	}
 
+	// trigger RTL if tank level empty is detected
+	if (state.user_intended_mode == vehicle_status_s::NAVIGATION_STATE_AUTO_MISSION) {
+		CHECK_FAILSAFE(status_flags, tank_level_empty, fromTankLevelActParam(_param_tank_empty_action.get()).cannotBeDeferred());
+	}
 
 	// Failure detector
 	if ((_armed_time != 0)

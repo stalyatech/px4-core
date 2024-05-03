@@ -152,6 +152,8 @@ private:
 
 	DEFINE_PARAMETERS(
 		(ParamInt  <px4::params::SPRAY_MODE>)    	_param_spray_mode,
+		(ParamInt  <px4::params::SPRAY_ENABLE>)    	_param_spray_enab,
+		(ParamInt  <px4::params::SPRAY_CHANNEL>)    _param_spray_chan,
 		(ParamFloat<px4::params::SPRAY_VOLUME>)  	_param_spray_volume,
 		(ParamFloat<px4::params::SPRAY_WIDTH>)  	_param_spray_width,
 		(ParamFloat<px4::params::SPRAY_VELOCITY>)  	_param_spray_velocity,
@@ -162,8 +164,19 @@ private:
 	/* Spraying Modes */
 	enum
 	{
-		MODE_DISABLE,
 		MODE_MANUEL,
 		MODE_AUTO
+	};
+
+	/* Spraying actuator channels */
+	enum
+	{
+		CHAN_NONE,
+		CHAN_ACT1,
+		CHAN_ACT2,
+		CHAN_ACT3,
+		CHAN_ACT4,
+		CHAN_ACT5,
+		CHAN_ACT6,
 	};
 };
