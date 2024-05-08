@@ -43,6 +43,10 @@ if param greater SPRAY_ENABLE 0
 then
 fi
 
+if param greater SPRAY_SWITCHOFF 0
+then
+fi
+
 if param greater SPRAY_CHANNEL 0
 then
 fi

@@ -62,6 +62,17 @@ PARAM_DEFINE_INT32(SPRAY_MODE, 0);
 PARAM_DEFINE_INT32(SPRAY_ENABLE, 0);
 
 /**
+ * Spray switch off mode
+ *
+ *
+ * @value 0 Manuel
+ * @value 1 Auto
+ *
+ * @group Spraying
+ */
+PARAM_DEFINE_INT32(SPRAY_SWITCHOFF, 1);
+
+/**
  * Spray pump output channel number
  *
  *

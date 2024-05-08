@@ -8,6 +8,8 @@
 param set-default SPRAY_MODE 1
 # Spraying disabled at manuel mode
 param set-default SPRAY_ENABLE 0
+# Spraying switch off mode
+param set-default SPRAY_SWITCHOFF 1
 # Spraying actuator output channel
 param set-default SPRAY_CHANNEL 1
 # 1000 mililiter/acres

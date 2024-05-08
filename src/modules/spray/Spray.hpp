@@ -102,12 +102,14 @@ public:
 
 	/**
 	 * Calculate dynamic spraying speed
-	 * fly_vel		 : Uçuş hızı (m/s)
-	 * fly_height	 : Uçuş yüksekliği (m)
+	 * flyspeed		 : Uçuş hızı (m/s)
+	 * flyheight	 : Uçuş yüksekliği (m)
 	 * track_width   : İz genişliği (m)
 	 * vol_per_acres : İlaçlama miktarı (Mililitre/Dekar)
+	 * tank_level 	 : Kalan tank seviyesi miktarı (Litre)
+	 * mode          : Sprayleme modu (Manuel/Otomatik)
 	 */
-	void Calculate(float fly_velocity, float fly_height, float track_width, float vol_per_acres, int mode);
+	void Calculate(float flyspeed, float flyheight, float track_width, float vol_per_acres, float tank_level, int mode);
 
 private:
 
@@ -153,6 +155,7 @@ private:
 	DEFINE_PARAMETERS(
 		(ParamInt  <px4::params::SPRAY_MODE>)    	_param_spray_mode,
 		(ParamInt  <px4::params::SPRAY_ENABLE>)    	_param_spray_enab,
+		(ParamInt  <px4::params::SPRAY_SWITCHOFF>)  _param_spray_switchoff,
 		(ParamInt  <px4::params::SPRAY_CHANNEL>)    _param_spray_chan,
 		(ParamFloat<px4::params::SPRAY_VOLUME>)  	_param_spray_volume,
 		(ParamFloat<px4::params::SPRAY_WIDTH>)  	_param_spray_width,
@@ -166,6 +169,13 @@ private:
 	{
 		MODE_MANUEL,
 		MODE_AUTO
+	};
+
+	/* Spraying Switch Off Modes */
+	enum
+	{
+		SWITCH_OFF_MANUEL,
+		SWITCH_OFF_AUTO
 	};
 
 	/* Spraying actuator channels */
