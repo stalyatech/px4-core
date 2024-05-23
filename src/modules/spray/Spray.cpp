@@ -108,15 +108,17 @@ int Spray::reset()
  * track_width   : m
  * vol_per_acres : mililiter/acres
  */
-void Spray::Calculate(float flyspeed, float flyheight, float track_width, float vol_per_acres, float tank_level, int mode)
+void Spray::Calculate(float flyspeed, float flyheight, float track_width, float vol_per_acres, int mode)
 {
+	hrt_abstime now = hrt_absolute_time();
+	int enable = _param_spray_enab.get();
 	float flow_rate = 0;
 
 	switch (mode)
 	{
 		case MODE_MANUEL: {
 			int percent = _param_spray_speed_cur.get();
-			if ((percent >= 0) && (percent <= 100)) {
+			if (enable && (percent >= 0) && (percent <= 100)) {
 
 				/* Pompa hızı (litre/dk) */
 				flow_rate = (percent/100.0f) * _param_spray_speed_max.get();
@@ -127,7 +129,7 @@ void Spray::Calculate(float flyspeed, float flyheight, float track_width, float 
 		case MODE_AUTO: {
 
 			/* check the minimum vehicle velocity */
-			if (flyspeed >= _param_spray_velocity.get()) {
+			if (enable && (flyspeed >= _param_spray_velocity.get())) {
 
 				/* Alınan yol X (m/dk) */
 				float x = flyspeed * 60.0f;
@@ -147,11 +149,41 @@ void Spray::Calculate(float flyspeed, float flyheight, float track_width, float 
 	_spray_stat.flyspeed  = flyspeed;
 	_spray_stat.flyheight = flyheight;
 	if (_param_spray_switchoff.get() == SWITCH_OFF_AUTO) {
-		_spray_stat.flowrate  = (tank_level > 0.0f) ? flow_rate : 0;
+
+		/* check the tank status message validity */
+		if (_tank_stat.timestamp != 0) {
+
+			/* check the last message time */
+			if ((now - _tank_stat.timestamp) < 3_s) {
+
+				if (_tank_stat.remlevel > 0.0f) {
+
+					/* tank is not empty */
+					/* continue to spraying */
+					_spray_stat.flowrate = flow_rate;
+
+				} else {
+
+					/* tank is empty */
+					/* stop the spraying*/
+					_spray_stat.flowrate = 0;
+				}
+			} else {
+				/* last message seen before 3 seconds */
+				/* we should stop the spraying */
+				_spray_stat.flowrate = 0;
+			}
+		} else {
+			/* there is no valid tank status message */
+			/* continue to spraying */
+			_spray_stat.flowrate = flow_rate;
+		}
 	} else {
-		_spray_stat.flowrate  = flow_rate;
+		/* switch off mode is manuel */
+		_spray_stat.flowrate = flow_rate;
 	}
-	_spray_stat.timestamp = hrt_absolute_time();
+
+	_spray_stat.timestamp = now;
 	_spray_stat_pub.publish(_spray_stat);
 
 	/* set actuator according to flow rate */
@@ -244,7 +276,6 @@ void Spray::Run()
 	// start the performance counter
 	perf_begin(_cycle_perf);
 
-	struct tank_status_s tank_stat{0};
 	struct spray_event_s spray_event{0};
 	struct vehicle_local_position_s vehicle_pos{0};
 
@@ -252,7 +283,7 @@ void Spray::Run()
 	hrt_abstime now  = hrt_absolute_time();
 
 	// listen the tank status topic
-	if (_tank_stat_sub.update(&tank_stat)) {
+	if (_tank_stat_sub.update(&_tank_stat)) {
 
 		// performance counter for tank status
 		perf_count(_tank_stat_perf);
@@ -275,23 +306,14 @@ void Spray::Run()
 	// listen local position event
 	if (_vehicle_pos_sub.update(&vehicle_pos)) {
 
-		// performance counter for vehicle position
+		/* performance counter for vehicle position */
 		perf_count(_vehicle_pos_perf);
 
 		/* vector speed of vehicle */
 		float speed = sqrt(vehicle_pos.vx*vehicle_pos.vx + vehicle_pos.vy*vehicle_pos.vy);
 
-		/* check the tank status message validity */
-		if (tank_stat.timestamp != 0) {
-
-			/* calculate the spraying speed */
-			Calculate(speed, vehicle_pos.dist_bottom, _param_spray_width.get(), _param_spray_volume.get(), tank_stat.remlevel, _param_spray_mode.get());
-		} else {
-			/* There is no tank status message yet */
-
-			/* calculate the spraying speed */
-			Calculate(speed, vehicle_pos.dist_bottom, _param_spray_width.get(), _param_spray_volume.get(), -1, _param_spray_mode.get());
-		}
+		/* calculate the spraying speed */
+		Calculate(speed, vehicle_pos.dist_bottom, _param_spray_width.get(), _param_spray_volume.get(), _param_spray_mode.get());
 	}
 
 	// end the performance counter

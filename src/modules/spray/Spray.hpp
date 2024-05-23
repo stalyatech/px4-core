@@ -106,10 +106,9 @@ public:
 	 * flyheight	 : Uçuş yüksekliği (m)
 	 * track_width   : İz genişliği (m)
 	 * vol_per_acres : İlaçlama miktarı (Mililitre/Dekar)
-	 * tank_level 	 : Kalan tank seviyesi miktarı (Litre)
 	 * mode          : Sprayleme modu (Manuel/Otomatik)
 	 */
-	void Calculate(float flyspeed, float flyheight, float track_width, float vol_per_acres, float tank_level, int mode);
+	void Calculate(float flyspeed, float flyheight, float track_width, float vol_per_acres, int mode);
 
 private:
 
@@ -146,6 +145,7 @@ private:
 	uORB::Publication<vehicle_command_s> _vehicle_cmd_pub{ORB_ID(vehicle_command)};
 
 	spray_status_s _spray_stat{0};
+	tank_status_s _tank_stat{0};
 
 	perf_counter_t _cycle_perf{nullptr};
 	perf_counter_t _tank_stat_perf{nullptr};

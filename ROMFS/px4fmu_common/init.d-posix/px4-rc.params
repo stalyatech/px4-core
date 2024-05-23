@@ -17,7 +17,7 @@ param set-default SPRAY_VOLUME 1000.0
 # Track width (m)
 param set-default SPRAY_WIDTH 4.0
 # Spraying minimum velocity (m)
-param set-default SPRAY_VELOCITY 2.0
+param set-default SPRAY_VELOCITY 0.2
 # Spraying pump maximum speed (liter/min)
 param set-default SPRAY_SPEED_MAX 5.0
 param set-default SPRAY_SPEED_CUR 0.0
@@ -33,3 +33,6 @@ param set-default TANK_FLOW_CONV 0.133333333
 
 # Start the tank level module
 tank_level start
+
+# Start the fake flowmeter
+fake_flow start
