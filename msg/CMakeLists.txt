@@ -88,7 +88,7 @@ set(msg_files
 	FollowTarget.msg
 	FollowTargetEstimator.msg
 	FollowTargetStatus.msg
-	FreqInput.msg
+	FreqStatus.msg
 	GeneratorStatus.msg
 	GeofenceResult.msg
 	GimbalDeviceAttitudeStatus.msg

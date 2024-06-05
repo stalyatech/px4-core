@@ -40,12 +40,12 @@ FakeFlow::FakeFlow() :
 	_flow_update_freq = 15.0f; 	// 7.5 * Flow rate (L/min)
 	_flow_interval_us = (uint32_t)(1000000 / _flow_update_freq);
 
-	_freq.channel 	  = 0;
-	_freq.timestamp   = 0;
-	_freq.error_count = 0;
-	_freq.period 	  = 0;
-	_freq.pulse_width = 0;
-	_freq.frequency   = 0;
+	_freq_stat.channel 	  	= 0;
+	_freq_stat.timestamp   	= 0;
+	_freq_stat.error_count 	= 0;
+	_freq_stat.period 	  	= 0;
+	_freq_stat.pulse_width 	= 0;
+	_freq_stat.frequency   	= 0;
 }
 
 bool FakeFlow::init()
@@ -54,6 +54,20 @@ bool FakeFlow::init()
 
 	ScheduleOnInterval(10_ms);
 	return true;
+}
+
+int FakeFlow::pause()
+{
+	_test_cond = 1;
+
+	return 0;
+}
+
+int FakeFlow::resume()
+{
+	_test_cond = 0;
+
+	return 0;
 }
 
 void FakeFlow::Run()
@@ -65,12 +79,12 @@ void FakeFlow::Run()
 	}
 
 	/* prepare the frequency input message */
-	_freq.channel 	  = 1;
-	_freq.timestamp   = hrt_absolute_time();
-	_freq.error_count = 0;
-	_freq.period 	  = 0;
-	_freq.pulse_width = 0;
-	_freq.frequency   = 0;
+	_freq_stat.channel 	  	= 1;
+	_freq_stat.timestamp   	= hrt_absolute_time();
+	_freq_stat.error_count 	= 0;
+	_freq_stat.period 	  	= 0;
+	_freq_stat.pulse_width 	= 0;
+	_freq_stat.frequency   	= 0;
 
 	/* vehicle command */
 	vehicle_command_s vcmd;
@@ -112,7 +126,7 @@ void FakeFlow::Run()
 			}
 
 			/* according to parameter value update the variables */
-			if (act_out > -1) {
+			if ((act_out > -1) || (_test_cond != 0)) {
 
 				float flow_rate = 0;
 
@@ -124,17 +138,29 @@ void FakeFlow::Run()
 					flow_rate = ((act_out + 1) / 2) * max_pump_speed;
 				}
 
-				_flow_update_freq = 17.5f * flow_rate; // L/min
-				_flow_interval_us = (uint32_t)(1000000 / _flow_update_freq);
+				_flow_update_freq = 7.5f * flow_rate; // L/min
+				if (_flow_update_freq > 0.0f) {
+					_flow_interval_us = (uint32_t)(1000000 / _flow_update_freq);
+				} else {
+					_flow_interval_us = 0;
+				}
 
-				_freq.period 	  = _flow_interval_us;
-				_freq.pulse_width = _flow_interval_us/2;
-				_freq.frequency   = _flow_update_freq;
+				if (_test_cond != 0) {
+					_freq_stat.period 	   = 0;
+					_freq_stat.pulse_width = 0;
+					_freq_stat.frequency   = 0;
+					_freq_status_pub.publish(_freq_stat);
+				} else {
+					if (_flow_update_freq > 2.0f) {
+						_freq_stat.period 	   = _flow_interval_us;
+						_freq_stat.pulse_width = _flow_interval_us/2;
+						_freq_stat.frequency   = _flow_update_freq;
+						_freq_status_pub.publish(_freq_stat);
+					}
+				}
 			}
 		}
 	}
-
-	_freq_input_pub.publish(_freq);
 }
 
 int FakeFlow::task_spawn(int argc, char *argv[])
@@ -174,6 +200,24 @@ void FakeFlow::update_params(const bool force)
 
 int FakeFlow::custom_command(int argc, char *argv[])
 {
+	const char *verb = argv[0];
+
+	if (!strcmp(verb, "pause")) {
+		if (is_running()) {
+			return _object.load()->pause();
+		}
+
+		return PX4_ERROR;
+	}
+
+	if (!strcmp(verb, "resume")) {
+		if (is_running()) {
+			return _object.load()->resume();
+		}
+
+		return PX4_ERROR;
+	}
+
 	return print_usage("unknown command");
 }
 

@@ -44,7 +44,7 @@
 #include <uORB/Subscription.hpp>
 #include <uORB/SubscriptionCallback.hpp>
 #include <uORB/topics/parameter_update.h>
-#include <uORB/topics/freq_input.h>
+#include <uORB/topics/freq_status.h>
 #include <uORB/topics/vehicle_command.h>
 
 using namespace time_literals;
@@ -66,6 +66,9 @@ public:
 
 	bool init();
 
+	int pause();
+	int resume();
+
 private:
 	static constexpr double FREQ_RATE_HZ = 100;
 
@@ -80,11 +83,13 @@ private:
 
 	float    _flow_update_freq{0};
 	uint32_t _flow_interval_us{0};
-	freq_input_s _freq{0};
+	freq_status_s _freq_stat{0};
+	int _test_cond{0};
 
 	uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
-	uORB::Subscription	_vehicle_cmd_sub{ORB_ID(vehicle_command)};
-	uORB::PublicationData<freq_input_s> _freq_input_pub{ORB_ID(freq_input)};
+
+	uORB::Subscription					 _vehicle_cmd_sub{ORB_ID(vehicle_command)};
+	uORB::PublicationData<freq_status_s> _freq_status_pub{ORB_ID(freq_status)};
 
 	DEFINE_PARAMETERS(
 		(ParamInt  <px4::params::SPRAY_MODE>)    	_param_spray_mode,

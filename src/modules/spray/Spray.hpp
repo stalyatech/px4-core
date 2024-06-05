@@ -40,10 +40,12 @@
 
 #pragma once
 
+#include <commander/px4_custom_mode.h>
 #include <lib/mathlib/mathlib.h>
 #include <lib/parameters/param.h>
 #include <px4_platform_common/px4_config.h>
 #include <px4_platform_common/defines.h>
+#include <px4_platform_common/events.h>
 #include <px4_platform_common/module.h>
 #include <px4_platform_common/module_params.h>
 #include <px4_platform_common/posix.h>
@@ -52,6 +54,7 @@
 #include <uORB/Subscription.hpp>
 #include <uORB/SubscriptionCallback.hpp>
 #include <uORB/topics/parameter_update.h>
+#include <uORB/topics/freq_status.h>
 #include <uORB/topics/tank_status.h>
 #include <uORB/topics/spray_status.h>
 #include <uORB/topics/spray_event.h>
@@ -100,6 +103,8 @@ public:
 	 */
 	bool init();
 
+private:
+
 	/**
 	 * Calculate dynamic spraying speed
 	 * flyspeed		 : Uçuş hızı (m/s)
@@ -108,9 +113,17 @@ public:
 	 * vol_per_acres : İlaçlama miktarı (Mililitre/Dekar)
 	 * mode          : Sprayleme modu (Manuel/Otomatik)
 	 */
-	void Calculate(float flyspeed, float flyheight, float track_width, float vol_per_acres, int mode);
+	float FlowrateProc(float flyspeed, float flyheight, float track_width, float vol_per_acres, int mode);
 
-private:
+	/**
+	 * Check the frequency status to make decision for spraying done.
+	 */
+	void SprayingProc(float flyspeed, float& flow_rate, uint8_t& status);
+
+	/**
+	 * Update the actuator according to flow rate.
+	 */
+	void  ActuatorProc(float flow_rate);
 
 	void Run() override;
 
@@ -131,24 +144,37 @@ private:
 	int reset();
 
 	/**
+	 * Clear the status.
+	 */
+	int clear();
+
+	/**
 	 * Publishes vehicle command.
 	 */
 	void publishVehicleCmdDoSetActuator(float flowrate);
 
 	uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
 
-	uORB::SubscriptionCallbackWorkItem _tank_stat_sub{this, ORB_ID(tank_status)};
+	uORB::SubscriptionCallbackWorkItem _tank_status_sub{this, ORB_ID(tank_status)};
+	uORB::SubscriptionCallbackWorkItem _freq_status_sub{this, ORB_ID(freq_status)};
 	uORB::SubscriptionCallbackWorkItem _spray_event_sub{this, ORB_ID(spray_event)};
+	uORB::SubscriptionCallbackWorkItem _vehicle_cmd_sub{this, ORB_ID(vehicle_command)};
 	uORB::SubscriptionCallbackWorkItem _vehicle_pos_sub{this, ORB_ID(vehicle_local_position)};
 
 	uORB::Publication<spray_status_s> _spray_stat_pub{ORB_ID(spray_status)};
 	uORB::Publication<vehicle_command_s> _vehicle_cmd_pub{ORB_ID(vehicle_command)};
 
 	spray_status_s _spray_stat{0};
-	tank_status_s _tank_stat{0};
+	tank_status_s  _tank_stat{0};
+	freq_status_s  _freq_stat{0};
+	uint8_t  _spray_state{0};
+	uint8_t  _spray_enable{0};
+	uint8_t  _spray_status{0};
 
 	perf_counter_t _cycle_perf{nullptr};
 	perf_counter_t _tank_stat_perf{nullptr};
+	perf_counter_t _freq_stat_perf{nullptr};
+	perf_counter_t _vehicle_cmd_perf{nullptr};
 	perf_counter_t _vehicle_pos_perf{nullptr};
 	perf_counter_t _spray_event_perf{nullptr};
 
@@ -161,15 +187,18 @@ private:
 		(ParamFloat<px4::params::SPRAY_WIDTH>)  	_param_spray_width,
 		(ParamFloat<px4::params::SPRAY_VELOCITY>)  	_param_spray_velocity,
 		(ParamInt  <px4::params::SPRAY_SPEED_CUR>)	_param_spray_speed_cur,
-		(ParamFloat<px4::params::SPRAY_SPEED_MAX>)	_param_spray_speed_max
+		(ParamFloat<px4::params::SPRAY_SPEED_MAX>)	_param_spray_speed_max,
+		(ParamInt  <px4::params::TANK_FLOW_INP>)  	_param_tank_flow_inp
 	)
 
-	/* Spraying Modes */
+	/* Spraying states */
 	enum
 	{
-		MODE_MANUEL,
-		MODE_AUTO
+		STATE_NONE,
+		STATE_MEAS,
+		STATE_DONE,
 	};
+
 
 	/* Spraying Switch Off Modes */
 	enum

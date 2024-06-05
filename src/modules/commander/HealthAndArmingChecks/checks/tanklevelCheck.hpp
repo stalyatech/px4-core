@@ -36,7 +36,7 @@
 #include "../Common.hpp"
 
 #include <uORB/Subscription.hpp>
-#include <uORB/topics/tank_status.h>
+#include <uORB/topics/spray_status.h>
 
 class TankLevelChecks : public HealthAndArmingCheckBase
 {
@@ -47,7 +47,7 @@ public:
 	void checkAndReport(const Context &context, Report &reporter) override;
 
 private:
-	uORB::Subscription _tank_status_sub{ORB_ID(tank_status)};
+	uORB::Subscription _spray_status_sub{ORB_ID(spray_status)};
 
 	DEFINE_PARAMETERS_CUSTOM_PARENT(HealthAndArmingCheckBase,
 		(ParamInt<px4::params::TANK_EMPTY_ACT>) _param_tank_empty_act

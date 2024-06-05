@@ -154,3 +154,11 @@ PARAM_DEFINE_FLOAT(MIS_PD_TO, 5.0f);
  * @group Mission
  */
 PARAM_DEFINE_INT32(MIS_LND_ABRT_ALT, 30);
+
+/**
+ * Mission first point number
+ *
+ * @min -1
+ * @group Mission
+ */
+PARAM_DEFINE_INT32(MIS_FIRST_POINT, -1);

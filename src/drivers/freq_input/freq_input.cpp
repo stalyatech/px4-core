@@ -38,7 +38,7 @@ using namespace time_literals;
 FREQIN::FREQIN() :
 	ScheduledWorkItem(MODULE_NAME, px4::wq_configurations::hp_default)
 {
-	_freq_input_pub.advertise();
+	_freq_status_pub.advertise();
 }
 
 FREQIN::~FREQIN()
@@ -104,7 +104,7 @@ void FREQIN::start()
 	sleep(2);
 
 	/* NOTE: must first publish here, first publication cannot be in interrupt context */
-	_freq_input_pub.update();
+	_freq_status_pub.update();
 
 	/* initialize the timer isr for measuring pulse widths. Publishing is done inside the isr. */
 	timer_init();
@@ -291,13 +291,13 @@ int FREQIN::freqin_tim_isr(int irq, void *context, void *arg)
 
 void FREQIN::publish(uint8_t channel)
 {
-	_freq.channel 	  = channel + 1;
-	_freq.timestamp   = hrt_absolute_time();
-	_freq.error_count = _meas[channel].error;
-	_freq.period 	  = _meas[channel].perValue;
-	_freq.pulse_width = _meas[channel].perValue/2;
-	_freq.frequency   = _meas[channel].frequency;
-	_freq_input_pub.publish(_freq);
+	_freq_stat.channel 	   = channel + 1;
+	_freq_stat.timestamp   = hrt_absolute_time();
+	_freq_stat.error_count = _meas[channel].error;
+	_freq_stat.period 	   = _meas[channel].perValue;
+	_freq_stat.pulse_width = _meas[channel].perValue/2;
+	_freq_stat.frequency   = _meas[channel].frequency;
+	_freq_status_pub.publish(_freq_stat);
 }//publish
 
 void FREQIN::print_info(uint8_t channel)

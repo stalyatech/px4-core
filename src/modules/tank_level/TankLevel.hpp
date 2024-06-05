@@ -52,9 +52,9 @@
 #include <uORB/Subscription.hpp>
 #include <uORB/SubscriptionCallback.hpp>
 #include <uORB/topics/parameter_update.h>
+#include <uORB/topics/freq_status.h>
 #include <uORB/topics/tank_status.h>
 #include <uORB/topics/tank_event.h>
-#include <uORB/topics/freq_input.h>
 
 using namespace time_literals;
 
@@ -121,7 +121,7 @@ private:
 	uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
 
 	uORB::SubscriptionCallbackWorkItem _tank_event_sub{this, ORB_ID(tank_event)};
-	uORB::SubscriptionCallbackWorkItem _freq_input_sub{this, ORB_ID(freq_input)};
+	uORB::SubscriptionCallbackWorkItem _freq_status_sub{this, ORB_ID(freq_status)};
 
 	uORB::Publication<tank_status_s> _tank_status_pub{ORB_ID(tank_status)};
 
@@ -129,7 +129,7 @@ private:
 
 	perf_counter_t _cycle_perf{nullptr};
 	perf_counter_t _event_perf{nullptr};
-	perf_counter_t _flowmeter_perf{nullptr};
+	perf_counter_t _freq_perf{nullptr};
 
 	DEFINE_PARAMETERS(
 		(ParamInt  <px4::params::TANK_FLOW_INP>)  _param_tank_flow_inp,

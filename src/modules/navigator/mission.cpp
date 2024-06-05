@@ -1729,9 +1729,31 @@ Mission::report_do_jump_mission_changed(int index, int do_jumps_remaining)
 void
 Mission::set_mission_item_reached()
 {
+	int first_point;
+
 	_navigator->get_mission_result()->seq_reached = _current_mission_index;
 	_navigator->set_mission_result_updated();
 	reset_mission_item_reached();
+
+	/* check the first point number */
+	if ((first_point = _param_mis_first_point.get()) > -1) {
+
+		if (_current_mission_index < first_point) {
+
+			/* inform the spraying module to stop */
+			_navigator->publish_spraying_event(spray_event_s::EVENT_STOP);
+
+		} else {
+
+			/* inform the spraying module to start */
+			_navigator->publish_spraying_event(spray_event_s::EVENT_START);
+		}
+	} else {
+
+		/* inform the spraying module to stop */
+		_navigator->publish_spraying_event(spray_event_s::EVENT_STOP);
+	}
+
 }
 
 void

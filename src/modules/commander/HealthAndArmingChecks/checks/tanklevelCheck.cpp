@@ -35,23 +35,23 @@
 
 void TankLevelChecks::checkAndReport(const Context &context, Report &reporter)
 {
-	tank_status_s tank_status;
+	spray_status_s spray_status;
 
 	/* get the tank status values from system */
-	if (!_tank_status_sub.copy(&tank_status)) {
-		tank_status = {};
+	if (!_spray_status_sub.copy(&spray_status)) {
+		spray_status = {};
 	}
 
 	/* update the failsafe flags */
-	reporter.failsafeFlags().tank_level_empty = (tank_status.remlevel > 0.0f) ? (0) : (1);
+	reporter.failsafeFlags().spraying_done = (spray_status.status == spray_status_s::STATUS_DONE) ? (1) : (0);
 
 	/* get the tank empty action */
 	int action = _param_tank_empty_act.get();
 
 	/* check the empty status */
-	if (action != 0 && reporter.failsafeFlags().tank_level_empty) {
+	if (action != 0 && reporter.failsafeFlags().spraying_done) {
 
-		if (action == tank_status_s::TS_ACTION_RTL
+		if (action == spray_status_s::ACTION_RTL
 			&& reporter.failsafeFlags().home_position_invalid) {
 
 			/* EVENT

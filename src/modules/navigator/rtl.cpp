@@ -294,6 +294,8 @@ void RTL::on_activation()
 
 	set_rtl_item();
 
+	/* inform the spraying module to stop */
+	_navigator->publish_spraying_event(spray_event_s::EVENT_STOP);
 }
 
 void RTL::on_active()

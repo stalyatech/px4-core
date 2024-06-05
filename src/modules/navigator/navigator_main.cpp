@@ -1527,6 +1527,14 @@ void Navigator::mode_completed(uint8_t nav_state, uint8_t result)
 	_mode_completed_pub.publish(mode_completed);
 }
 
+void Navigator::publish_spraying_event(uint32_t event)
+{
+	spray_event_s spray_event{};
+	spray_event.timestamp = hrt_absolute_time();
+	spray_event.event = event;
+	_spray_event_pub.publish(spray_event);
+}
+
 int Navigator::print_usage(const char *reason)
 {
 	if (reason) {

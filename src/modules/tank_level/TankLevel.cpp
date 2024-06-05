@@ -38,7 +38,7 @@ TankLevel::TankLevel() :
 	WorkItem(MODULE_NAME, px4::wq_configurations::lp_default),
 	_cycle_perf(perf_alloc(PC_ELAPSED, MODULE_NAME": cycle")),
 	_event_perf(perf_alloc(PC_INTERVAL, MODULE_NAME": event")),
-	_flowmeter_perf(perf_alloc(PC_INTERVAL, MODULE_NAME": flowmeter"))
+	_freq_perf(perf_alloc(PC_INTERVAL, MODULE_NAME": freq"))
 {
 }
 
@@ -46,7 +46,7 @@ TankLevel::~TankLevel()
 {
 	perf_free(_cycle_perf);
 	perf_free(_event_perf);
-	perf_free(_flowmeter_perf);
+	perf_free(_freq_perf);
 }
 
 bool TankLevel::init()
@@ -57,9 +57,9 @@ bool TankLevel::init()
 		return false;
 	}
 
-	// execute Run() on every "freq_input" publication
-	if (!_freq_input_sub.registerCallback()) {
-		PX4_ERR("freq_input callback registration failed");
+	// execute Run() on every "freq_status" publication
+	if (!_freq_status_sub.registerCallback()) {
+		PX4_ERR("freq_status callback registration failed");
 		return false;
 	}
 
@@ -96,7 +96,7 @@ void TankLevel::Run()
 {
 	if (should_exit()) {
 		_tank_event_sub.unregisterCallback();
-		_freq_input_sub.unregisterCallback();
+		_freq_status_sub.unregisterCallback();
 		exit_and_cleanup();
 		return;
 	}
@@ -107,20 +107,20 @@ void TankLevel::Run()
 	// start the performance counter
 	perf_begin(_cycle_perf);
 
-	struct tank_event_s tank_event{0};
-	struct freq_input_s freq_input{0};
+	struct tank_event_s  tank_event{0};
+	struct freq_status_s freq_stat{0};
 
 	// get the current time stamp
 	hrt_abstime now  = hrt_absolute_time();
 
 	// listen for frequency input event (flowmeter)
-	if (_freq_input_sub.update(&freq_input)) {
+	if (_freq_status_sub.update(&freq_stat)) {
 
 		// check the flowmeter channel
-		if (freq_input.channel == static_cast<uint32_t>(_param_tank_flow_inp.get())) {
+		if (freq_stat.channel == static_cast<uint32_t>(_param_tank_flow_inp.get())) {
 
-			// performance counter for flow meter
-			perf_count(_flowmeter_perf);
+			// performance counter for frequency meter
+			perf_count(_freq_perf);
 
 			// update the tank status using flow rate
 			if (_tank_status.remlevel > 0.0f) {
@@ -130,7 +130,7 @@ void TankLevel::Run()
 
 				if (diff > 0) {
 					// calculate the flow rate (Liter/minute)
-					float flowrate = freq_input.frequency * _param_tank_flow_conv.get() * diff;
+					float flowrate = freq_stat.frequency * _param_tank_flow_conv.get() * diff;
 
 					_tank_status.empty_action = _param_tank_empty_act.get();
 					_tank_status.maxlevel  = _param_tank_vol_max.get();
@@ -154,7 +154,7 @@ void TankLevel::Run()
 		perf_count(_event_perf);
 
 		// is it clear request ?
-		if (tank_event.event & tank_event_s::EVENT_CLEAR) {
+		if (tank_event.event & tank_event_s::EVENT_RESET) {
 			_tank_status.maxlevel  = _param_tank_vol_max.get();
 			_tank_status.consumed  = 0;
 			_tank_status.flowrate  = 0;
@@ -229,7 +229,7 @@ int TankLevel::custom_command(int argc, char *argv[])
 int TankLevel::print_status()
 {
 	perf_print_counter(_cycle_perf);
-	perf_print_counter(_flowmeter_perf);
+	perf_print_counter(_freq_perf);
 	perf_print_counter(_event_perf);
 
 	return PX4_OK;

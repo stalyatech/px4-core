@@ -39,7 +39,7 @@
 
 #include <uORB/uORB.h>
 #include <uORB/Publication.hpp>
-#include <uORB/topics/freq_input.h>
+#include <uORB/topics/freq_status.h>
 
 #if HRT_TIMER == FREQIN_TIMER
 #error cannot share timer between HRT and FREQIN
@@ -134,10 +134,10 @@ private:
 	static constexpr uint32_t MAX_CHANNEL{3};
 	static constexpr uint32_t MAX_TMOCOUNT{10};
 
-	uint32_t 	 _heartbeat[MAX_CHANNEL] {0};
-	freq_meas_t  _meas[MAX_CHANNEL] {0};
-	freq_input_s _freq {};
+	uint32_t 	  _heartbeat[MAX_CHANNEL] {0};
+	freq_meas_t   _meas[MAX_CHANNEL] {0};
+	freq_status_s _freq_stat {0};
 
-	uORB::PublicationData<freq_input_s> _freq_input_pub{ORB_ID(freq_input)};
+	uORB::PublicationData<freq_status_s> _freq_status_pub{ORB_ID(freq_status)};
 
 };

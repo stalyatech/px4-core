@@ -96,6 +96,9 @@ Land::on_active()
 		struct position_setpoint_triplet_s *pos_sp_triplet = _navigator->get_position_setpoint_triplet();
 		mission_item_to_position_setpoint(_mission_item, &pos_sp_triplet->current);
 		_navigator->set_position_setpoint_triplet_updated();
+
+		/* inform the spraying module to stop */
+		_navigator->publish_spraying_event(spray_event_s::EVENT_STOP);
 	}
 
 	/* check if landing needs to be aborted */
@@ -114,5 +117,8 @@ Land::on_active()
 		vcmd.param7 = _navigator->get_global_position()->alt + _navigator->get_landing_abort_min_alt();
 
 		_navigator->publish_vehicle_cmd(&vcmd);
+
+		/* inform the spraying module to start */
+		_navigator->publish_spraying_event(spray_event_s::EVENT_START);
 	}
 }

@@ -38,6 +38,8 @@ Spray::Spray() :
 	WorkItem(MODULE_NAME, px4::wq_configurations::lp_default),
 	_cycle_perf(perf_alloc(PC_ELAPSED, MODULE_NAME": cycle")),
 	_tank_stat_perf(perf_alloc(PC_INTERVAL, MODULE_NAME": tank stat")),
+	_freq_stat_perf(perf_alloc(PC_INTERVAL, MODULE_NAME": freq stat")),
+	_vehicle_cmd_perf(perf_alloc(PC_INTERVAL, MODULE_NAME": vehicle cmd")),
 	_vehicle_pos_perf(perf_alloc(PC_INTERVAL, MODULE_NAME": vehicle pos")),
 	_spray_event_perf(perf_alloc(PC_INTERVAL, MODULE_NAME": spray event"))
 {
@@ -47,6 +49,8 @@ Spray::~Spray()
 {
 	perf_free(_cycle_perf);
 	perf_free(_tank_stat_perf);
+	perf_free(_freq_stat_perf);
+	perf_free(_vehicle_cmd_perf);
 	perf_free(_vehicle_pos_perf);
 	perf_free(_spray_event_perf);
 }
@@ -54,8 +58,20 @@ Spray::~Spray()
 bool Spray::init()
 {
 	// execute Run() on every "tank_status" publication
-	if (!_tank_stat_sub.registerCallback()) {
+	if (!_tank_status_sub.registerCallback()) {
 		PX4_ERR("tank_status callback registration failed");
+		return false;
+	}
+
+	// execute Run() on every "freq_status" publication
+	if (!_freq_status_sub.registerCallback()) {
+		PX4_ERR("freq_status callback registration failed");
+		return false;
+	}
+
+	// execute Run() on every "vehicle_command" publication
+	if (!_vehicle_cmd_sub.registerCallback()) {
+		PX4_ERR("vehicle_command callback registration failed");
 		return false;
 	}
 
@@ -82,22 +98,34 @@ int Spray::values()
 {
 	const char *Modes[] = {"MAN", "AUTO"};
 
-	PX4_INFO("Mode:%s Speed:%f Height:%f Flowrate:%f",
-		Modes[_spray_stat.spraymode],
+	PX4_INFO("Mode:%s Speed:%f Height:%f Flowrate:%f Status:%d Action:%d Enable:%d",
+		Modes[_spray_stat.mode],
 		(double)_spray_stat.flyspeed,
 		(double)_spray_stat.flyheight,
-		(double)_spray_stat.flowrate);
+		(double)_spray_stat.flowrate,
+		_spray_stat.status,
+		_spray_stat.action,
+		_spray_enable);
 
 	return PX4_OK;
 }//values
 
 int Spray::reset()
 {
-	_spray_stat.spraymode = MODE_MANUEL;
+	_spray_stat.mode = spray_status_s::MODE_MANUEL;
+	_spray_stat.action    = 0;
+	_spray_stat.status    = 0;
 	_spray_stat.flyspeed  = 0;
 	_spray_stat.flyheight = 0;
 	_spray_stat.flowrate  = 0;
 	_spray_stat.timestamp = hrt_absolute_time();
+
+	return values();
+}//reset
+
+int Spray::clear()
+{
+	_spray_stat.status = 0;
 
 	return values();
 }//reset
@@ -108,7 +136,7 @@ int Spray::reset()
  * track_width   : m
  * vol_per_acres : mililiter/acres
  */
-void Spray::Calculate(float flyspeed, float flyheight, float track_width, float vol_per_acres, int mode)
+float Spray::FlowrateProc(float flyspeed, float flyheight, float track_width, float vol_per_acres, int mode)
 {
 	hrt_abstime now = hrt_absolute_time();
 	int enable = _param_spray_enab.get();
@@ -116,7 +144,7 @@ void Spray::Calculate(float flyspeed, float flyheight, float track_width, float 
 
 	switch (mode)
 	{
-		case MODE_MANUEL: {
+		case spray_status_s::MODE_MANUEL: {
 			int percent = _param_spray_speed_cur.get();
 			if (enable && (percent >= 0) && (percent <= 100)) {
 
@@ -126,7 +154,7 @@ void Spray::Calculate(float flyspeed, float flyheight, float track_width, float 
 			break;
 		}
 
-		case MODE_AUTO: {
+		case spray_status_s::MODE_AUTO: {
 
 			/* check the minimum vehicle velocity */
 			if (enable && (flyspeed >= _param_spray_velocity.get())) {
@@ -144,50 +172,110 @@ void Spray::Calculate(float flyspeed, float flyheight, float track_width, float 
 		}
 	}//switch
 
-	/* prepare and publish the status message */
-	_spray_stat.spraymode = mode;
-	_spray_stat.flyspeed  = flyspeed;
-	_spray_stat.flyheight = flyheight;
+	/* check the switch off mode */
 	if (_param_spray_switchoff.get() == SWITCH_OFF_AUTO) {
 
-		/* check the tank status message validity */
-		if (_tank_stat.timestamp != 0) {
+		/* switch off mode is automatic */
+		SprayingProc(flyspeed, flow_rate, _spray_stat.status);
 
-			/* check the last message time */
-			if ((now - _tank_stat.timestamp) < 3_s) {
-
-				if (_tank_stat.remlevel > 0.0f) {
-
-					/* tank is not empty */
-					/* continue to spraying */
-					_spray_stat.flowrate = flow_rate;
-
-				} else {
-
-					/* tank is empty */
-					/* stop the spraying*/
-					_spray_stat.flowrate = 0;
-				}
-			} else {
-				/* last message seen before 3 seconds */
-				/* we should stop the spraying */
-				_spray_stat.flowrate = 0;
-			}
-		} else {
-			/* there is no valid tank status message */
-			/* continue to spraying */
-			_spray_stat.flowrate = flow_rate;
-		}
 	} else {
 		/* switch off mode is manuel */
-		_spray_stat.flowrate = flow_rate;
+		if (flow_rate > 0.0f) {
+			_spray_stat.status = spray_status_s::STATUS_ENABLE;
+
+		} else {
+			_spray_stat.status = spray_status_s::STATUS_DISABLE;
+		}
 	}
 
+	/* check the status change */
+	if (_spray_status != _spray_stat.status) {
+
+		/* update the status */
+		_spray_status = _spray_stat.status;
+
+		/* send the status event */
+		events::send<uint8_t>(events::ID("spray_module_status"), events::Log::Info, "Spraying Event Message", _spray_stat.status);
+	}
+
+	/* prepare and publish the status message */
+	_spray_stat.mode      = mode;
+	_spray_stat.flyspeed  = flyspeed;
+	_spray_stat.flyheight = flyheight;
+	_spray_stat.flowrate  = flow_rate;
 	_spray_stat.timestamp = now;
 	_spray_stat_pub.publish(_spray_stat);
 
+	return flow_rate;
+}
+
+void Spray::SprayingProc(float flyspeed, float& flow_rate, uint8_t& status)
+{
+	hrt_abstime now = hrt_absolute_time();
+	bool freq_valid = false;
+
+	/* check the frequency meter validity */
+	if ((now - _freq_stat.timestamp) < 3_s) {
+
+		/* check the input channel */
+		if (_freq_stat.channel == static_cast<uint32_t>(_param_tank_flow_inp.get())) {
+
+			/* set the validity flag */
+			freq_valid = true;
+		}
+	} else {
+
+		/* clear the state */
+		_spray_state = STATE_NONE;
+	}
+
+	/* state machine */
+	switch (_spray_state) {
+
+		case STATE_NONE:{
+
+			if (freq_valid) {
+				_spray_state = STATE_MEAS;
+			}
+			break;
+		}
+
+		case STATE_MEAS:{
+
+			/* check the flow meter frequency */
+			if (_freq_stat.frequency < 2.0f) {
+
+				/* check the fly speed */
+				if (flyspeed >= _param_spray_velocity.get()) {
+
+					/* override the flow rate */
+					flow_rate = 0;
+
+					/* update the status flag */
+					status = spray_status_s::STATUS_DONE;
+				}
+			} else if (flow_rate > 0.0f) {
+
+				/* update the status flag */
+				status = spray_status_s::STATUS_ENABLE;
+			} else {
+
+				/* update the status flag */
+				status = spray_status_s::STATUS_DISABLE;
+			}
+			break;
+		}
+
+		case STATE_DONE:{
+			break;
+		}
+	}//switch
+}
+
+void Spray::ActuatorProc(float flow_rate)
+{
 	/* set actuator according to flow rate */
-	publishVehicleCmdDoSetActuator(_spray_stat.flowrate);
+	publishVehicleCmdDoSetActuator(flow_rate);
 }
 
 void Spray::publishVehicleCmdDoSetActuator(float flowrate)
@@ -196,7 +284,7 @@ void Spray::publishVehicleCmdDoSetActuator(float flowrate)
 	float act_out = -1;
 
 	/* check for enable status */
-	if (_param_spray_enab.get() == 0) {
+	if ((_param_spray_enab.get() == 0) || (_spray_enable == 0)) {
 		act_out = -1;
 	} else {
 
@@ -263,7 +351,9 @@ void Spray::publishVehicleCmdDoSetActuator(float flowrate)
 void Spray::Run()
 {
 	if (should_exit()) {
-		_tank_stat_sub.unregisterCallback();
+		_tank_status_sub.unregisterCallback();
+		_freq_status_sub.unregisterCallback();
+		_vehicle_cmd_sub.unregisterCallback();
 		_vehicle_pos_sub.unregisterCallback();
 		_spray_event_sub.unregisterCallback();
 		exit_and_cleanup();
@@ -277,13 +367,21 @@ void Spray::Run()
 	perf_begin(_cycle_perf);
 
 	struct spray_event_s spray_event{0};
+	struct vehicle_command_s vehicle_cmd{0};
 	struct vehicle_local_position_s vehicle_pos{0};
 
 	// get the current time stamp
 	hrt_abstime now  = hrt_absolute_time();
 
+	// listen for frequency status (flowmeter)
+	if (_freq_status_sub.update(&_freq_stat)) {
+
+		// performance counter for frequency meter
+		perf_count(_freq_stat_perf);
+	}
+
 	// listen the tank status topic
-	if (_tank_stat_sub.update(&_tank_stat)) {
+	if (_tank_status_sub.update(&_tank_stat)) {
 
 		// performance counter for tank status
 		perf_count(_tank_stat_perf);
@@ -295,11 +393,51 @@ void Spray::Run()
 		// performance counter for spray event
 		perf_count(_spray_event_perf);
 
-		// is it clear request ?
-		if (spray_event.event & spray_event_s::EVENT_CLEAR) {
+		// is it start request ?
+		if (spray_event.event & spray_event_s::EVENT_START) {
+			_spray_enable = 1;
+		}
+
+		// is it stop request ?
+		if (spray_event.event & spray_event_s::EVENT_STOP) {
+			_spray_enable = 0;
+		}
+
+		// is it reset request ?
+		if (spray_event.event & spray_event_s::EVENT_RESET) {
 			reset();
 			_spray_stat.timestamp = now;
 			_spray_stat_pub.publish(_spray_stat);
+		}
+
+		// is it clear request ?
+		if (spray_event.event & spray_event_s::EVENT_CLEAR) {
+			clear();
+			_spray_stat.timestamp = now;
+			_spray_stat_pub.publish(_spray_stat);
+		}
+	}
+
+	// listen vehicle command event
+	if (_vehicle_cmd_sub.update(&vehicle_cmd)) {
+
+		/* performance counter for vehicle position */
+		perf_count(_vehicle_cmd_perf);
+
+		/* check the command to enable the spraying */
+		if ((vehicle_cmd.command == vehicle_command_s::VEHICLE_CMD_DO_SET_MODE)
+			&& (static_cast<uint8_t>(vehicle_cmd.param2) == PX4_CUSTOM_MAIN_MODE_POSCTL))
+		{
+			_spray_enable = 1;
+		}
+
+		/* check the command to disable the spraying */
+		if ((vehicle_cmd.command == vehicle_command_s::VEHICLE_CMD_DO_SET_MODE)
+			&& (static_cast<uint8_t>(vehicle_cmd.param2) == PX4_CUSTOM_MAIN_MODE_AUTO))
+		{
+			if ((static_cast<uint8_t>(vehicle_cmd.param3)) == PX4_CUSTOM_SUB_MODE_AUTO_MISSION) {
+				_spray_enable = 0;
+			}
 		}
 	}
 
@@ -312,8 +450,11 @@ void Spray::Run()
 		/* vector speed of vehicle */
 		float speed = sqrt(vehicle_pos.vx*vehicle_pos.vx + vehicle_pos.vy*vehicle_pos.vy);
 
-		/* calculate the spraying speed */
-		Calculate(speed, vehicle_pos.dist_bottom, _param_spray_width.get(), _param_spray_volume.get(), _param_spray_mode.get());
+		/* calculate the spraying flow rate */
+		float flowrate = FlowrateProc(speed, vehicle_pos.dist_bottom, _param_spray_width.get(), _param_spray_volume.get(), _param_spray_mode.get());
+
+		/* update the actuator according to calculated flow rate */
+		ActuatorProc(flowrate);
 	}
 
 	// end the performance counter
@@ -381,8 +522,10 @@ int Spray::custom_command(int argc, char *argv[])
 int Spray::print_status()
 {
 	perf_print_counter(_cycle_perf);
-	perf_print_counter(_vehicle_pos_perf);
 	perf_print_counter(_tank_stat_perf);
+	perf_print_counter(_freq_stat_perf);
+	perf_print_counter(_vehicle_cmd_perf);
+	perf_print_counter(_vehicle_pos_perf);
 	perf_print_counter(_spray_event_perf);
 
 	return PX4_OK;

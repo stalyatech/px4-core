@@ -471,9 +471,9 @@ void Failsafe::checkStateAndMode(const hrt_abstime &time_us, const State &state,
 		break;
 	}
 
-	// trigger RTL if tank level empty is detected
+	// trigger action if spraying done is detected
 	if (state.user_intended_mode == vehicle_status_s::NAVIGATION_STATE_AUTO_MISSION) {
-		CHECK_FAILSAFE(status_flags, tank_level_empty, fromTankLevelActParam(_param_tank_empty_action.get()).cannotBeDeferred());
+		CHECK_FAILSAFE(status_flags, spraying_done, fromTankLevelActParam(_param_tank_empty_action.get()).cannotBeDeferred());
 	}
 
 	// Failure detector
