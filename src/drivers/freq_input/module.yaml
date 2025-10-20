@@ -1,0 +1,18 @@
+module_name: freq_input
+
+parameters:
+    - group: Sensors
+      definitions:
+        SENS_FREQ_CONFIG:
+            description:
+                short: Configure frequency input driver.
+                long: |
+                    FMU supports flowmeter to measure and estimate the tank level.
+                    For this purpose there is a generic frequency input measurement
+                    module.
+            type: enum
+            values:
+                0: Disabled
+                1: Enabled
+            reboot_required: true
+            default: 1

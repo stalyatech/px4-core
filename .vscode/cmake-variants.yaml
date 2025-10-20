@@ -431,3 +431,23 @@ CONFIG:
       buildType: MinSizeRel
       settings:
         CONFIG: x-mav_ap-h743v2_default
+    stalya_fc-v1_debug:
+      short: Nexus FCv1 Debug
+      buildType: Sanitizer
+      settings:
+        CONFIG: stalya_fc-v1_debug
+    stalya_fc-v1_default:
+      short: Nexus FCv1
+      buildType: MinSizeRel
+      settings:
+        CONFIG: stalya_fc-v1_default
+    stalya_fc-v1_bootloader:
+      short: Nexus FCv1 BL
+      buildType: MinSizeRel
+      settings:
+        CONFIG: stalya_fc-v1_bootloader
+    stalya_io-v2_default:
+      short: Nexus IOv2
+      buildType: MinSizeRel
+      settings:
+        CONFIG: stalya_io-v2_default

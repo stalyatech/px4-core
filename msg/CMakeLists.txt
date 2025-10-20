@@ -92,6 +92,7 @@ set(msg_files
 	FollowTargetEstimator.msg
 	FollowTargetStatus.msg
 	FuelTankStatus.msg
+	FreqStatus.msg
 	GeneratorStatus.msg
 	GeofenceResult.msg
 	GeofenceStatus.msg
@@ -116,6 +117,7 @@ set(msg_files
 	InputRc.msg
 	InternalCombustionEngineControl.msg
 	InternalCombustionEngineStatus.msg
+	IoeStatus.msg
 	IridiumsbdStatus.msg
 	IrlockReport.msg
 	LandingGear.msg
@@ -169,6 +171,7 @@ set(msg_files
 	Px4ioStatus.msg
 	QshellReq.msg
 	QshellRetval.msg
+	RadarStatus.msg
 	RadioStatus.msg
 	RateCtrlStatus.msg
 	RcChannels.msg
@@ -204,8 +207,12 @@ set(msg_files
 	SensorsStatusImu.msg
 	SensorUwb.msg
 	SensorAirflow.msg
+	SprayEvent.msg
+	SprayStatus.msg
 	SystemPower.msg
 	TakeoffStatus.msg
+	TankEvent.msg
+	TankStatus.msg
 	TaskStackInfo.msg
 	TecsStatus.msg
 	TelemetryStatus.msg

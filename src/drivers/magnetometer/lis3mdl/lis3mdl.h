@@ -92,7 +92,7 @@ enum OPERATING_MODE {
 	SINGLE
 };
 
-#define LIS3MDLL_ADDRESS        0x1e
+#define LIS3MDLL_ADDRESS        0x1c
 
 
 class LIS3MDL : public I2CSPIDriver<LIS3MDL>

@@ -1,0 +1,5 @@
+menuconfig MODULES_TANK_LEVEL
+	bool "tank_level"
+	default n
+	---help---
+		Enable support for tank level estimator

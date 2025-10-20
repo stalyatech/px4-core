@@ -1,0 +1,5 @@
+menuconfig DRIVERS_TATTU_SOCKETCAN
+	bool "tattu_socketcan"
+	default n
+	---help---
+		Enable support for tattu_socketcan
