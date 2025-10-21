@@ -62,6 +62,7 @@ function(px4_os_add_flags)
 		${PX4_SOURCE_DIR}/platforms/nuttx/NuttX/nuttx/arch/${CONFIG_ARCH}/src/common
 
 		${PX4_SOURCE_DIR}/platforms/nuttx/NuttX/apps/include
+		${PX4_SOURCE_DIR}/platforms/nuttx/NuttX/include
 	)
 
 
@@ -151,6 +152,9 @@ function(px4_os_determine_build_chip)
 	elseif(CONFIG_ARCH_CHIP_RP2040)
 		set(CHIP_MANUFACTURER "rpi")
 		set(CHIP "rp2040")
+	elseif(CONFIG_ARCH_CHIP_MPFS)
+		set(CHIP_MANUFACTURER "microchip")
+		set(CHIP "mpfs")
 	else()
 		message(FATAL_ERROR "Could not determine chip architecture from NuttX config. You may have to add it.")
 	endif()

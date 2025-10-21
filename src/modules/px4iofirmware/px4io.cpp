@@ -48,7 +48,11 @@
 #include <malloc.h>
 #include <poll.h>
 #include <signal.h>
+#ifdef __PX4_NUTTX
+#include <nuttx/crc32.h>
+#else
 #include <crc32.h>
+#endif
 #include <syslog.h>
 
 #include <drivers/drv_pwm_output.h>

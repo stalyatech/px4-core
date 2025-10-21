@@ -111,9 +111,11 @@ set(msg_files
 	GpsDump.msg
 	GpsInjectData.msg
 	Gripper.msg
+	Guid.msg
 	HealthReport.msg
 	HeaterStatus.msg
 	HoverThrustEstimate.msg
+	HwInfo.msg
 	InputRc.msg
 	InternalCombustionEngineControl.msg
 	InternalCombustionEngineStatus.msg
@@ -210,6 +212,8 @@ set(msg_files
 	SprayEvent.msg
 	SprayStatus.msg
 	SystemPower.msg
+	SystemVersion.msg
+	SystemVersionString.msg
 	TakeoffStatus.msg
 	TankEvent.msg
 	TankStatus.msg

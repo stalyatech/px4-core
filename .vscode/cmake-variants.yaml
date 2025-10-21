@@ -431,6 +431,11 @@ CONFIG:
       buildType: MinSizeRel
       settings:
         CONFIG: x-mav_ap-h743v2_default
+    mpfs_icicle_default:
+      short: Microchip Icicle Kit
+      buildType: MinSizeRel
+      settings:
+        CONFIG: mpfs_icicle_default
     stalya_fc-v1_debug:
       short: Nexus FCv1 Debug
       buildType: Sanitizer

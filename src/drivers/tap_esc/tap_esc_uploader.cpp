@@ -57,8 +57,12 @@
 #include <poll.h>
 #include <termios.h>
 #include <sys/stat.h>
+#ifdef __PX4_NUTTX
 #include <nuttx/arch.h>
+#include <nuttx/crc32.h>
+#else
 #include <crc32.h>
+#endif
 #include <drivers/drv_hrt.h>
 #include <sys/ioctl.h>
 

@@ -87,7 +87,11 @@ unlink	: nullptr
 static int
 cdev_open(file_t *filp)
 {
+#ifdef __PX4_NUTTX
+	if (filp->f_inode->i_crefs <= 0) {
+#else
 	if ((filp->f_inode->i_flags & FSNODEFLAG_DELETED) != 0) {
+#endif
 		return -ENODEV;
 	}
 
@@ -99,7 +103,11 @@ cdev_open(file_t *filp)
 static int
 cdev_close(file_t *filp)
 {
+#ifdef __PX4_NUTTX
+	if (filp->f_inode->i_crefs <= 0) {
+#else
 	if ((filp->f_inode->i_flags & FSNODEFLAG_DELETED) != 0) {
+#endif
 		return -ENODEV;
 	}
 
@@ -111,7 +119,11 @@ cdev_close(file_t *filp)
 static ssize_t
 cdev_read(file_t *filp, char *buffer, size_t buflen)
 {
+#ifdef __PX4_NUTTX
+	if (filp->f_inode->i_crefs <= 0) {
+#else
 	if ((filp->f_inode->i_flags & FSNODEFLAG_DELETED) != 0) {
+#endif
 		return -ENODEV;
 	}
 
@@ -123,7 +135,11 @@ cdev_read(file_t *filp, char *buffer, size_t buflen)
 static ssize_t
 cdev_write(file_t *filp, const char *buffer, size_t buflen)
 {
+#ifdef __PX4_NUTTX
+	if (filp->f_inode->i_crefs <= 0) {
+#else
 	if ((filp->f_inode->i_flags & FSNODEFLAG_DELETED) != 0) {
+#endif
 		return -ENODEV;
 	}
 
@@ -135,7 +151,11 @@ cdev_write(file_t *filp, const char *buffer, size_t buflen)
 static off_t
 cdev_seek(file_t *filp, off_t offset, int whence)
 {
+#ifdef __PX4_NUTTX
+	if (filp->f_inode->i_crefs <= 0) {
+#else
 	if ((filp->f_inode->i_flags & FSNODEFLAG_DELETED) != 0) {
+#endif
 		return -ENODEV;
 	}
 
@@ -147,7 +167,11 @@ cdev_seek(file_t *filp, off_t offset, int whence)
 static int
 cdev_ioctl(file_t *filp, int cmd, unsigned long arg)
 {
+#ifdef __PX4_NUTTX
+	if (filp->f_inode->i_crefs <= 0) {
+#else
 	if ((filp->f_inode->i_flags & FSNODEFLAG_DELETED) != 0) {
+#endif
 		return -ENODEV;
 	}
 
@@ -159,7 +183,11 @@ cdev_ioctl(file_t *filp, int cmd, unsigned long arg)
 static int
 cdev_poll(file_t *filp, px4_pollfd_struct_t *fds, bool setup)
 {
+#ifdef __PX4_NUTTX
+	if (filp->f_inode->i_crefs <= 0) {
+#else
 	if ((filp->f_inode->i_flags & FSNODEFLAG_DELETED) != 0) {
+#endif
 		return -ENODEV;
 	}
 

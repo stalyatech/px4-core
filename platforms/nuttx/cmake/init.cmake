@@ -60,8 +60,16 @@ set(NUTTX_SRC_DIR  ${PX4_SOURCE_DIR}/platforms/nuttx/NuttX)
 set(NUTTX_DIR      ${PX4_SOURCE_DIR}/platforms/nuttx/NuttX/nuttx CACHE FILEPATH "NuttX directory" FORCE)
 set(NUTTX_APPS_DIR ${PX4_SOURCE_DIR}/platforms/nuttx/NuttX/apps CACHE FILEPATH "NuttX apps directory" FORCE)
 
+execute_process(
+  COMMAND make --no-print-directory --silent tools/incdir
+  WORKING_DIRECTORY ${NUTTX_DIR}
+)
+
 px4_add_git_submodule(TARGET git_nuttx PATH "${NUTTX_SRC_DIR}/nuttx")
 px4_add_git_submodule(TARGET git_nuttx_apps PATH "${NUTTX_SRC_DIR}/apps")
+
+# Link out-of-(nuttx)-tree apps into apps/external
+file(CREATE_LINK ${NUTTX_SRC_DIR}/extern/apps ${NUTTX_APPS_DIR}/external SYMBOLIC)
 
 # make olddefconfig (inflate defconfig to full .config)
 execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${NUTTX_CONFIG_DIR}/src) # needed for NuttX build

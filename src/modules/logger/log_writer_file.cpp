@@ -240,7 +240,7 @@ bool LogWriterFile::start_log(LogType type, const char *filename)
 
 int LogWriterFile::hardfault_store_filename(const char *log_file)
 {
-#if defined(__PX4_NUTTX) && defined(px4_savepanic)
+#if defined(__PX4_NUTTX) && defined(px4_savepanic) && defined(SYSTEMCMDS_HARDFAULT_LOG)
 	int fd = open(HARDFAULT_ULOG_PATH, O_TRUNC | O_WRONLY | O_CREAT);
 
 	if (fd < 0) {
@@ -655,7 +655,7 @@ bool LogWriterFile::LogFileBuffer::start_log(const char *filename)
 						    (ssize_t)_buffer_size_min);
 
 		if ((reduced_buffer_size > 0) && ((ssize_t)_buffer_size > reduced_buffer_size)) {
-			PX4_WARN("requested buffer size %dB limited to available %dB (available plus 1 kB margin)",
+			PX4_WARN("requested buffer size %luB limited to available %luB (available plus 1 kB margin)",
 				 _buffer_size, reduced_buffer_size);
 
 			_buffer_size = reduced_buffer_size;
