@@ -30,9 +30,10 @@ find_program(CMAKE_OBJDUMP ${TOOLCHAIN_PREFIX}-objdump)
 find_program(CMAKE_RANLIB ${TOOLCHAIN_PREFIX}-gcc-ranlib)
 find_program(CMAKE_STRIP ${TOOLCHAIN_PREFIX}-strip)
 
-set(CMAKE_RUST_TARGET riscv64gc-unknown-none-elf)
+set(CMAKE_RUST_TARGET riscv-none-elf)
 set(CMAKE_RUST_COMPILER rustc)
 set(CMAKE_RUST_COMPILER_FLAGS --target ${CMAKE_RUST_TARGET})
+set(CMAKE_RUST_TOOLCHAIN_VERSION "+1.81.0-x86_64-unknown-linux-gnu")
 
 set(CMAKE_FIND_ROOT_PATH get_file_component(${CMAKE_C_COMPILER} PATH))
 set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
@@ -47,11 +48,3 @@ foreach(tool grep make)
 		message(FATAL_ERROR "could not find ${tool}")
 	endif()
 endforeach()
-
-# Set architecture and ABI for RV64
-set(CMAKE_C_FLAGS "-march=rv64gc -mabi=lp64d -mcmodel=medany ${CMAKE_C_FLAGS}")
-set(CMAKE_CXX_FLAGS "-march=rv64gc -mabi=lp64d -mcmodel=medany ${CMAKE_CXX_FLAGS}")
-set(CMAKE_ASM_FLAGS "-march=rv64gc -mabi=lp64d -mcmodel=medany ${CMAKE_ASM_FLAGS}")
-
-# Ensure the linker uses the correct emulation
-set(CMAKE_EXE_LINKER_FLAGS_INIT "-march=rv64gc -mabi=lp64d -mcmodel=medany -Wl,-melf64lriscv ${CMAKE_EXE_LINKER_FLAGS_INIT}")

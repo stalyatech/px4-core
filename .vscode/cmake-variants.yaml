@@ -436,23 +436,28 @@ CONFIG:
       buildType: MinSizeRel
       settings:
         CONFIG: mpfs_icicle_default
-    stalya_fc-v1_debug:
-      short: Nexus FCv1 Debug
+    stalya_nexus-v1_debug:
+      short: Nexus FC V1 Debug
       buildType: Sanitizer
       settings:
-        CONFIG: stalya_fc-v1_debug
-    stalya_fc-v1_default:
-      short: Nexus FCv1
+        CONFIG: stalya_nexus-v1_debug
+    stalya_nexus-v1_default:
+      short: Nexus FC V1
       buildType: MinSizeRel
       settings:
-        CONFIG: stalya_fc-v1_default
-    stalya_fc-v1_bootloader:
-      short: Nexus FCv1 BL
+        CONFIG: stalya_nexus-v1_default
+    stalya_nexus-v1_bootloader:
+      short: Nexus FC V1 BL
       buildType: MinSizeRel
       settings:
-        CONFIG: stalya_fc-v1_bootloader
+        CONFIG: stalya_nexus-v1_bootloader
     stalya_io-v2_default:
-      short: Nexus IOv2
+      short: Nexus IO V2
       buildType: MinSizeRel
       settings:
         CONFIG: stalya_io-v2_default
+    stalya_nexus-v2_default:
+      short: Nexus FC V2
+      buildType: MinSizeRel
+      settings:
+        CONFIG: stalya_nexus-v2_default

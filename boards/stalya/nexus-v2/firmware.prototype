@@ -1,0 +1,13 @@
+{
+    "board_id": 1500,
+    "magic": "Nexus",
+    "description": "Firmware for the Nexus FCv2",
+    "image": "",
+    "build_time": 0,
+    "summary": "Stalya/Nexus",
+    "version": "0.2",
+    "image_size": 0,
+    "image_maxsize": 4194304,
+    "git_identity": "",
+    "board_revision": 0
+}

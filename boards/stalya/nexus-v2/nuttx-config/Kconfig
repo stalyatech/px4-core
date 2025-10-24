@@ -1,0 +1,70 @@
+#
+# For a description of the syntax of this configuration file,
+# see misc/tools/kconfig-language.txt.
+#
+
+if ARCH_BOARD_TI375C529DK
+
+choice
+	prompt "Select SPI Flash File System"
+	default SAPPHIRE_TI375C529DK_SPIFLASH_LITTLEFS
+
+config SAPPHIRE_TI375C529DK_SPIFLASH_NONE
+	bool "None"
+
+config SAPPHIRE_TI375C529DK_SPIFLASH_SMARTFS
+	bool "Smart FS"
+
+config SAPPHIRE_TI375C529DK_SPIFLASH_LITTLEFS
+	bool "Little FS"
+
+config SAPPHIRE_TI375C529DK_SPIFLASH_SPIFFS
+	bool "SPI FFS"
+
+config SAPPHIRE_TI375C529DK_SPIFLASH_NXFFS
+	bool "NuttX FS"
+endchoice
+
+config SAPPHIRE_TI375C529DK_SPIFLASH_NPARTMAIN
+	int "Number of main partitions"
+	default 1
+	---help---
+		This setting provides the number of main partitions.
+
+config SAPPHIRE_TI375C529DK_SPIFLASH_NPARTRESV
+	int "Number of resv partitions"
+	default 0
+	---help---
+		This setting provides the number of reserved partitions.
+
+if SAPPHIRE_TI375C529DK_SPIFLASH_NPARTRESV > 0
+config SAPPHIRE_TI375C529DK_SPIFLASH_SIZERESV
+	int "Size of resv partitions"
+	default 2097152
+	---help---
+		This setting provides the number of reserved partitions.
+endif
+
+config SAPPHIRE_ROMFS
+	bool "Automount baked-in ROMFS image"
+	default n
+	depends on FS_ROMFS
+	---help---
+		Select SAPPHIRE_ROMFS_IMAGEFILE, SAPPHIRE_ROMFS_DEV_MINOR, SAPPHIRE_ROMFS_MOUNTPOINT
+
+config SAPPHIRE_ROMFS_DEV_MINOR
+	int "Minor for the block device backing the data"
+	depends on SAPPHIRE_ROMFS
+	default 64
+
+config SAPPHIRE_ROMFS_MOUNTPOINT
+	string "Mountpoint of the custom romfs image"
+	depends on SAPPHIRE_ROMFS
+	default "/rom"
+
+config SAPPHIRE_ROMFS_IMAGEFILE
+	string "ROMFS image file to include into build"
+	depends on SAPPHIRE_ROMFS
+	default "../../../rom.img"
+
+endif # ARCH_BOARD_TI375C529DK

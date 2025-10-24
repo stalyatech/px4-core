@@ -239,6 +239,9 @@ void print_load_buffer(char *buffer, int buffer_length, print_load_callback_f cb
 		case TSTATE_TASK_PENDING:
 		case TSTATE_TASK_READYTORUN:
 		case TSTATE_TASK_RUNNING:
+#ifdef CONFIG_SMP
+		case TSTATE_TASK_ASSIGNED:
+#endif
 			print_state->running_count++;
 			break;
 
