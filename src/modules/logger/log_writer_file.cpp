@@ -655,8 +655,8 @@ bool LogWriterFile::LogFileBuffer::start_log(const char *filename)
 						    (ssize_t)_buffer_size_min);
 
 		if ((reduced_buffer_size > 0) && ((ssize_t)_buffer_size > reduced_buffer_size)) {
-			PX4_WARN("requested buffer size %uB limited to available %uB (available plus 1 kB margin)",
-				 _buffer_size, reduced_buffer_size);
+			PX4_WARN("requested buffer size %luB limited to available %luB (available plus 1 kB margin)",
+				 (unsigned long)_buffer_size, (unsigned long)reduced_buffer_size);
 
 			_buffer_size = reduced_buffer_size;
 		}

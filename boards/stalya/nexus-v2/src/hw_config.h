@@ -14,15 +14,14 @@
 #define SERIAL0_DEV    0x02
 #define SERIAL1_DEV    0x04
 
-#define APP_LOAD_ADDRESS               0xACA00000llu
+#define APP_LOAD_ADDRESS               0x00020000
 #define FLASH_START_ADDRESS            APP_LOAD_ADDRESS
-#define TOC_ADDRESS                    FLASH_START_ADDRESS
 #define BOOTLOADER_DELAY               5000
 #define INTERFACE_USB                  1
 #define INTERFACE_USB_CONFIG           "/dev/ttyACM0"
 
 #define INTERFACE_USART                1
-#define INTERFACE_USART_CONFIG         "/dev/ttyS3,2000000"
+#define INTERFACE_USART_CONFIG         "/dev/ttyS0,115200"
 #define BOOT_DELAY_ADDRESS             0x00000400
 #define _FLASH_KBYTES                  (5 * 1024)
 #define BOARD_FLASH_SIZE               (_FLASH_KBYTES * 1024)
@@ -34,9 +33,5 @@
 #define BOARD_LED_OFF                  1
 
 #define SERIAL_BREAK_DETECT_DISABLED   1
-
-#define BOARD_FORCE_BL_PIN             GPIO_SAFETY_SWITCH_IN
-
-#define BOOTLOADER_VERIFY_UBOOT 		0
 
 #endif /* HW_CONFIG_H_ */

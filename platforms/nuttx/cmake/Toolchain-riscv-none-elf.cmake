@@ -1,4 +1,4 @@
-# riscv64-unknown-elf toolchain
+# riscv-none-elf toolchain
 
 set(CMAKE_SYSTEM_NAME Generic)
 set(CMAKE_SYSTEM_VERSION 1)

@@ -221,7 +221,7 @@ if (NOT CONFIG_BUILD_FLAT)
 	add_nuttx_dir(arch arch/${CONFIG_ARCH}/src n "" arch)
 	add_dependencies(nuttx_arch_build nuttx_karch_build) # can't build these in parallel
 	add_nuttx_dir(karch arch/${CONFIG_ARCH}/src y -D__KERNEL__ karch)
-	add_nuttx_dir(c libs/libc n "" c)
+	add_nuttx_dir(c libs/libc n "-D__PX4_NUTTX" c)
 	add_dependencies(nuttx_c_build nuttx_kc_build) # can't build these in parallel
 	add_nuttx_dir(kc libs/libc y -D__KERNEL__ kc)
 	add_dependencies(nuttx_xx_build nuttx_kxx_build) # can't build these in parallel
@@ -234,7 +234,7 @@ if (NOT CONFIG_BUILD_FLAT)
 	add_nuttx_dir(stubs syscall y -D__KERNEL__ stubs)
 else()
 	add_nuttx_dir(arch arch/${CONFIG_ARCH}/src y -D__KERNEL__ all)
-	add_nuttx_dir(c libs/libc n "" all)
+	add_nuttx_dir(c libs/libc n "-D__PX4_NUTTX" all)
 	add_nuttx_dir(mm mm n "" mm)
 endif()
 

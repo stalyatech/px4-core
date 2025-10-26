@@ -33,6 +33,8 @@
 #
 ############################################################################
 
+add_compile_options(-Wno-cast-align)
+
 px4_add_library(arch_hrt
        hrt.c
 )

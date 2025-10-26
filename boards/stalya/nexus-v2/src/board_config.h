@@ -36,7 +36,7 @@
 /**
  * @file board_config.h
  *
- * Icicle internal definitions
+ * Nexus internal definitions
  */
 
 #pragma once
@@ -61,22 +61,19 @@
 
 #define BOARD_HAS_BUS_MANIFEST 			(1)
 #define BOARD_HAS_HW_VERSIONING			(1)
+#define HW_INFO_INIT_PREFIX     		"Nexus FC "
 
 /* Efinix GPIOs *************************************************************************************/
 
-#define GPIO_nSAFETY_SWITCH_LED_OUT 	(0)
-#define GPIO_LED_SAFETY 				GPIO_nSAFETY_SWITCH_LED_OUT
-
-#define GPIO_SAFETY_SWITCH_IN 			(0)
-#define GPIO_BTN_SAFETY 				GPIO_SAFETY_SWITCH_IN
+#define GPIO_BTN_SAFETY 				BOARD_GPIO_PIN(0, 0, -1)
 
 #define TONE_ALARM_PWM_OUT_PATH 		"/dev/pwm0"
 
 /* LEDS */
 
-#define GPIO_nLED_RED					(0)
-#define GPIO_nLED_GREEN					(0)
-#define GPIO_nLED_BLUE					(0)
+#define GPIO_nLED_RED						BOARD_GPIO_PIN(0, 1, -1)
+#define GPIO_nLED_GREEN					BOARD_GPIO_PIN(0, 2, -1)
+#define GPIO_nLED_BLUE					BOARD_GPIO_PIN(0, 3, -1)
 
 /* I2C */
 
@@ -110,15 +107,7 @@
 #define ADC_BATTERY_VOLTAGE_CHANNEL 	1
 #define ADC_BATTERY_CURRENT_CHANNEL 	2
 
-/* PX4 Boot image type; 0 to boot directly, 1 through SBI */
-
-#define INFO_BIT_USE_SBI 0
-
-#ifdef CONFIG_BUILD_KERNEL
-#define PX4_VENDOR_BOOT_FLAGS 			INFO_BIT_USE_SBI
-#else
-#define PX4_VENDOR_BOOT_FLAGS 			0
-#endif
+/* SPI */
 
 #define BOARD_SPI_BUS_MAX_BUS_ITEMS 	1
 

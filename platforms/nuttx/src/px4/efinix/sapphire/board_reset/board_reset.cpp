@@ -53,7 +53,7 @@
 #define ALL_CPUS ((1 << CONFIG_SMP_NCPUS) - 1)
 
 /* PX4 has -nostdinc++ set, which confuses the logic in <nuttx/atomic.h>
- * making it pull the C-versions of atomic_fetch_add/atomic_load which use
+ * making it pull the C-versions of atomic_fetch_add/atomic_read which use
  * __auto_type, which should match the counters here.
  */
 
@@ -76,7 +76,7 @@ static int g_cpus_ready;
 /* Handle for nxsched_smp_call_async */
 
 static struct smp_call_data_s g_reboot_data;
-#endif
+#endif /* CONFIG_SMP */
 
 extern "C" void __start(void);
 
@@ -93,7 +93,10 @@ static void board_reset_enter_bootloader_and_continue_boot()
 
 	/* Wait for the reset */
 
-	for (; ;);
+	for (; ;)
+		{
+			;
+		}
 }
 
 static int board_reset_enter_app(FAR void *arg)
@@ -115,7 +118,7 @@ static int board_reset_enter_app(FAR void *arg)
 
 	/* Wait for ALL CPUs to be ready */
 
-	while (atomic_load(&g_cpus_paused) < CONFIG_SMP_NCPUS);
+	while (atomic_read(&g_cpus_paused) < CONFIG_SMP_NCPUS);
 
 	/* Notify that this CPU has now ready */
 
@@ -124,7 +127,7 @@ static int board_reset_enter_app(FAR void *arg)
 	/* CPU0 must then wait for other CPUs to start */
 
 	if (this_cpu() == 0) {
-		while (atomic_load(&g_cpus_ready) < CONFIG_SMP_NCPUS);
+		while (atomic_read(&g_cpus_ready) < CONFIG_SMP_NCPUS);
 	}
 
 #endif
@@ -153,7 +156,6 @@ int board_reset(int status)
 
 	if (status == REBOOT_TO_BOOTLOADER) {
 		board_reset_enter_bootloader();
-
 	} else if (status == REBOOT_TO_BOOTLOADER_CONTINUE) {
 		board_reset_enter_bootloader_and_continue_boot();
 	}

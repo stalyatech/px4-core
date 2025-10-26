@@ -222,7 +222,7 @@ private:
 
 	static px4::atomic<GPS *> _secondary_instance;
 
-	px4::atomic<int> _scheduled_reset{(int)GPSRestartType::None};
+	px4::atomic<int32_t> _scheduled_reset{(int)GPSRestartType::None};
 
 	/**
 	 * Publish the gps struct

@@ -73,7 +73,7 @@ typedef void	(* hrt_callout)(void *arg);
 /**
  * Callout record.
  */
-struct __attribute__((packed, aligned(4))) hrt_call {
+typedef struct hrt_call {
 	struct sq_entry_s link;
 	hrt_abstime		deadline;
 	hrt_abstime		period;
@@ -83,9 +83,7 @@ struct __attribute__((packed, aligned(4))) hrt_call {
 	hrt_callout		usr_callout;
 	void			*usr_arg;
 #endif
-};
-
-typedef struct hrt_call *hrt_call_t;
+} *hrt_call_t;
 
 #define LATENCY_BUCKET_COUNT 8
 extern const uint16_t latency_bucket_count;
