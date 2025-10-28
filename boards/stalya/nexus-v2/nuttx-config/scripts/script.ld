@@ -1,5 +1,5 @@
 /****************************************************************************
- * nuttx-config/scripts/ld.script
+ * nuttx-config/scripts/script.ld
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -23,23 +23,22 @@
 MEMORY
 {
   progmem (rx)  : ORIGIN = 0x00001000, LENGTH = 4M - 4K
-  sram    (rwx) : ORIGIN = 0x00400000, LENGTH = 4M
+  sram    (rwx) : ORIGIN = 0x00400000, LENGTH = 4M - 64K
+  l2lim_sec (rw): ORIGIN = 0x007F0000, LENGTH = 32k
+  l2lim_info (r): ORIGIN = 0x007F8000, LENGTH = 4k
 }
 
 OUTPUT_ARCH("riscv")
 
-ENTRY(__start)
+__ksram_start = ORIGIN(sram);
+__ksram_size = LENGTH(sram);
+__ksram_end = ORIGIN(sram) + LENGTH(sram);
+
+ENTRY(_stext)
 EXTERN(__start)
-EXTERN(board_get_manifest)
 
 SECTIONS
 {
-    /* Provide dummy relocation symbols for the dummy ToC */
-
-    PROVIDE(_app_start = 0);
-    PROVIDE(_app_end = 0);
-    PROVIDE(_boot_signature = 0);
-
     .start : {
         *(.start .start.*)
     } > progmem
@@ -65,6 +64,7 @@ SECTIONS
         *(.gnu.linkonce.r.*)
         _etext = ABSOLUTE(.);
     } > progmem
+
     .init_section : ALIGN(4) {
         _sinit = ABSOLUTE(.);
         KEEP(*(.init_array .init_array.*))
@@ -96,6 +96,12 @@ SECTIONS
         . = ALIGN(32);
         _ebss = ABSOLUTE(.);
     } > sram
+
+    .secmem (NOLOAD) : ALIGN(4) {
+    } > l2lim_sec
+
+    .deviceinfo (NOLOAD) : ALIGN(4) {
+    } > l2lim_info
 
     /* Stabs debugging sections. */
 

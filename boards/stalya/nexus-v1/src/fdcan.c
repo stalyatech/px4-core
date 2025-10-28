@@ -71,7 +71,6 @@ uint16_t board_get_can_interfaces(void)
 #include <sys/socket.h>
 
 #include <net/if.h>
-#include <netpacket/can.h>
 
 #include "chip.h"
 #include "stm32_fdcan_sock.h"
@@ -198,7 +197,7 @@ int socketcan_test(int bus)
 
 	/* Bring down the interface */
 
-	ifr.ifr_flags = IFF_DOWN;
+	ifr.ifr_flags = 0;
 	ret = ioctl(sock, SIOCSIFFLAGS, (unsigned long)&ifr);
 	if (ret < 0)
 	{

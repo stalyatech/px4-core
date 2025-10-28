@@ -179,8 +179,6 @@ __EXPORT void nexus_boardinitialize(void)
 
 __EXPORT int board_app_initialize(uintptr_t arg)
 {
-	int ret;
-
 	/* Power on Interfaces */
 
 #ifdef CONFIG_USBDEV
@@ -248,16 +246,6 @@ __EXPORT int board_app_initialize(uintptr_t arg)
 	}
 
 #endif /* CONFIG_MMCSD */
-
-#ifdef CONFIG_FS_PROCFS
-	/* Mount the procfs file system */
-
-	ret = mount(NULL, "/proc", "procfs", 0, NULL);
-
-	if (ret < 0) {
-		syslog(LOG_ERR, "ERROR: Failed to mount procfs at %s: %d\n", "/proc", ret);
-	}
-#endif
 
 	/* Configure the HW based on the manifest */
 

@@ -40,10 +40,6 @@
 #include <sys/socket.h>
 
 #include <net/if.h>
-#include <netpacket/can.h>
-
-#include <nuttx/can.h>
-#include <netpacket/can.h>
 
 #include <px4_platform_common/module.h>
 #include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>

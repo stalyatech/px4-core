@@ -23,7 +23,7 @@
 #define INTERFACE_USART                1
 #define INTERFACE_USART_CONFIG         "/dev/ttyS0,115200"
 #define BOOT_DELAY_ADDRESS             0x00000400
-#define _FLASH_KBYTES                  (5 * 1024)
+#define _FLASH_KBYTES                  (4 * 1024)
 #define BOARD_FLASH_SIZE               (_FLASH_KBYTES * 1024)
 
 #define BOARD_PIN_LED_ACTIVITY         GPIO_nLED_BLUE

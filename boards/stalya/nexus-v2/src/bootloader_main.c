@@ -47,7 +47,7 @@
 #include <chip.h>
 #include <arch/board/board.h>
 #include <px4_platform_common/init.h>
-#include <debug.h>
+
 #include "riscv_internal.h"
 
 extern void sys_tick_handler(void);
