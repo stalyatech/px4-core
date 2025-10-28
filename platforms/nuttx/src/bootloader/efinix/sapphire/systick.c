@@ -1,6 +1,8 @@
 /****************************************************************************
  *
- *   Copyright (c) 2012, 2013 PX4 Development Team. All rights reserved.
+ *   Copyright (C) 2025 Stalya Inc. All rights reserved.
+ *
+ *   Author: Volvox <volvox@stalya.com>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,48 +33,42 @@
  *
  ****************************************************************************/
 
-#pragma once
+#include <lib/systick.h>
 
-#include <board_config.h>
+void arch_systic_init(void)
+{
+}
 
-#ifndef CONFIG_FS_PROCFS_MAX_TASKS
-#define CONFIG_FS_PROCFS_MAX_TASKS 64
-#endif
+void arch_systic_deinit(void)
+{
+}
 
-#ifndef CONFIG_SMP_NCPUS
-#define CONFIG_SMP_NCPUS 1
-#endif
+uint8_t systick_get_countflag(void)
+{
+	return 0;
+}
 
-#ifdef CONFIG_SCHED_INSTRUMENTATION
+void systick_set_reload(uint32_t value)
+{
+}
 
-#include <sched.h>
-#include <stdint.h>
-#include <stdbool.h>
 
-struct system_load_taskinfo_s {
-	uint64_t total_runtime{0};		///< Runtime since start (start_time - total_runtime)/(start_time - current_time) = load
-	uint64_t curr_start_time{0};		///< Start time of the current scheduling slot
-	struct tcb_s *tcb {nullptr};
-	bool valid{false};			///< Task is currently active / valid
-};
+void systick_set_clocksource(uint8_t clocksource)
+{
+}
 
-struct system_load_s {
-	uint64_t start_time{0};
-	system_load_taskinfo_s tasks[CONFIG_FS_PROCFS_MAX_TASKS] {};
-	int total_count{0};
-	int running_count{0};
-	bool initialized{false};
-};
+void systick_counter_enable(void)
+{
+}
 
-__BEGIN_DECLS
+void systick_counter_disable(void)
+{
+}
 
-__EXPORT extern struct system_load_s system_load;
+void systick_interrupt_enable(void)
+{
+}
 
-__EXPORT void cpuload_initialize_once(void);
-
-__EXPORT void cpuload_monitor_start(void);
-__EXPORT void cpuload_monitor_stop(void);
-
-__END_DECLS
-
-#endif
+void systick_interrupt_disable(void)
+{
+}

@@ -1,7 +1,6 @@
 ############################################################################
 #
-#   Copyright (C) 2025 Stalya Inc. All rights reserved.
-#   Author: Volvox <volvox@stalya.com>
+#   Copyright (c) 2021 Technology Innovation Institute. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -32,12 +31,4 @@
 #
 ############################################################################
 
-add_subdirectory(../sapphire_common/adc adc)
-
-add_subdirectory(board_critmon board_critmon)
-add_subdirectory(board_reset board_reset)
-add_subdirectory(hrt hrt)
-add_subdirectory(tone_alarm tone_alarm)
-add_subdirectory(version version)
-
-add_subdirectory(px4io_serial)
+add_subdirectory(${PX4_CHIP})

@@ -129,7 +129,7 @@ __EXPORT void board_on_reset(int status)
 }
 
 /************************************************************************************
- * Name: nexus_boardinitialize
+ * Name: sapphire_boardinitialize
  *
  * Description:
  *   This entry point is called early in the initialization -- after all memory
@@ -137,11 +137,11 @@ __EXPORT void board_on_reset(int status)
  *
  ************************************************************************************/
 
-__EXPORT void nexus_boardinitialize(void)
+__EXPORT void sapphire_boardinitialize(void)
 {
 	/* TODO: board specific initialization */
 
-	syslog(LOG_DEBUG, "nexus_boardinitialize\n");
+	syslog(LOG_DEBUG, "sapphire_boardinitialize\n");
 	board_autoled_initialize();
 
 	/* this call exists to fix a weird linking issue */
@@ -198,8 +198,8 @@ __EXPORT int board_app_initialize(uintptr_t arg)
 
 	/* configure SPI interfaces and devices (after we determined the HW version) */
 
-	board_spidev_init();
-	board_spibus_init();
+	//board_spidev_init();
+	//board_spibus_init();
 
 #if defined(CONFIG_FAT_DMAMEMORY) && defined(CONFIG_GRAN)
 	/* configure the DMA allocator */

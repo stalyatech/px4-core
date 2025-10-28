@@ -68,10 +68,10 @@ extern "C"
  ****************************************************************************/
 
 /****************************************************************************
- * Name: nexus_boardinitialize
+ * Name: sapphire_boardinitialize
  ****************************************************************************/
 
-void nexus_boardinitialize(void);
+void sapphire_boardinitialize(void);
 
 #undef EXTERN
 #if defined(__cplusplus)

@@ -86,21 +86,16 @@ add_custom_target(nuttx_context DEPENDS ${NUTTX_DIR}/include/nuttx/config.h)
 # builtins
 set(builtin_apps_string)
 set(builtin_apps_decl_string)
-set(daemon_app_strings)
 if(CONFIG_NSH_LIBRARY)
 	list(SORT module_libraries)
 	foreach(module ${module_libraries})
 		get_target_property(MAIN ${module} MAIN)
 		get_target_property(STACK_MAIN ${module} STACK_MAIN)
 		get_target_property(PRIORITY ${module} PRIORITY)
-		get_target_property(NO_DAEMON ${module} NO_DAEMON)
 
 		if(MAIN)
 			set(builtin_apps_string "${builtin_apps_string}{ \"${MAIN}\", ${PRIORITY}, ${STACK_MAIN}, ${MAIN}_main },\n")
 			set(builtin_apps_decl_string "${builtin_apps_decl_string}int ${MAIN}_main(int argc, char *argv[]);\n")
-			if (NOT NO_DAEMON)
-				set(daemon_app_strings "${daemon_app_strings} ${MAIN} -d &\n")
-			endif()
 		endif()
 	endforeach()
 endif()
@@ -110,7 +105,6 @@ if (NOT CONFIG_BUILD_FLAT)
 	set(kernel_builtin_apps_string)
 	set(kernel_builtin_apps_proxy_string)
 	set(kernel_builtin_apps_decl_string)
-	set(kernel_symlinks_string)
 
 	list(SORT kernel_module_libraries)
 	foreach(module ${kernel_module_libraries})
@@ -122,7 +116,6 @@ if (NOT CONFIG_BUILD_FLAT)
 			set(kernel_builtin_apps_string "${kernel_builtin_apps_string}{ \"${MAIN}\", ${PRIORITY}, ${STACK_MAIN}, ${MAIN}_main },\n")
 			set(kernel_builtin_apps_proxy_string "${kernel_builtin_apps_proxy_string}{ \"${MAIN}\", ${PRIORITY}, ${STACK_MAIN}, launch_kmod_main },\n")
 			set(kernel_builtin_apps_decl_string "${kernel_builtin_apps_decl_string}int ${MAIN}_main(int argc, char *argv[]);\n")
-			set(kernel_symlinks_string "${kernel_symlinks_string}ln -s bin/launch_kmod lnk/${MAIN}\n")
 		endif()
 	endforeach()
 
@@ -147,13 +140,13 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/px4.pdat.in ${CMAKE_CURRENT_BINARY_DI
 # APPS
 
 # libapps.a
-file(GLOB_RECURSE nuttx_apps_files FOLLOW_SYMLINKS LIST_DIRECTORIES false
+file(GLOB_RECURSE nuttx_apps_files LIST_DIRECTORIES false
 	${APPS_DIR}/*.c
 	${APPS_DIR}/*.h
 )
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/apps/libapps.a
 	COMMAND ${CMAKE_COMMAND} -E remove -f ${APPS_DIR}/libapps.a ${APPS_DIR}/builtin/builtin_list.h ${APPS_DIR}/builtin/builtin_proto.h
-	COMMAND find -L ${APPS_DIR} -type f -name \*.o -delete
+	COMMAND find ${APPS_DIR} -type f -name \*.o -delete
 	COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_CURRENT_BINARY_DIR}/px4.bdat ${APPS_DIR}/builtin/registry/px4.bdat
 	COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_CURRENT_BINARY_DIR}/px4.pdat ${APPS_DIR}/builtin/registry/px4.pdat
 	COMMAND ${CMAKE_COMMAND} -E touch_nocreate ${APPS_DIR}/builtin/registry/.updated
@@ -176,14 +169,6 @@ function(add_nuttx_dir nuttx_lib nuttx_lib_dir kernel extra target)
 		set(nuttx_lib_target lib${target}.a)
 	endif()
 
-	# Facilitate building kxx, as NuttX kernel does not contain CXX code
-	# and thus does not support creating libkxx natively...
-	if(${nuttx_lib} STREQUAL "kxx")
-		set(nuttx_libname "xx")
-	else()
-		set(nuttx_libname ${nuttx_lib})
-	endif()
-
 	file(GLOB_RECURSE nuttx_lib_files LIST_DIRECTORIES false
 		${CMAKE_CURRENT_SOURCE_DIR}/nuttx/${nuttx_lib_dir}/*.c
 		${CMAKE_CURRENT_SOURCE_DIR}/nuttx/${nuttx_lib_dir}/*.h
@@ -194,7 +179,7 @@ function(add_nuttx_dir nuttx_lib nuttx_lib_dir kernel extra target)
 		COMMAND ${CMAKE_COMMAND} -E remove -f ${NUTTX_DIR}/${nuttx_lib_dir}/lib${nuttx_lib}.a
 		COMMAND find ${nuttx_lib_dir} -type f -name \*.o -delete
 		COMMAND make -C ${nuttx_lib_dir} --no-print-directory --silent ${nuttx_lib_target} TOPDIR="${NUTTX_DIR}" KERNEL=${kernel} EXTRAFLAGS=${extra}
-		COMMAND ${CMAKE_COMMAND} -E copy_if_different ${NUTTX_DIR}/${nuttx_lib_dir}/lib${nuttx_libname}.a ${CMAKE_CURRENT_BINARY_DIR}/nuttx/${nuttx_lib_dir}/lib${nuttx_lib}.a
+		COMMAND ${CMAKE_COMMAND} -E copy_if_different ${NUTTX_DIR}/${nuttx_lib_dir}/lib${nuttx_lib}.a ${CMAKE_CURRENT_BINARY_DIR}/nuttx/${nuttx_lib_dir}/lib${nuttx_lib}.a
 		DEPENDS
 			${nuttx_lib_files}
 			nuttx_context ${NUTTX_DIR}/include/nuttx/config.h
@@ -240,60 +225,6 @@ endif()
 
 if(CONFIG_NET)
 	add_nuttx_dir(net net y -D__KERNEL__ all)
-endif()
-
-if(CONFIG_OPENAMP)
-	add_nuttx_dir(openamp openamp y -D__KERNEL__ all)
-endif()
-
-if (CONFIG_BUILD_KERNEL)
-	include(bin_romfs)
-
-	# For modules in kernel mode, we need the startup object files (crt0)
-	add_custom_command(OUTPUT ${PX4_BINARY_DIR}/startup/crt0.o
-		COMMAND mkdir -p ${PX4_BINARY_DIR}/startup
-		COMMAND make -C arch/${CONFIG_ARCH}/src export_startup --no-print-directory --silent
-			TOPDIR="${NUTTX_DIR}"
-			EXPORT_DIR="${PX4_BINARY_DIR}" > ${CMAKE_CURRENT_BINARY_DIR}/nuttx_startup.log
-		DEPENDS nuttx_context nuttx_arch_build nuttx_karch_build
-		WORKING_DIRECTORY ${NUTTX_DIR}
-	)
-	add_custom_target(nuttx_startup DEPENDS ${PX4_BINARY_DIR}/startup/crt0.o)
-	add_library(nuttx_crt0 OBJECT IMPORTED GLOBAL)
-	set_property(TARGET nuttx_crt0 PROPERTY IMPORTED_OBJECTS ${PX4_BINARY_DIR}/startup/crt0.o)
-
-	# Build and install the NuttX applications into build/xx/bin
-	set(LDSCRIPT ${NUTTX_CONFIG_DIR}/scripts/${SCRIPT_PREFIX}gnu-elf.ld)
-
-	list(APPEND nuttx_userlibs
-		nuttx_apps
-		nuttx_mm
-		nuttx_proxies
-		nuttx_c
-		nuttx_xx
-	)
-
-	foreach(lib ${nuttx_userlibs})
-		get_property(lib_location TARGET ${lib} PROPERTY IMPORTED_LOCATION)
-		list(APPEND userlibs ${lib_location})
-	endforeach(lib)
-
-	get_property(CRT0_OBJ TARGET nuttx_crt0 PROPERTY IMPORTED_OBJECTS)
-
-	add_custom_command(OUTPUT nuttx_install.stamp
-		COMMAND mkdir -p ${PX4_BINARY_DIR}/bin
-		COMMAND make -C ${NUTTX_SRC_DIR}/apps install --no-print-directory --silent
-			ARCHCRT0OBJ="${CRT0_OBJ}"
-			BINDIR="${PX4_BINARY_DIR}/bin_debug"
-			BINDIR_DEBUG="${PX4_BINARY_DIR}/bin"
-			TOPDIR="${NUTTX_DIR}"
-			ELFLDNAME="${LDSCRIPT}"
-			USERLIBS="${userlibs}" > ${CMAKE_CURRENT_BINARY_DIR}/nuttx_apps_install.log
-		COMMAND touch nuttx_install.stamp
-		BYPRODUCTS ${PX4_BINARY_DIR}/bin/nsh
-		DEPENDS ${nuttx_userlibs} nuttx_startup
-	)
-	add_custom_target(nuttx_app_bins DEPENDS nuttx_install.stamp)
 endif()
 
 ###############################################################################

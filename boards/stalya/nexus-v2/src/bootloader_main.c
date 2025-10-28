@@ -62,7 +62,7 @@ static void configure_pmp(void)
 	/* TODO: PMP configuration */
 }
 
-__EXPORT void nexus_boardinitialize(void)
+__EXPORT void sapphire_boardinitialize(void)
 {
 	_alert("Nexus bootloader\n");
 

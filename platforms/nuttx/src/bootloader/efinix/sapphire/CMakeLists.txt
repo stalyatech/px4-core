@@ -1,7 +1,6 @@
 ############################################################################
 #
-#   Copyright (C) 2025 Stalya Inc. All rights reserved.
-#   Author: Volvox <volvox@stalya.com>
+#   Copyright (c) 2021 Technology Innovation Institute. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -32,12 +31,26 @@
 #
 ############################################################################
 
-add_subdirectory(../sapphire_common/adc adc)
+px4_add_library(arch_bootloader
+	main.c
+	systick.c
+)
 
-add_subdirectory(board_critmon board_critmon)
-add_subdirectory(board_reset board_reset)
-add_subdirectory(hrt hrt)
-add_subdirectory(tone_alarm tone_alarm)
-add_subdirectory(version version)
+execute_process(
+	COMMAND  git describe --dirty --all --long
+	WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
+	OUTPUT_VARIABLE VERSION
+	OUTPUT_STRIP_TRAILING_WHITESPACE
+	)
 
-add_subdirectory(px4io_serial)
+add_definitions(-DVERSION=\"${VERSION}\")
+
+target_link_libraries(arch_bootloader
+	PRIVATE
+		bootloader_lib
+		nuttx_arch
+)
+
+target_include_directories(arch_bootloader PRIVATE ${PX4_BOARD_DIR})
+target_link_libraries(nuttx_fs INTERFACE nuttx_c)
+target_link_libraries(nuttx_drivers INTERFACE nuttx_fs)

@@ -48,8 +48,187 @@
 #if defined(__PX4_NUTTX) && defined(CONFIG_SCHED_INSTRUMENTATION)
 __BEGIN_DECLS
 # include <nuttx/sched_note.h>
+# include <nuttx/spinlock.h>
+# include <nuttx/kmalloc.h>
+
+/* NuttX internals from sched/irq/irq.h */
+
+# ifdef CONFIG_SMP
+extern "C" volatile spinlock_t g_cpu_irqlock;
+extern "C" volatile cpu_set_t g_cpu_irqset;
+extern "C" volatile uint8_t g_cpu_nestcount[CONFIG_SMP_NCPUS];
+# endif
 
 __EXPORT struct system_load_s system_load;
+
+/* Simple hashing via PID; shamelessly ripped from NuttX scheduler. All rights
+ * and credit belong to whomever authored this logic.
+ */
+
+#define HASH(i) ((i) & (hashtab_size - 1))
+
+struct system_load_taskinfo_s **hashtab;
+volatile int hashtab_size;
+
+void init_task_hash(void)
+{
+	hashtab_size = 4;
+	hashtab = (struct system_load_taskinfo_s **)kmm_zalloc(sizeof(*hashtab) * hashtab_size);
+}
+
+/* get_task_info and drop_task_info are called from middle of scheduling
+ * (where this_task is not valid), in interrupts, and from normal task context.
+ *
+ * In these functions we can't call enter_critical_section. Simply acquire the
+ * g_cpu_irqlock if needed.
+ *
+ * NOTE: This doesn't support scheduling out from here, or causing another
+ * nested interrupts. So don't place debug prints in these functions
+ * w.o. handling all of the related things first!
+ */
+
+static struct system_load_taskinfo_s *get_task_info(pid_t pid)
+{
+	struct system_load_taskinfo_s *ret = NULL;
+	irqstate_t flags = up_irq_save();
+
+#ifdef CONFIG_SMP
+	bool locked = false;
+	int cpu = this_cpu();
+
+	if (!CPU_ISSET(cpu, &g_cpu_irqset)) {
+		spin_lock_notrace(&g_cpu_irqlock);
+		CPU_SET(cpu, &g_cpu_irqset);
+		locked = true;
+	}
+
+	DEBUGASSERT(spin_is_locked(&g_cpu_irqlock) &&
+		    (g_cpu_irqset & (1 << this_cpu())) != 0);
+#endif
+
+	if (hashtab) {
+		ret = hashtab[HASH(pid)];
+	}
+
+#ifdef CONFIG_SMP
+
+	if (locked) {
+		cpu_irqlock_clear();
+	}
+
+#endif
+
+	up_irq_restore(flags);
+
+	return ret;
+}
+
+static void drop_task_info(pid_t pid)
+{
+	irqstate_t flags = up_irq_save();
+
+#ifdef CONFIG_SMP
+	bool locked = false;
+	int cpu = this_cpu();
+
+	if (!CPU_ISSET(cpu, &g_cpu_irqset)) {
+		spin_lock_notrace(&g_cpu_irqlock);
+		CPU_SET(cpu, &g_cpu_irqset);
+		locked = true;
+	}
+
+	DEBUGASSERT(spin_is_locked(&g_cpu_irqlock) &&
+		    (g_cpu_irqset & (1 << this_cpu())) != 0);
+#endif
+
+	hashtab[HASH(pid)] = NULL;
+
+#ifdef CONFIG_SMP
+
+	if (locked) {
+		cpu_irqlock_clear();
+	}
+
+#endif
+
+	up_irq_restore(flags);
+}
+
+static int hash_task_info(struct system_load_taskinfo_s *task_info, pid_t pid)
+{
+	struct system_load_taskinfo_s **newtab;
+	struct system_load_taskinfo_s **oldtab;
+	void *temp;
+	int hash;
+	int i;
+
+	/* Use critical section to protect the hash table */
+
+	irqstate_t flags = enter_critical_section();
+
+	/* Keep trying until we get it or run out of memory */
+
+retry:
+
+	/* Calculate hash */
+
+	hash = HASH(pid);
+
+	/* Check if the entry is available or has this pid already (task restart case) */
+
+	if (hashtab[hash] == NULL || task_info->tcb->pid == hashtab[hash]->tcb->pid) {
+		hashtab[hash] = task_info;
+		leave_critical_section(flags);
+		return OK;
+	}
+
+	/* No can do, double the size of the hash table */
+
+	oldtab = hashtab;
+	leave_critical_section(flags);
+	newtab = (struct system_load_taskinfo_s **)kmm_zalloc(hashtab_size * 2 * sizeof(*newtab));
+	flags = enter_critical_section();
+
+	if (newtab == NULL) {
+		leave_critical_section(flags);
+		return -ENOMEM;
+	}
+
+	/* Did someone else already re-alloc the table ? */
+
+	if (oldtab != hashtab) {
+		/* Yes, free the allocated table and try again */
+
+		leave_critical_section(flags);
+		kmm_free(newtab);
+		flags = enter_critical_section();
+		goto retry;
+	}
+
+	hashtab_size *= 2;
+
+	/* Start using the new hash table */
+
+	for (i = 0; i < hashtab_size / 2; i++) {
+		struct system_load_taskinfo_s *info = hashtab[i];
+
+		if (info && info->tcb) {
+			hash = HASH(info->tcb->pid);
+			newtab[hash] = hashtab[i];
+
+		} else {
+			newtab[i] = NULL;
+		}
+	}
+
+	temp = hashtab;
+	hashtab = newtab;
+	kmm_free(temp);
+
+	/* Try again */
+
+	goto retry;
+}
 
 #if defined(CONFIG_SEGGER_SYSVIEW)
 #  include <nuttx/note/note_sysview.h>
@@ -64,16 +243,16 @@ void cpuload_monitor_start()
 {
 	if (cpuload_monitor_all_count.fetch_add(1) == 0) {
 		// if the count was previously 0 (idle thread only) then clear any existing runtime data
-		sched_lock();
+		irqstate_t flags = px4_enter_critical_section();
 
 		system_load.start_time = hrt_absolute_time();
 
-		for (int i = 1; i < CONFIG_FS_PROCFS_MAX_TASKS; i++) {
+		for (int i = CONFIG_SMP_NCPUS; i < CONFIG_FS_PROCFS_MAX_TASKS; i++) {
 			system_load.tasks[i].total_runtime = 0;
 			system_load.tasks[i].curr_start_time = 0;
 		}
 
-		sched_unlock();
+		px4_leave_critical_section(flags);
 	}
 }
 
@@ -87,29 +266,22 @@ void cpuload_monitor_stop()
 
 void cpuload_initialize_once()
 {
+	/* Initialize hashing */
+
+	init_task_hash();
+
 	for (auto &task : system_load.tasks) {
 		task.valid = false;
 	}
 
-	int static_tasks_count = 2;	// there are at least 2 threads that should be initialized statically - "idle" and "init"
-
-#ifdef CONFIG_PAGING
-	static_tasks_count++;	// include paging thread in initialization
-#endif /* CONFIG_PAGING */
-#if CONFIG_SCHED_WORKQUEUE
-	static_tasks_count++;	// include high priority work0 thread in initialization
-#endif /* CONFIG_SCHED_WORKQUEUE */
-#if CONFIG_SCHED_LPWORK
-	static_tasks_count++;	// include low priority work1 thread in initialization
-#endif /* CONFIG_SCHED_WORKQUEUE */
-
 	// perform static initialization of "system" threads
-	for (system_load.total_count = 0; system_load.total_count < static_tasks_count; system_load.total_count++) {
+	for (system_load.total_count = 0; system_load.total_count < CONFIG_SMP_NCPUS; system_load.total_count++) {
 		system_load.tasks[system_load.total_count].total_runtime = 0;
 		system_load.tasks[system_load.total_count].curr_start_time = 0;
 		system_load.tasks[system_load.total_count].tcb = nxsched_get_tcb(
 					system_load.total_count);	// it is assumed that these static threads have consecutive PIDs
 		system_load.tasks[system_load.total_count].valid = true;
+		hash_task_info(&system_load.tasks[system_load.total_count], system_load.total_count);
 	}
 
 	system_load.initialized = true;
@@ -119,6 +291,14 @@ void sched_note_start(FAR struct tcb_s *tcb)
 {
 	// find first free slot
 	if (system_load.initialized) {
+		struct system_load_taskinfo_s *info = get_task_info(tcb->pid);
+
+		if (info && info->tcb && info->tcb->pid == tcb->pid) {
+			/* Already started */
+
+			return;
+		}
+
 		for (auto &task : system_load.tasks) {
 			if (!task.valid) {
 				// slot is available
@@ -127,6 +307,8 @@ void sched_note_start(FAR struct tcb_s *tcb)
 				task.tcb = tcb;
 				task.valid = true;
 				system_load.total_count++;
+				// add to the hashlist
+				hash_task_info(&task, tcb->pid);
 				break;
 			}
 		}
@@ -148,6 +330,8 @@ void sched_note_stop(FAR struct tcb_s *tcb)
 				task.curr_start_time = 0;
 				task.tcb = nullptr;
 				system_load.total_count--;
+				// drop from the tasklist
+				drop_task_info(tcb->pid);
 				break;
 			}
 		}
@@ -161,8 +345,8 @@ void sched_note_stop(FAR struct tcb_s *tcb)
 void sched_note_suspend(FAR struct tcb_s *tcb)
 {
 	if (system_load.initialized) {
-		if (tcb->pid == 0) {
-			system_load.tasks[0].total_runtime += hrt_elapsed_time(&system_load.tasks[0].curr_start_time);
+		if (tcb->pid < CONFIG_SMP_NCPUS) {
+			system_load.tasks[tcb->pid].total_runtime += hrt_elapsed_time(&system_load.tasks[tcb->pid].curr_start_time);
 			return;
 
 		} else {
@@ -171,13 +355,13 @@ void sched_note_suspend(FAR struct tcb_s *tcb)
 			}
 		}
 
-		for (auto &task : system_load.tasks) {
-			// Task ending its current scheduling run
-			if (task.valid && (task.curr_start_time > 0)
-			    && task.tcb && task.tcb->pid == tcb->pid) {
+		struct system_load_taskinfo_s *task = get_task_info(tcb->pid);
 
-				task.total_runtime += hrt_elapsed_time(&task.curr_start_time);
-				break;
+		if (task) {
+			// Task ending its current scheduling run
+			if (task->valid && (task->curr_start_time > 0)
+			    && task->tcb && task->tcb->pid == tcb->pid) {
+				task->total_runtime += hrt_elapsed_time(&task->curr_start_time);
 			}
 		}
 	}
@@ -190,8 +374,8 @@ void sched_note_suspend(FAR struct tcb_s *tcb)
 void sched_note_resume(FAR struct tcb_s *tcb)
 {
 	if (system_load.initialized) {
-		if (tcb->pid == 0) {
-			hrt_store_absolute_time(&system_load.tasks[0].curr_start_time);
+		if (tcb->pid < CONFIG_SMP_NCPUS) {
+			hrt_store_absolute_time(&system_load.tasks[tcb->pid].curr_start_time);
 			return;
 
 		} else {
@@ -200,12 +384,13 @@ void sched_note_resume(FAR struct tcb_s *tcb)
 			}
 		}
 
-		for (auto &task : system_load.tasks) {
-			if (task.valid && task.tcb && task.tcb->pid == tcb->pid) {
+		struct system_load_taskinfo_s *task = get_task_info(tcb->pid);
+
+		if (task) {
+			if (task->valid && task->tcb && task->tcb->pid == tcb->pid) {
 				// curr_start_time is accessed from an IRQ handler (in logger), so we need
 				// to make the update atomic
-				hrt_store_absolute_time(&task.curr_start_time);
-				break;
+				hrt_store_absolute_time(&task->curr_start_time);
 			}
 		}
 	}
@@ -236,6 +421,40 @@ void sched_note_syscall_enter(int nr);
 }
 #endif
 
+#endif
+
+#if defined(CONFIG_SMP) && defined(CONFIG_SCHED_INSTRUMENTATION)
+void sched_note_cpu_start(FAR struct tcb_s *tcb, int cpu)
+{
+	/* Not interesting for us */
+}
+
+void sched_note_cpu_started(FAR struct tcb_s *tcb)
+{
+	/* Not interesting for us */
+}
+#endif
+
+#if defined(CONFIG_SMP) && defined(CONFIG_SCHED_INSTRUMENTATION_SWITCH)
+void sched_note_cpu_pause(FAR struct tcb_s *tcb, int cpu)
+{
+	/* Not interesting for us */
+}
+
+void sched_note_cpu_paused(FAR struct tcb_s *tcb)
+{
+	/* Handled via sched_note_suspend */
+}
+
+void sched_note_cpu_resume(FAR struct tcb_s *tcb, int cpu)
+{
+	/* Not interesting for us */
+}
+
+void sched_note_cpu_resumed(FAR struct tcb_s *tcb)
+{
+	/* Handled via sched_note_resume */
+}
 #endif
 
 __END_DECLS

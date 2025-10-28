@@ -34,8 +34,8 @@ __ksram_start = ORIGIN(sram);
 __ksram_size = LENGTH(sram);
 __ksram_end = ORIGIN(sram) + LENGTH(sram);
 
-ENTRY(_stext)
 EXTERN(__start)
+ENTRY(__start)
 
 SECTIONS
 {
@@ -67,7 +67,8 @@ SECTIONS
 
     .init_section : ALIGN(4) {
         _sinit = ABSOLUTE(.);
-        KEEP(*(.init_array .init_array.*))
+        KEEP(*(SORT_BY_INIT_PRIORITY(.init_array.*) SORT_BY_INIT_PRIORITY(.ctors.*)))
+        KEEP(*(.init_array EXCLUDE_FILE(*crtbegin.o *crtbegin?.o *crtend.o *crtend?.o) .ctors))
         _einit = ABSOLUTE(.);
     } > progmem
 

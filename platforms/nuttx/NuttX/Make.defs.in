@@ -62,7 +62,7 @@ CXXINCPATH := $(shell $(INCDIR) -s "$(CC)" $(TOPDIR)$(DELIM)include$(DELIM)cxx)
 
 ARCHINCLUDES += $(CINCPATH)
 ARCHXXINCLUDES += $(CINCPATH) $(CXXINCPATH)
-ARCHSCRIPT = $(BOARD_DIR)$(DELIM)scripts$(DELIM)flash.ld
+ARCHSCRIPT = -T$(BOARD_DIR)$(DELIM)scripts$(DELIM)flash.ld
 
 ifeq ($(CONFIG_BOARD_USE_PROBES),y)
    ARCHINCLUDES += -I $(TOPDIR)/arch/$(CONFIG_ARCH)/src/$(CONFIG_ARCH_CHIP) -I $(TOPDIR)/arch/$(CONFIG_ARCH)/src/common
@@ -214,9 +214,11 @@ ifeq ($(CONFIG_BINFMT_ELF_RELOCATABLE),y)
 	LDELFFLAGS += -r
 endif
 
-# Add RISC-V 64-bit specific linker flag
+# Add RISC-V specific linker flag
 ifeq ($(CONFIG_ARCH_RISCV),y)
   ifeq ($(CONFIG_ARCH_RV64),y)
     LDELFFLAGS += -melf64lriscv
+	else
+    LDELFFLAGS += -melf32lriscv
   endif
 endif
