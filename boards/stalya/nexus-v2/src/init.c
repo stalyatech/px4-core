@@ -179,6 +179,8 @@ __EXPORT void sapphire_boardinitialize(void)
 
 __EXPORT int board_app_initialize(uintptr_t arg)
 {
+	int ret = OK;
+
 	/* Power on Interfaces */
 
 #ifdef CONFIG_USBDEV
@@ -198,8 +200,8 @@ __EXPORT int board_app_initialize(uintptr_t arg)
 
 	/* configure SPI interfaces and devices (after we determined the HW version) */
 
-	//board_spidev_init();
-	//board_spibus_init();
+	board_spidev_init();
+	board_spibus_init();
 
 #if defined(CONFIG_FAT_DMAMEMORY) && defined(CONFIG_GRAN)
 	/* configure the DMA allocator */
@@ -238,18 +240,53 @@ __EXPORT int board_app_initialize(uintptr_t arg)
 	led_off(LED_BLUE);
 
 #ifdef CONFIG_MMCSD
-	ret = sapphire_board_emmcsd_init();
+	ret = board_emmcsd_init();
 
 	if (ret != OK) {
 		led_on(LED_RED);
 		syslog(LOG_ERR, "ERROR: Failed to initialize SD card");
 	}
-
 #endif /* CONFIG_MMCSD */
 
 	/* Configure the HW based on the manifest */
 
 	px4_platform_configure();
+
+#ifdef CONFIG_FS_PROCFS
+  /* Mount the procfs file system */
+
+  ret = mount(NULL, "/proc", "procfs", 0, NULL);
+  if (ret < 0)
+    {
+      syslog(LOG_ERR,
+             "ERROR: Failed to mount the PROC filesystem: %d\n", ret);
+      return ret;
+    }
+#endif /* CONFIG_FS_PROCFS */
+
+#ifdef CONFIG_PWM
+  /* Initialize PWM and register the PWM device */
+
+  ret = board_pwm_setup();
+  if (ret < 0)
+    {
+      syslog(LOG_ERR,
+             "ERROR: Failed to initialize PWM driver: %d\n", ret);
+    }
+#endif /* CONFIG_PWM */
+
+#ifdef CONFIG_MTD
+#ifdef CONFIG_MTD_IS25XP
+	/* Configure IS25XP MTD driver */
+
+	ret = board_spinor_init();
+	if (ret < 0)
+		{
+			syslog(LOG_ERR,
+						 "Failed to initialize IS25XP driver: %d\n", ret);
+		}
+#endif /* CONFIG_MTD_IS25XP */
+#endif /* CONFIG_MTD */
 
 	return OK;
 }

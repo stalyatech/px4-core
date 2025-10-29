@@ -76,5 +76,4 @@ int CONFIG_INIT_ENTRYPOINT(int argc, char *argv[])
 
 	return nsh_main(argc, argv);
 }
-
 #endif

@@ -65,15 +65,16 @@
 
 /* Efinix GPIOs *************************************************************************************/
 
-#define GPIO_BTN_SAFETY 				BOARD_GPIO_PIN(0, 0, -1)
+#define GPIO_LED_SAFETY 				BOARD_MAKE_PIN(0, 4, -1)
+#define GPIO_BTN_SAFETY 				BOARD_MAKE_PIN(0, 0, -1)
 
 #define TONE_ALARM_PWM_OUT_PATH 		"/dev/pwm0"
 
 /* LEDS */
 
-#define GPIO_nLED_RED						BOARD_GPIO_PIN(0, 1, -1)
-#define GPIO_nLED_GREEN					BOARD_GPIO_PIN(0, 2, -1)
-#define GPIO_nLED_BLUE					BOARD_GPIO_PIN(0, 3, -1)
+#define GPIO_LED_RED						BOARD_MAKE_PIN(0, 1, -1)
+#define GPIO_LED_GREEN					BOARD_MAKE_PIN(0, 2, -1)
+#define GPIO_LED_BLUE						BOARD_MAKE_PIN(0, 3, -1)
 
 /* I2C */
 
@@ -128,11 +129,15 @@ __BEGIN_DECLS
  ****************************************************************************************************/
 
 extern void	board_peripheral_reset(int ms);
-extern int 	board_spinor_init(struct spi_dev_s *spinor);
 extern void board_spidev_init(void);
+extern int 	board_spinor_init(void);
+extern int 	board_spiflash_init(struct mtd_dev_s *mtd, const char *path,
+                        				const char *mnt_pt, bool register_mtd);
 extern int 	board_spibus_init(void);
 extern int 	board_pwmdev_init(void);
 extern int 	board_emmcsd_init(void);
+extern int 	board_ihc_init(void);
+extern int 	board_register_partition(uint32_t partition);
 
 #include <px4_platform_common/board_common.h>
 

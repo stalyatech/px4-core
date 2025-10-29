@@ -39,38 +39,28 @@
 
 #include <nuttx/config.h>
 
-#include <stdio.h>
-#include <errno.h>
-#include <stddef.h>
 #include <debug.h>
-#include <string.h>
-#include <limits.h>
-
-#include <nuttx/timers/pwm.h>
-#include <arch/board/board.h>
+#include <errno.h>
 
 #include "board_config.h"
-
-/****************************************************************************
- * Pre-processor Definitions
- ****************************************************************************/
-
-#define PWM_DEV_NAME "/dev/pwm%d"
 
 /****************************************************************************
  * Public Functions
  ****************************************************************************/
 
 /****************************************************************************
- * Name: board_pwm_setup
+ * Name: board_ihc_init
  *
  * Description:
+ *   Starts the Inter-Hart Communication (IHC) driver.
  *
- *   Initialize PWM and register PWM devices
+ * Returned Value:
+ *   Zero (OK) is returned on success; A negated errno value is returned
+ *   to indicate any failure.
  *
  ****************************************************************************/
 
-int board_pwm_setup(void)
+int board_ihc_init(void)
 {
-	return 0;
+	return OK;
 }

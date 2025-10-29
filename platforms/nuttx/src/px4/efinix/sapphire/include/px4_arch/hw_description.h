@@ -34,20 +34,21 @@
 
 #pragma once
 
-
 #include <stdint.h>
 
 #include <px4_platform_common/constexpr_util.h>
 
 #include <sapphire_gpio.h>
 
+/* GPIO pins */
+
 namespace GPIO
 {
 	enum Bank
 	{
 		PortInvalid = 0,
-		PortA,
-		PortB,
+		Port0,
+		Port1,
 	};
 
 	enum Pin
@@ -93,12 +94,18 @@ namespace GPIO
 	};
 }
 
+/**
+ * @brief Gets the GPIO bank of the given bank.
+ *
+ * @param bank The bank whose GPIO bank is requested.
+ * @return The GPIO bank of the given bank.
+ */
 static inline constexpr uint32_t getGPIOBank(GPIO::Bank bank)
 {
 	switch (bank)
 	{
-		case GPIO::PortA: return 0;
-		case GPIO::PortB: return 1;
+		case GPIO::Port0: return 0;
+		case GPIO::Port1: return 1;
 		default: break;
 	}
 

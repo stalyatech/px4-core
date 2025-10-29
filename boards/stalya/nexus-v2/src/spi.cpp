@@ -38,8 +38,8 @@
 #include <nuttx/spi/spi.h>
 
 constexpr px4_spi_bus_t px4_spi_buses[SPI_BUS_MAX_BUS_ITEMS] = {
-	initSPIBusInternal(SPI::Bus::SPI0, {
-		initSPIDevice(DRV_IMU_DEVTYPE_ICM42688P, SPI::CS{GPIO::PortA, GPIO::Pin0}, SPI::DRDY{GPIO::PortA, GPIO::Pin1}),
+	initSPIBusInternal(SPI::Bus::SPI2, {
+		initSPIDevice(DRV_GYR_DEVTYPE_BMI088, SPI::CS{GPIO::Port0, GPIO::Pin0}, SPI::DRDY{GPIO::Port0, GPIO::Pin1}),
 	}),
 };
 

@@ -36,6 +36,7 @@
 if("${PX4_BOARD_LABEL}" STREQUAL "bootloader")
 	add_library(drivers_board
 		bootloader_main.c
+		nexus_emmcsd.c
 	)
 	target_link_libraries(drivers_board
 		PRIVATE
@@ -61,7 +62,9 @@ else()
 		init.c
 		led.c
 		nexus_emmcsd.c
+		nexus_ihc.c
 		nexus_spinor.c
+		nexus_spiflash.c
 		nexus_pwm.c
 		manifest.c
 		mtd.cpp

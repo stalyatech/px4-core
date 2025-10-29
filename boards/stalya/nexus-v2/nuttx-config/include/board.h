@@ -27,12 +27,20 @@
  ****************************************************************************/
 
 #include <nuttx/config.h>
+#ifndef __ASSEMBLY__
+# include <stdint.h>
+#endif
 
 /****************************************************************************
  * Global Macro Definitions
  ****************************************************************************/
 
-#define BOARD_GPIO_PIN(port, pin, irq) { (port), (pin), (irq) }
+#define BOARD_MAKE_GPIO(port, pin, irq) { (port), (pin), (irq) }
+#define BOARD_MAKE_PIN(port, pin, irq) 	(((port) << 16U) | ((pin) << 8U) | (irq))
+
+#define BOARD_GET_PRT(iomask) 					((iomask >> 16U) & 0xff)
+#define BOARD_GET_PIN(iomask) 					((iomask >>  8U) & 0xff)
+#define BOARD_GET_IRQ(iomask) 					((iomask >>  0U) & 0xff)
 
 /****************************************************************************
  * Pre-processor Definitions
@@ -41,7 +49,7 @@
 /* GPIO pins used by the GPIO Subsystem */
 
 #define BOARD_NGPIOOUT		5		/* Amount of GPIO Output pins */
-#define BOARD_NGPIOIN		0		/* Amount of GPIO Input without Interruption */
+#define BOARD_NGPIOIN			0		/* Amount of GPIO Input without Interruption */
 #define BOARD_NGPIOINT		1		/* Amount of GPIO Input w/ Interruption pins */
 
 /****************************************************************************
@@ -49,6 +57,14 @@
  ****************************************************************************/
 
 #ifndef __ASSEMBLY__
+
+typedef struct dev_partition
+{
+  uint32_t offset;        /* Offset from the beginning of MTD */
+  uint32_t nblocks;       /* Number of blocks */
+  char     devpath[32];   /* Device path */
+} dev_partition_s;
+
 
 /****************************************************************************
  * Public Data
