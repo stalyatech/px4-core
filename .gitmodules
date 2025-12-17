@@ -44,7 +44,7 @@
 	branch = px4
 [submodule "src/lib/events/libevents"]
 	path = src/lib/events/libevents
-	url = https://github.com/stalyatech/px4_libevents.git
+	url = https://github.com/stalyatech/px4-libevents.git
 	branch = main
 [submodule "src/lib/crypto/libtomcrypt"]
 	path = src/lib/crypto/libtomcrypt
@@ -56,7 +56,7 @@
 	branch = px4
 [submodule "src/modules/uxrce_dds_client/Micro-XRCE-DDS-Client"]
 	path = src/modules/uxrce_dds_client/Micro-XRCE-DDS-Client
-	url = https://github.com/PX4/Micro-XRCE-DDS-Client.git
+	url = https://github.com/stalyatech/Micro-XRCE-DDS-Client.git
 	branch = px4
 [submodule "src/lib/cdrstream/cyclonedds"]
 	path = src/lib/cdrstream/cyclonedds
@@ -74,7 +74,7 @@
 	branch = px4
 [submodule "Tools/simulation/gz"]
 	path = Tools/simulation/gz
-	url = https://github.com/PX4/PX4-gazebo-models.git
+	url = https://github.com/stalyatech/px4-gazebo-models.git
 	branch = main
 [submodule "boards/modalai/voxl2/libfc-sensor-api"]
 	path = boards/modalai/voxl2/libfc-sensor-api
