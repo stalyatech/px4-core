@@ -24,7 +24,7 @@ set R /
 set FCONFIG /fs/microsd/etc/config.txt
 set FEXTRAS /fs/microsd/etc/extras.txt
 set FRC /fs/microsd/etc/rc.txt
-set IOFW "/etc/extras/px4_io-v2_default.bin"
+set IOFW "/etc/extras/stalya_io-v2_default.bin"
 set LOGGER_ARGS ""
 set LOGGER_BUF 8
 set PARAM_FILE ""
@@ -95,15 +95,15 @@ else
 fi
 
 if [ $STORAGE_AVAILABLE = yes ]
-then
-	if hardfault_log check
 	then
-		set STARTUP_TUNE 2 # tune 2 = ERROR_TUNE
-		if hardfault_log commit
+		if hardfault_log check
 		then
-			hardfault_log reset
+			set STARTUP_TUNE 2 # tune 2 = ERROR_TUNE
+			if hardfault_log commit
+			then
+				hardfault_log reset
+			fi
 		fi
-	fi
 
 	# Check for an update of the ext_autostart folder, and replace the old one with it
 	if [ -e /fs/microsd/ext_autostart_new ]
@@ -294,6 +294,13 @@ else
 	rgbled_is31fl3195 start -X -q
 
 	#
+	# Start the I/O expender driver before the PX4IO driver !!!
+	#
+	pca9557 -I -b 2 start
+
+
+
+	#
 	# Override parameters from user configuration file.
 	#
 	if [ -f $FCONFIG ]
@@ -373,7 +380,7 @@ else
 	#
 	if px4io supported
 	then
-	# Check if PX4IO present and update firmware if needed.
+		# Check if PX4IO present and update firmware if needed.
 		if [ -f $IOFW ]
 		then
 			if ! px4io checkcrc ${IOFW}
@@ -393,15 +400,15 @@ else
 					fi
 				else
 					tune_control stop
-				fi
-			fi
-
-			if ! px4io start
-			then
-				echo "PX4IO start failed"
-				set STARTUP_TUNE 2 # tune 2 = ERROR_TUNE
 			fi
 		fi
+
+		if ! px4io start
+		then
+			echo "PX4IO start failed"
+			set STARTUP_TUNE 2 # tune 2 = ERROR_TUNE
+		fi
+	fi
 	fi
 
 	# Heater driver for temperature regulated IMUs.

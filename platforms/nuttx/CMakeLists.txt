@@ -105,9 +105,15 @@ else()
 	endif()
 endif()
 
+if((CMAKE_BUILD_TYPE STREQUAL "Debug") OR (CMAKE_BUILD_TYPE STREQUAL "Coverage") OR (CMAKE_BUILD_TYPE MATCHES "Sanitizer"))
+	set(LDSCRIPT_NAME ${NUTTX_CONFIG_DIR}/scripts/${SCRIPT_PREFIX}script_debug.ld)
+else()
+	set(LDSCRIPT_NAME ${NUTTX_CONFIG_DIR}/scripts/${SCRIPT_PREFIX}script.ld)
+endif()
+
 # Select the correct linker script(s) for build type
 if (CONFIG_BUILD_FLAT)
-	set(LDSCRIPT ${NUTTX_CONFIG_DIR}/scripts/${SCRIPT_PREFIX}script.ld)
+	set(LDSCRIPT ${LDSCRIPT_NAME})
 elseif (CONFIG_BUILD_PROTECTED)
 	set(LDMEMORY ${NUTTX_CONFIG_DIR}/scripts/${SCRIPT_PREFIX}memory.ld)
 	set(LDSCRIPT ${LDMEMORY},--script=${NUTTX_CONFIG_DIR}/scripts/${SCRIPT_PREFIX}user-space.ld)
@@ -224,10 +230,10 @@ if (NOT CONFIG_BUILD_FLAT)
 
 	target_link_libraries(nuttx_c INTERFACE nuttx_proxies)
 
-	target_link_libraries(px4 PRIVATE
+		target_link_libraries(px4 PRIVATE
 
-		-nostartfiles
-		-nodefaultlibs
+			-nostartfiles
+			-nodefaultlibs
 		-nostdlib
 		-nostdinc++
 
@@ -238,19 +244,18 @@ if (NOT CONFIG_BUILD_FLAT)
 
 		-Wl,-Map=${PX4_CONFIG}.map
 		-Wl,--warn-common
-		-Wl,--gc-sections
+			-Wl,--gc-sections
 
-		-Wl,--start-group
-		${nuttx_userspace}
-		-Wl,--end-group
+			-Wl,--start-group
+				${nuttx_userspace}
+				${module_libraries}
+			-Wl,--end-group
 
-		m
-		gcc
-		)
+			m
+			gcc
+			)
 
-	target_link_libraries(px4 PRIVATE -Wl,--print-memory-usage)
-
-	target_link_libraries(px4 PRIVATE ${module_libraries})
+		target_link_libraries(px4 PRIVATE -Wl,--print-memory-usage)
 
 	add_custom_command(OUTPUT ${PX4_BINARY_OUTPUT}
 		COMMAND ${CMAKE_OBJCOPY} -O binary ${PX4_BINARY_DIR_REL}/${FW_NAME} ${PX4_BINARY_DIR_REL}/${PX4_BOARD}_user.bin
@@ -273,13 +278,14 @@ else()
 
 	target_link_libraries(nuttx_c INTERFACE nuttx_drivers)
 	target_link_libraries(nuttx_drivers INTERFACE nuttx_c)
+	target_link_libraries(nuttx_drivers INTERFACE nuttx_fs)
 	target_link_libraries(nuttx_xx INTERFACE nuttx_c)
 	target_link_libraries(nuttx_fs INTERFACE nuttx_c)
 
-	target_link_libraries(px4 PRIVATE
+		target_link_libraries(px4 PRIVATE
 
-		-nostartfiles
-		-nodefaultlibs
+			-nostartfiles
+			-nodefaultlibs
 		-nostdlib
 		-nostdinc++
 
@@ -290,26 +296,25 @@ else()
 		-L${NUTTX_CONFIG_DIR_CYG}/scripts
 		-Wl,-Map=${PX4_CONFIG}.map
 		-Wl,--warn-common
-		-Wl,--gc-sections
+			-Wl,--gc-sections
 
-		-Wl,--start-group
-			${nuttx_libs}
-		-Wl,--end-group
+			-Wl,--start-group
+				${nuttx_libs}
+				${module_libraries}
+			-Wl,--end-group
 
-		m
-		gcc
-		)
+			m
+			gcc
+			)
 
-	if(NOT USE_LD_GOLD)
-		target_link_libraries(px4 PRIVATE -Wl,--print-memory-usage)
-	endif()
+		if(NOT USE_LD_GOLD)
+			target_link_libraries(px4 PRIVATE -Wl,--print-memory-usage)
+		endif()
 
-	target_link_libraries(px4 PRIVATE ${module_libraries})
-
-	if(config_romfs_root)
-		add_subdirectory(${PX4_SOURCE_DIR}/ROMFS ${PX4_BINARY_DIR}/ROMFS)
-		target_link_libraries(px4 PRIVATE romfs)
-	endif()
+		if(config_romfs_root)
+			add_subdirectory(${PX4_SOURCE_DIR}/ROMFS ${PX4_BINARY_DIR}/ROMFS)
+			target_link_libraries(px4 PRIVATE romfs)
+		endif()
 
 	add_custom_command(OUTPUT ${PX4_BINARY_OUTPUT}
 		COMMAND ${CMAKE_OBJCOPY} -O binary ${PX4_BINARY_DIR_REL}/${FW_NAME} ${PX4_BINARY_OUTPUT}

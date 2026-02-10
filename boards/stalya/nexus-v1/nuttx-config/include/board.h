@@ -250,40 +250,44 @@
 
 #define STM32_SDMMC_CLKCR_EDGE      STM32_SDMMC_CLKCR_NEGEDGE
 
+/* SDMMC1 */
+#define GPIO_SDMMC1_D0   GPIO_SDMMC1_D0_0    		/* PC8  */
+#define GPIO_SDMMC1_CK   GPIO_SDMMC1_CK_0    		/* PC12 */
+#define GPIO_SDMMC1_CMD  GPIO_SDMMC1_CMD_0  		/* PD2  */
 
 /* UART/USART */
-#define GPIO_USART2_TX   GPIO_USART2_TX_1      /* PA2 */
-#define GPIO_USART2_RX   GPIO_USART2_RX_1      /* PA3 */
-#define GPIO_USART2_CTS  GPIO_USART2_CTS_NSS_1 /* PA0 */
-#define GPIO_USART2_RTS  GPIO_USART2_RTS_1     /* PA1 */
+#define GPIO_USART2_TX   GPIO_USART2_TX_1      	/* PA2 */
+#define GPIO_USART2_RX   GPIO_USART2_RX_1      	/* PA3 */
+#define GPIO_USART2_CTS  GPIO_USART2_CTS_NSS_1 	/* PA0 */
+#define GPIO_USART2_RTS  GPIO_USART2_RTS_1     	/* PA1 */
 
-#define GPIO_USART3_TX   GPIO_USART3_TX_3      /* PD8  */
-#define GPIO_USART3_RX   GPIO_USART3_RX_3      /* PD9  */
+#define GPIO_USART3_TX   GPIO_USART3_TX_3      	/* PD8 */
+#define GPIO_USART3_RX   GPIO_USART3_RX_3      	/* PD9 */
 
-#define GPIO_UART4_TX    GPIO_UART4_TX_4       /* PC10 */
-#define GPIO_UART4_RX    GPIO_UART4_RX_4       /* PC11 */
+#define GPIO_UART4_TX    GPIO_UART4_TX_4       	/* PC10 */
+#define GPIO_UART4_RX    GPIO_UART4_RX_4       	/* PC11 */
 
-#define GPIO_UART5_TX    GPIO_UART5_TX_1       /* PB13 */
-#define GPIO_UART5_RX    GPIO_UART5_RX_1       /* PB12 */
+#define GPIO_UART5_TX    GPIO_UART5_TX_1       	/* PB13 */
+#define GPIO_UART5_RX    GPIO_UART5_RX_1       	/* PB12 */
 
-#define GPIO_USART6_TX   GPIO_USART6_TX_1      /* PC6 */
-#define GPIO_USART6_RX   GPIO_USART6_RX_1      /* PC7 */
+#define GPIO_USART6_TX   GPIO_USART6_TX_1      	/* PC6 */
+#define GPIO_USART6_RX   GPIO_USART6_RX_1      	/* PC7 */
 
-#define GPIO_UART7_TX    GPIO_UART7_TX_3       /* PE8 */
-#define GPIO_UART7_RX    GPIO_UART7_RX_3       /* PE7 */
-#define GPIO_UART7_RTS   GPIO_UART7_RTS_1      /* PE9 */
-#define GPIO_UART7_CTS   GPIO_UART7_CTS_1      /* PE10 */
+#define GPIO_UART7_TX    GPIO_UART7_TX_3       	/* PE8 */
+#define GPIO_UART7_RX    GPIO_UART7_RX_3       	/* PE7 */
+#define GPIO_UART7_RTS   GPIO_UART7_RTS_1      	/* PE9 */
+#define GPIO_UART7_CTS   GPIO_UART7_CTS_1      	/* PE10 */
 
-#define GPIO_UART8_TX    GPIO_UART8_TX_1       /* PE1 */
-#define GPIO_UART8_RX    GPIO_UART8_RX_1       /* PE0 */
+#define GPIO_UART8_TX    GPIO_UART8_TX_1       	/* PE1 */
+#define GPIO_UART8_RX    GPIO_UART8_RX_1       	/* PE0 */
 
 
 /* CAN */
-#define GPIO_CAN1_RX   GPIO_CAN1_RX_3        /* PD0  */
-#define GPIO_CAN1_TX   GPIO_CAN1_TX_3        /* PD1  */
+#define GPIO_CAN1_RX   GPIO_CAN1_RX_3        		/* PD0  */
+#define GPIO_CAN1_TX   GPIO_CAN1_TX_3        		/* PD1  */
 
-#define GPIO_CAN2_RX   GPIO_CAN2_RX_2        /* PB5  */
-#define GPIO_CAN2_TX   GPIO_CAN2_TX_2        /* PB6  */
+#define GPIO_CAN2_RX   GPIO_CAN2_RX_2        		/* PB5  */
+#define GPIO_CAN2_TX   GPIO_CAN2_TX_2        		/* PB6  */
 
 
 /* SPI */
@@ -299,8 +303,13 @@
 
 
 /* I2C */
-#define GPIO_I2C2_SCL 	GPIO_I2C2_SCL_1       			/* PB10 */
-#define GPIO_I2C2_SDA 	GPIO_I2C2_SDA_1       			/* PB11 */
+#define GPIO_I2C2_SCL 	GPIO_I2C2_SCL_1      	/* PB10 */
+#define GPIO_I2C2_SDA 	GPIO_I2C2_SDA_1      	/* PB11 */
 
-#define GPIO_I2C4_SCL 	GPIO_I2C4_SCL_5   				/* PB8  */
-#define GPIO_I2C4_SDA 	GPIO_I2C4_SDA_5    				/* PB9  */
+#define GPIO_I2C4_SCL 	GPIO_I2C4_SCL_5   		/* PB8  */
+#define GPIO_I2C4_SDA 	GPIO_I2C4_SDA_5    		/* PB9  */
+
+
+/* USB OTG */
+#define GPIO_OTGFS_DM		GPIO_OTGFS_DM_0				/* PA11 */
+#define GPIO_OTGFS_DP		GPIO_OTGFS_DP_0				/* PA12 */

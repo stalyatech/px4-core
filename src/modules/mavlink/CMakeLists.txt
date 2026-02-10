@@ -96,6 +96,13 @@ target_include_directories(mavlink_c
 		${MAVLINK_LIBRARY_DIR}/${MAVLINK_DIALECT_UAVIONIX}
 )
 
+# Disable unity for debug board label to keep source-level breakpoints bindable.
+set(MAVLINK_UNITY_BUILD_FLAG UNITY_BUILD)
+
+if((CMAKE_BUILD_TYPE STREQUAL "Debug") OR (CMAKE_BUILD_TYPE STREQUAL "Coverage") OR (CMAKE_BUILD_TYPE MATCHES "Sanitizer"))
+	set(MAVLINK_UNITY_BUILD_FLAG)
+endif()
+
 px4_add_module(
 	MODULE modules__mavlink
 	MAIN mavlink
@@ -140,7 +147,7 @@ px4_add_module(
 		tunes
 		variable_length_ringbuffer
 		version
-	UNITY_BUILD
+	${MAVLINK_UNITY_BUILD_FLAG}
 	)
 
 if(PX4_TESTING)

@@ -30,12 +30,18 @@
 # POSSIBILITY OF SUCH DAMAGE.
 #
 ############################################################################
+if((CMAKE_BUILD_TYPE STREQUAL "Debug") OR (CMAKE_BUILD_TYPE STREQUAL "Coverage") OR (CMAKE_BUILD_TYPE MATCHES "Sanitizer"))
+	set(STACK_MAX 5000)
+else()
+	set(STACK_MAX 3700)
+endif()
+
 px4_add_module(
 	MODULE modules__local_position_estimator
 	MAIN local_position_estimator
 	COMPILE_FLAGS
 	STACK_MAIN 5700
-	STACK_MAX 3700
+	STACK_MAX ${STACK_MAX}
 	SRCS
 		BlockLocalPositionEstimator.cpp
 		sensors/flow.cpp

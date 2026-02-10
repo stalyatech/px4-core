@@ -1,0 +1,148 @@
+#!/bin/sh
+#
+# @name FOXTECH Baby Shark 260 VTOL
+#
+# @type VTOL QuadPlane
+#
+# @maintainer Tayfun Karan <tmkaran@hotmail.com>
+#
+# Specifications:
+# - Wingspan: 2.5m
+# - Length: 1.44m
+# - MTOW: 13kg
+# - Cruise Speed: 21-22 m/s
+# - Stall Speed: 16 m/s
+# - VTOL Motors: T-motor MN505 KV260 with 18" props
+#
+
+. ${R}etc/init.d/rc.vtol_defaults
+
+PX4_SIMULATOR=${PX4_SIMULATOR:=gz}
+PX4_GZ_WORLD=${PX4_GZ_WORLD:=default}
+PX4_SIM_MODEL=${PX4_SIM_MODEL:=babyshark_vtol}
+
+param set-default SIM_GZ_EN 1
+
+param set-default SENS_EN_ARSPDSIM 1
+
+# Motor failure detection disabled for SITL
+param set-default FD_ACT_EN 0
+param set-default FD_ACT_MOT_TOUT 500
+param set-default FD_ESCS_EN 0
+
+# Airframe: Standard VTOL (QuadPlane)
+param set-default CA_AIRFRAME 2
+
+param set-default COM_PREARM_MODE 2
+
+#----------------------------------------------------------------------
+# Control Allocation - Motor Configuration
+# Baby Shark 260: 4x VTOL motors + 1x Pusher
+#----------------------------------------------------------------------
+param set-default CA_ROTOR_COUNT 5
+
+# Motor 1: Front Right (CW) - Gazebo motor_1
+param set-default CA_ROTOR0_PX 0.425
+param set-default CA_ROTOR0_PY 0.400
+param set-default CA_ROTOR0_PZ 0.070
+param set-default CA_ROTOR0_KM -0.05
+
+# Motor 2: Rear Left (CW) - Gazebo motor_2
+param set-default CA_ROTOR1_PX -0.375
+param set-default CA_ROTOR1_PY -0.400
+param set-default CA_ROTOR1_PZ 0.070
+param set-default CA_ROTOR1_KM -0.05
+
+# Motor 3: Front Left (CCW) - Gazebo motor_3
+param set-default CA_ROTOR2_PX 0.425
+param set-default CA_ROTOR2_PY -0.400
+param set-default CA_ROTOR2_PZ 0.070
+param set-default CA_ROTOR2_KM 0.05
+
+# Motor 4: Rear Right (CCW) - Gazebo motor_4
+param set-default CA_ROTOR3_PX -0.375
+param set-default CA_ROTOR3_PY 0.400
+param set-default CA_ROTOR3_PZ 0.070
+param set-default CA_ROTOR3_KM 0.05
+
+# Motor 5: Pusher (CW) - Gazebo motor_f
+param set-default CA_ROTOR4_AX 1.0
+param set-default CA_ROTOR4_AY 0.0
+param set-default CA_ROTOR4_AZ 0.0
+param set-default CA_ROTOR4_PX -0.380
+param set-default CA_ROTOR4_PY 0.038
+param set-default CA_ROTOR4_PZ 0.0
+param set-default CA_ROTOR4_KM -0.05
+
+#----------------------------------------------------------------------
+# Gazebo Simulation Motor/Servo Mapping
+#----------------------------------------------------------------------
+# VTOL Motors (1-4) - MN505-S KV260 with 18" prop, max ~750 rad/s loaded
+param set-default SIM_GZ_EC_FUNC1 101
+param set-default SIM_GZ_EC_MIN1 10
+param set-default SIM_GZ_EC_MAX1 1500
+
+param set-default SIM_GZ_EC_FUNC2 102
+param set-default SIM_GZ_EC_MIN2 10
+param set-default SIM_GZ_EC_MAX2 1500
+
+param set-default SIM_GZ_EC_FUNC3 103
+param set-default SIM_GZ_EC_MIN3 10
+param set-default SIM_GZ_EC_MAX3 1500
+
+param set-default SIM_GZ_EC_FUNC4 104
+param set-default SIM_GZ_EC_MIN4 10
+param set-default SIM_GZ_EC_MAX4 1500
+
+# Pusher Motor
+param set-default SIM_GZ_EC_FUNC5 105
+param set-default SIM_GZ_EC_MIN5 0
+param set-default SIM_GZ_EC_MAX5 3500
+
+# Control Surfaces: Left Aileron, Right Aileron, Elevator
+param set-default SIM_GZ_SV_FUNC1 201
+param set-default SIM_GZ_SV_FUNC2 202
+param set-default SIM_GZ_SV_FUNC3 203
+
+param set-default COM_RC_IN_MODE 1
+
+param set-default CA_SV_CS_COUNT 3
+param set-default CA_SV_CS0_TYPE 1
+param set-default CA_SV_CS0_TRQ_R -0.5
+param set-default CA_SV_CS1_TYPE 2
+param set-default CA_SV_CS1_TRQ_R 0.5
+param set-default CA_SV_CS2_TYPE 3
+param set-default CA_SV_CS2_TRQ_P 1
+
+param set-default NPFG_PERIOD 12
+param set-default FW_PR_FF 0.2
+param set-default FW_PR_P 0.9
+param set-default FW_PSP_OFF 2
+param set-default FW_P_LIM_MIN -15
+param set-default FW_RR_FF 0.1
+param set-default FW_RR_P 0.3
+param set-default FW_THR_TRIM 0.25
+param set-default FW_THR_MAX 0.6
+param set-default FW_THR_MIN 0.05
+param set-default FW_T_CLMB_MAX 8
+param set-default FW_T_SINK_MAX 2.7
+param set-default FW_T_SINK_MIN 2.2
+
+param set-default MC_AIRMODE 1
+param set-default MC_ROLLRATE_P 0.3
+param set-default MC_YAW_P 1.6
+
+param set-default MIS_TAKEOFF_ALT 10
+
+param set-default MPC_XY_P 0.8
+param set-default MPC_XY_VEL_P_ACC 3
+param set-default MPC_XY_VEL_I_ACC 4
+param set-default MPC_XY_VEL_D_ACC 0.1
+
+param set-default NAV_ACC_RAD 5
+param set-default NAV_DLL_ACT 2
+
+param set-default VT_FWD_THRUST_EN 4
+param set-default VT_F_TRANS_THR 0.3
+param set-default VT_TYPE 2
+param set-default FD_ESCS_EN 0

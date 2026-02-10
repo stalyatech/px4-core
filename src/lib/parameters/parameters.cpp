@@ -815,7 +815,9 @@ int param_save_default(bool blocking)
 
 		for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
 			// write parameters to file
-			int fd = ::open(filename, O_WRONLY | O_CREAT | O_TRUNC, PX4_O_MODE_666);
+			// Avoid O_TRUNC on block/MTD-backed parameter devices. Some BCH-backed
+			// nodes can fail subsequent writes after truncate.
+			int fd = ::open(filename, O_WRONLY | O_CREAT, PX4_O_MODE_666);
 
 			if (fd > -1) {
 				perf_begin(param_export_perf);
