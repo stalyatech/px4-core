@@ -16,7 +16,16 @@
 #include <nuttx/compiler.h>
 #include <stdint.h>
 
-/* TPU-v2 RISC-V bring-up uses software-mapped output channels for now. */
+/* TPU-v2 RISC-V PX4IO firmware transport on SG2000 little core. */
+
+#define PX4FMU_SERIAL_DEVICE		"/dev/ttyS4"
+#define PX4FMU_SERIAL_BAUDRATE		1500000
+
+/* Board-specific control/status signals are currently optional on TPU-v2. */
+#define LED_AMBER(_on_true)		do { (void)(_on_true); } while (0)
+#define LED_SAFETY(_on_true)	do { (void)(_on_true); } while (0)
+#define LED_BLUE(_on_true)		do { (void)(_on_true); } while (0)
+#define LED_GREEN(_on_true)		do { (void)(_on_true); } while (0)
 
 #define DIRECT_PWM_OUTPUT_CHANNELS	8
 #define BOARD_NUM_IO_TIMERS 		0

@@ -1,0 +1,181 @@
+/****************************************************************************
+ *
+ *   Copyright (c) 2026 Stalya Inc. All rights reserved.
+ *
+ ****************************************************************************/
+
+/*
+ * @file pwm_servo.c
+ *
+ * SG2000 PWM servo bridge for PX4 up_pwm_servo_* API.
+ */
+
+#include <px4_platform_common/px4_config.h>
+
+#include <drivers/drv_pwm_output.h>
+
+#include <nuttx/timers/pwm.h>
+
+#include <fcntl.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <string.h>
+#include <sys/ioctl.h>
+#include <unistd.h>
+
+#ifndef DIRECT_PWM_OUTPUT_CHANNELS
+#define DIRECT_PWM_OUTPUT_CHANNELS 8
+#endif
+
+#define SG2000_PWM_GROUP_COUNT 4
+
+static int g_pwm_fd[DIRECT_PWM_OUTPUT_CHANNELS];
+static uint16_t g_pwm_value[DIRECT_PWM_OUTPUT_CHANNELS];
+static unsigned g_group_rate_hz[SG2000_PWM_GROUP_COUNT] = {50, 50, 50, 50};
+static bool g_armed;
+static bool g_fds_initialized;
+
+static inline uint32_t group_mask(unsigned group)
+{
+	if (group >= SG2000_PWM_GROUP_COUNT) {
+		return 0;
+	}
+
+	return (1u << (group * 2u)) | (1u << (group * 2u + 1u));
+}
+
+static inline unsigned channel_group(unsigned channel)
+{
+	return channel / 2u;
+}
+
+static int apply_channel(unsigned channel)
+{
+	if (channel >= DIRECT_PWM_OUTPUT_CHANNELS || g_pwm_fd[channel] < 0) {
+		return -1;
+	}
+
+	const unsigned rate_hz = g_group_rate_hz[channel_group(channel)];
+
+	if (rate_hz == 0) {
+		return -1;
+	}
+
+	const uint32_t period_us = 1000000u / rate_hz;
+	uint16_t pulse_us = g_pwm_value[channel];
+
+	if (pulse_us > period_us) {
+		pulse_us = (uint16_t)period_us;
+	}
+
+	struct pwm_info_s pwm;
+	memset(&pwm, 0, sizeof(pwm));
+	pwm.frequency = rate_hz;
+	pwm.duty = (ub16_t)(((uint64_t)pulse_us << 16) / period_us);
+
+	if (ioctl(g_pwm_fd[channel], PWMIOC_SETCHARACTERISTICS, (unsigned long)((uintptr_t)&pwm)) < 0) {
+		return -1;
+	}
+
+	return ioctl(g_pwm_fd[channel], PWMIOC_START, 0);
+}
+
+int up_pwm_servo_init(uint32_t channel_mask)
+{
+	if (!g_fds_initialized) {
+		for (unsigned i = 0; i < DIRECT_PWM_OUTPUT_CHANNELS; i++) {
+			g_pwm_fd[i] = -1;
+		}
+
+		g_fds_initialized = true;
+	}
+
+	for (unsigned channel = 0; channel < DIRECT_PWM_OUTPUT_CHANNELS; channel++) {
+		if (g_pwm_fd[channel] >= 0) {
+			close(g_pwm_fd[channel]);
+			g_pwm_fd[channel] = -1;
+		}
+
+		if (channel_mask & (1u << channel)) {
+			char devpath[16];
+			snprintf(devpath, sizeof(devpath), "/dev/pwm%u", channel);
+			g_pwm_fd[channel] = open(devpath, O_RDONLY);
+		}
+	}
+
+	g_armed = false;
+	return OK;
+}
+
+void up_pwm_servo_deinit(uint32_t channel_mask)
+{
+	up_pwm_servo_arm(false, channel_mask);
+}
+
+int up_pwm_servo_set(unsigned channel, uint16_t value)
+{
+	if (channel >= DIRECT_PWM_OUTPUT_CHANNELS) {
+		return -1;
+	}
+
+	g_pwm_value[channel] = value;
+	return g_armed ? apply_channel(channel) : OK;
+}
+
+void up_pwm_update(unsigned channels_mask)
+{
+	if (!g_armed) {
+		return;
+	}
+
+	for (unsigned channel = 0; channel < DIRECT_PWM_OUTPUT_CHANNELS; channel++) {
+		if (channels_mask & (1u << channel)) {
+			(void)apply_channel(channel);
+		}
+	}
+}
+
+int up_pwm_servo_set_rate_group_update(unsigned group, unsigned rate)
+{
+	if (group >= SG2000_PWM_GROUP_COUNT || rate == 0 || rate > 10000) {
+		return -1;
+	}
+
+	g_group_rate_hz[group] = rate;
+
+	if (g_armed) {
+		const uint32_t mask = group_mask(group);
+
+		for (unsigned channel = 0; channel < DIRECT_PWM_OUTPUT_CHANNELS; channel++) {
+			if (mask & (1u << channel)) {
+				(void)apply_channel(channel);
+			}
+		}
+	}
+
+	return OK;
+}
+
+uint32_t up_pwm_servo_get_rate_group(unsigned group)
+{
+	return group_mask(group);
+}
+
+void up_pwm_servo_arm(bool armed, uint32_t channel_mask)
+{
+	g_armed = armed;
+
+	for (unsigned channel = 0; channel < DIRECT_PWM_OUTPUT_CHANNELS; channel++) {
+		if (!(channel_mask & (1u << channel)) || g_pwm_fd[channel] < 0) {
+			continue;
+		}
+
+		if (armed) {
+			(void)apply_channel(channel);
+
+		} else {
+			(void)ioctl(g_pwm_fd[channel], PWMIOC_STOP, 0);
+		}
+	}
+}

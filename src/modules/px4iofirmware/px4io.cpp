@@ -63,14 +63,22 @@
 # include <lib/perf/perf_counter.h>
 #endif
 
-#include <stm32_uart.h>
-
 #define DEBUG
 #include "px4io.h"
 
+#ifndef PX4IO_DEBUG_BUFSIZE
+# if defined(CONFIG_USART1_TXBUFSIZE)
+#  define PX4IO_DEBUG_BUFSIZE CONFIG_USART1_TXBUFSIZE
+# else
+#  define PX4IO_DEBUG_BUFSIZE 128
+# endif
+#endif
+
 struct sys_state_s system_state;
 
+#ifdef CONFIG_ARCH_DMA
 static struct hrt_call serial_dma_call;
+#endif
 
 /*
  * a set of debug buffers to allow us to send debug information from ISRs
@@ -87,7 +95,7 @@ static volatile uint8_t msg_next_in;
  * output.
  */
 #define NUM_MSG 1
-static char msg[NUM_MSG][CONFIG_USART1_TXBUFSIZE];
+static char msg[NUM_MSG][PX4IO_DEBUG_BUFSIZE];
 
 static void heartbeat_blink(void);
 static void ring_blink(void);
@@ -255,7 +263,11 @@ void schedule_reboot(uint32_t time_delta_usec)
 static void check_reboot(void)
 {
 	if (reboot_time != 0 && hrt_absolute_time() > reboot_time) {
+#if defined(CONFIG_ARCH_CHIP_SG2000)
+		reboot_time = 0;
+#else
 		up_systemreset();
+#endif
 	}
 }
 
@@ -267,10 +279,15 @@ calculate_fw_crc(void)
 	// compute CRC of the current firmware
 	uint32_t sum = 0;
 
+#if defined(CONFIG_ARCH_CHIP_SG2000)
+	/* SG2000 image layout is not at the STM32 flash base used below. */
+	sum = 0;
+#else
 	for (unsigned p = 0; p < APP_SIZE_MAX; p += 4) {
-		uint32_t bytes = *(uint32_t *)(p + APP_LOAD_ADDRESS);
+		uint32_t bytes = *(uint32_t *)(uintptr_t)(p + APP_LOAD_ADDRESS);
 		sum = crc32part((uint8_t *)&bytes, sizeof(bytes), sum);
 	}
+#endif
 
 	r_page_setup[PX4IO_P_SETUP_CRC]   = sum & 0xFFFF;
 	r_page_setup[PX4IO_P_SETUP_CRC + 1] = sum >> 16;
@@ -353,10 +370,14 @@ extern "C" __EXPORT int user_start(int argc, char *argv[])
 	uint64_t last_debug_time = 0;
 	uint64_t last_heartbeat_time = 0;
 
+#if !defined(CONFIG_ARCH_CHIP_SG2000)
 	watchdog_init();
+#endif
 
 	for (;;) {
+#if !defined(CONFIG_ARCH_CHIP_SG2000)
 		watchdog_pet();
+#endif
 
 #if defined(PX4IO_PERF)
 		/* track the rate at which the loop is running */
