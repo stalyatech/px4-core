@@ -63,6 +63,9 @@ set(NUTTX_APPS_DIR ${PX4_SOURCE_DIR}/platforms/nuttx/NuttX/apps CACHE FILEPATH "
 px4_add_git_submodule(TARGET git_nuttx PATH "${NUTTX_SRC_DIR}/nuttx")
 px4_add_git_submodule(TARGET git_nuttx_apps PATH "${NUTTX_SRC_DIR}/apps")
 
+# Link out-of-(nuttx)-tree apps into apps/external
+file(CREATE_LINK ${NUTTX_SRC_DIR}/extern/apps ${NUTTX_APPS_DIR}/external SYMBOLIC)
+
 # make olddefconfig (inflate defconfig to full .config)
 execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${NUTTX_CONFIG_DIR}/src) # needed for NuttX build
 execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different ${NUTTX_SRC_DIR}/Make.defs.in ${NUTTX_DIR}/Make.defs) # Create a temporary Toplevel Make.defs for the oldconfig step

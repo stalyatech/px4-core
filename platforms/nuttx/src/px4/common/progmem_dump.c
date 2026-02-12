@@ -50,9 +50,11 @@
 #include <unistd.h>
 #include <time.h>
 #include <nuttx/fs/fs.h>
-
+#ifdef __PX4_NUTTX
+#include <nuttx/crc32.h>
+#else
 #include <crc32.h>
-
+#endif
 #ifdef CONFIG_BOARD_CRASHDUMP
 
 #include <systemlib/hardfault_log.h>

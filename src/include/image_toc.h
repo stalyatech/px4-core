@@ -60,6 +60,14 @@
 #define TOC_VERSION BOARD_IMAGE_TOC_VERSION
 #endif
 
+typedef enum {
+	IMAGE_TYPE_PX4 = 0,
+	IMAGE_TYPE_UBOOT = 1,
+	IMAGE_TYPE_RSVD1 = 2,
+	IMAGE_TYPE_RSVD2 = 3,
+	IMAGE_NUM_TYPES = 4
+} image_type_t;
+
 /* Markers for TOC start and end in the image */
 
 typedef const struct __attribute__((__packed__)) image_toc_start {

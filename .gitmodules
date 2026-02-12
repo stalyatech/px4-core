@@ -1,6 +1,6 @@
 [submodule "src/modules/mavlink/mavlink"]
 	path = src/modules/mavlink/mavlink
-	url = https://github.com/mavlink/mavlink.git
+	url = https://github.com/stalyatech/px4-mavlink.git
 	branch = master
 [submodule "Tools/simulation/jmavsim/jMAVSim"]
 	path = Tools/simulation/jmavsim/jMAVSim
@@ -8,20 +8,20 @@
 	branch = main
 [submodule "Tools/simulation/gazebo-classic/sitl_gazebo-classic"]
 	path = Tools/simulation/gazebo-classic/sitl_gazebo-classic
-	url = https://github.com/PX4/PX4-SITL_gazebo-classic.git
+	url = https://github.com/stalyatech/px4-sitl_gazebo-classic.git
 	branch = main
 [submodule "src/drivers/gps/devices"]
 	path = src/drivers/gps/devices
-	url = https://github.com/PX4/PX4-GPSDrivers.git
+	url = https://github.com/stalyatech/px4-gpsdrivers.git
 	branch = main
 [submodule "platforms/nuttx/NuttX/nuttx"]
 	path = platforms/nuttx/NuttX/nuttx
-	url = https://github.com/PX4/NuttX.git
-	branch = px4_firmware_nuttx-10.3.0+
+	url = https://github.com/stalyatech/nuttx.git
+	branch = nuttx-12.11.0-dev
 [submodule "platforms/nuttx/NuttX/apps"]
 	path = platforms/nuttx/NuttX/apps
-	url = https://github.com/PX4/NuttX-apps.git
-	branch = px4_firmware_nuttx-10.3.0+
+	url = https://github.com/stalyatech/nuttx-apps.git
+	branch = nuttx-12.11.0-dev
 [submodule "Tools/flightgear_bridge"]
 	path = Tools/simulation/flightgear/flightgear_bridge
 	url = https://github.com/PX4/PX4-FlightGear-Bridge.git
@@ -44,7 +44,7 @@
 	branch = px4
 [submodule "src/lib/events/libevents"]
 	path = src/lib/events/libevents
-	url = https://github.com/mavlink/libevents.git
+	url = https://github.com/stalyatech/px4-libevents.git
 	branch = main
 [submodule "src/lib/crypto/libtomcrypt"]
 	path = src/lib/crypto/libtomcrypt
@@ -56,7 +56,7 @@
 	branch = px4
 [submodule "src/modules/uxrce_dds_client/Micro-XRCE-DDS-Client"]
 	path = src/modules/uxrce_dds_client/Micro-XRCE-DDS-Client
-	url = https://github.com/PX4/Micro-XRCE-DDS-Client.git
+	url = https://github.com/stalyatech/Micro-XRCE-DDS-Client.git
 	branch = px4
 [submodule "src/lib/cdrstream/cyclonedds"]
 	path = src/lib/cdrstream/cyclonedds
@@ -74,7 +74,7 @@
 	branch = px4
 [submodule "Tools/simulation/gz"]
 	path = Tools/simulation/gz
-	url = https://github.com/PX4/PX4-gazebo-models.git
+	url = https://github.com/stalyatech/px4-gazebo-models.git
 	branch = main
 [submodule "boards/modalai/voxl2/libfc-sensor-api"]
 	path = boards/modalai/voxl2/libfc-sensor-api

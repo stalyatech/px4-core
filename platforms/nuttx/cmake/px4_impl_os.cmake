@@ -78,6 +78,7 @@ function(px4_os_add_flags)
 		${PX4_SOURCE_DIR}/platforms/nuttx/NuttX/nuttx/arch/${CONFIG_ARCH}/src/common
 
 		${PX4_SOURCE_DIR}/platforms/nuttx/NuttX/apps/include
+		${PX4_SOURCE_DIR}/platforms/nuttx/NuttX/include
 	)
 
 
@@ -176,6 +177,12 @@ function(px4_os_determine_build_chip)
 	elseif(CONFIG_ARCH_CHIP_ESP32)
 		set(CHIP_MANUFACTURER "espressif")
 		set(CHIP "esp32")
+	elseif(CONFIG_ARCH_CHIP_SG2000)
+		set(CHIP_MANUFACTURER "sophgo")
+		set(CHIP "sg2000")
+	elseif(CONFIG_ARCH_CHIP_SAPPHIRE)
+		set(CHIP_MANUFACTURER "efinix")
+		set(CHIP "sapphire")
 	else()
 		message(FATAL_ERROR "Could not determine chip architecture from NuttX config. You may have to add it.")
 	endif()

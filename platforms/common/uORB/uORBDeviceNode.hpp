@@ -281,7 +281,7 @@ private:
 
 	uint8_t *_data{nullptr};   /**< allocated object buffer */
 	bool _data_valid{false}; /**< At least one valid data */
-	px4::atomic<unsigned>  _generation{0};  /**< object generation count */
+	px4::atomic<uint32_t>  _generation{0};  /**< object generation count */
 	List<uORB::SubscriptionCallback *>	_callbacks;
 
 	const uint8_t _instance; /**< orb multi instance identifier */

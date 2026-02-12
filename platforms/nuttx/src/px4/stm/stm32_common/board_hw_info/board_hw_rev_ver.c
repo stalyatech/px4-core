@@ -338,16 +338,30 @@ static int determine_hw_info(int *revision, int *version)
 	*version  = HW_ID_EEPROM;
 	return OK;
 #else
+	int rv = ERROR;
 	int dn;
-	int rv = read_id_dn(&dn, GPIO_HW_REV_DRIVE, GPIO_HW_REV_SENSE, ADC_HW_REV_SENSE_CHANNEL);
+#ifdef ADC_HW_REV_SENSE_CHANNEL
+#ifdef GPIO_HW_REV_DRIVE
+	rv = read_id_dn(&dn, GPIO_HW_REV_DRIVE, GPIO_HW_REV_SENSE, ADC_HW_REV_SENSE_CHANNEL);
+#else
+	rv = read_id_dn(&dn, -1, GPIO_HW_REV_SENSE, ADC_HW_REV_SENSE_CHANNEL);
+#endif /* GPIO_HW_REV_DRIVE */
+#endif /* ADC_HW_REV_SENSE_CHANNEL */
 
 	if (rv == OK) {
 		*revision =  dn_to_ordinal(dn);
+
+#ifdef ADC_HW_VER_SENSE_CHANNEL
+#ifdef GPIO_HW_VER_DRIVE
 		rv = read_id_dn(&dn, GPIO_HW_VER_DRIVE, GPIO_HW_VER_SENSE, ADC_HW_VER_SENSE_CHANNEL);
+#else
+		rv = read_id_dn(&dn, -1, GPIO_HW_VER_SENSE, ADC_HW_VER_SENSE_CHANNEL);
+#endif /* GPIO_HW_VER_DRIVE */
 
 		if (rv == OK) {
 			*version =  dn_to_ordinal(dn);
 		}
+#endif /* ADC_HW_VER_SENSE_CHANNEL */
 	}
 
 	return rv;

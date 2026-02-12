@@ -62,6 +62,22 @@
 # include <nuttx/irq.h>
 #endif // __PX4_NUTTX
 
+/* With RISC-V the compiler / __atomic_always_lock_free lies about the atomicy
+ * of subword size variables. It is unclear whether this is intentional, or a
+ * bug.
+ *
+ * We know for a fact that subword atomics exist, so overload the the GCC macro
+ * here.
+ *
+ * More on this subject can be found here:
+ * https://github.com/riscv-collab/riscv-gcc/issues/15
+ */
+
+#ifdef CONFIG_ARCH_RISCV
+#undef __atomic_always_lock_free
+#define __atomic_always_lock_free(size, ptr) ((size) <= sizeof(uintptr_t))
+#endif
+
 namespace px4
 {
 

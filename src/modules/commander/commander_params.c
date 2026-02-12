@@ -369,6 +369,17 @@ PARAM_DEFINE_INT32(COM_QC_ACT, 0);
 PARAM_DEFINE_INT32(COM_OBL_RC_ACT, 0);
 
 /**
+ * Legacy obstacle avoidance compatibility parameter (no-op).
+ *
+ * This parameter is kept to allow importing older parameter files that still
+ * contain COM_OBS_AVOID without reporting it as missing.
+ *
+ * @group Commander
+ * @reboot_required true
+ */
+PARAM_DEFINE_INT32(COM_OBS_AVOID, 0);
+
+/**
  * Time-out to wait when onboard computer connection is lost before warning about loss connection.
  *
  * @group Commander

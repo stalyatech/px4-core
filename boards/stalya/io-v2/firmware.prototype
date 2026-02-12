@@ -1,0 +1,13 @@
+{
+    "board_id": 95,
+    "magic": "NEXUSIOv2",
+    "description": "Firmware for the Nexus IO v2 board",
+    "image": "",
+    "build_time": 0,
+    "summary": "NEXUSIOv2",
+    "version": "2.0",
+    "image_size": 0,
+    "image_maxsize": 61440,
+    "git_identity": "",
+    "board_revision": 0
+}

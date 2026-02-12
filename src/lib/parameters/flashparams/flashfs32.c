@@ -48,7 +48,6 @@
 
 #include <px4_platform_common/defines.h>
 #include <px4_platform_common/posix.h>
-#include <crc32.h>
 #include <stddef.h>
 #include <string.h>
 #include <stdbool.h>
@@ -56,8 +55,13 @@
 #include <stdlib.h>
 #include <errno.h>
 #include "flashfs.h"
+#ifdef __PX4_NUTTX
+#include <nuttx/crc32.h>
 #include <nuttx/compiler.h>
 #include <nuttx/progmem.h>
+#else
+#include <crc32.h>
+#endif
 #include <board_config.h>
 
 #if defined(CONFIG_ARCH_HAVE_PROGMEM)

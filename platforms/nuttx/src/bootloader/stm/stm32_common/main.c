@@ -318,7 +318,9 @@ board_deinit(void)
 #endif
 
 #if INTERFACE_USB
+#if !defined(BOARD_USB_VBUS_SENSE_DISABLED)
 	px4_arch_configgpio(MK_GPIO_INPUT(GPIO_OTGFS_VBUS));
+#endif
 	putreg32(RCC_AHB1RSTR_OTGFSRST, STM32_RCC_AHB1RSTR);
 #endif
 
@@ -637,8 +639,11 @@ arch_do_jump(const uint32_t *app_base)
 }
 
 int
-bootloader_main(void)
+bootloader_main(int argc, char *argv[])
 {
+	(void)argc;
+	(void)argv;
+
 	bool try_boot = true;			/* try booting before we drop to the bootloader */
 	unsigned timeout = BOOTLOADER_DELAY;	/* if nonzero, drop out of the bootloader after this time */
 

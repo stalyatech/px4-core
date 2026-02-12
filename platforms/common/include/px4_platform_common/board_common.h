@@ -390,6 +390,9 @@ typedef enum PX4_SOC_ARCH_ID_t {
 
 	PX4_SOC_ARCH_ID_VOXL2          =  0x100A,
 
+	PX4_SOC_ARCH_ID_NEXUSV2        =  0x2000,
+	PX4_SOC_ARCH_ID_NEXUSV3        =  0x2001,
+
 } PX4_SOC_ARCH_ID_t;
 
 

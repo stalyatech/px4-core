@@ -14,7 +14,9 @@ if [[ -f $1"/.git" || -d $1"/.git" ]]; then
 		exit 0
 	fi
 
-	SUBMODULE_STATUS=$(git submodule summary "$1")
+	# Compare against index (staged gitlink), not only HEAD.
+	# This allows local submodule pointer updates to be validated before commit.
+	SUBMODULE_STATUS=$(git submodule summary --cached "$1")
 	STATUSRETVAL=$(echo $SUBMODULE_STATUS | grep -A20 -i "$1")
 	if ! [[ -z "$STATUSRETVAL" ]]; then
 		echo -e "\033[31mChecked $1 submodule, ACTION REQUIRED:\033[0m"

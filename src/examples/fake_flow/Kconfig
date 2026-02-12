@@ -1,0 +1,5 @@
+menuconfig EXAMPLES_FAKE_FLOW
+	bool "fake_flow"
+	default n
+	---help---
+		Enable support for fake flowmeter.
