@@ -122,6 +122,8 @@ void LoadMon::Run()
 
 void LoadMon::cpuload()
 {
+	cpuload_s cpuload{};
+
 #if defined(__PX4_LINUX)
 	tms spent_time_stamp_struct;
 	clock_t total_time_stamp = times(&spent_time_stamp_struct);
@@ -137,33 +139,11 @@ void LoadMon::cpuload()
 	// compute system load
 	const float interval = total_time_stamp - _last_total_time_stamp;
 	const float interval_spent_time = spent_time_stamp - _last_spent_time_stamp;
-#elif defined(__PX4_NUTTX)
 
-	if (_last_idle_time == 0) {
-		irqstate_t irqstate = enter_critical_section();
-		// Just get the time in the first iteration */
-		_last_idle_time = system_load.tasks[0].total_runtime;
-		_last_idle_time_sample = system_load.tasks[0].curr_start_time;
-		leave_critical_section(irqstate);
-		return;
-	}
+	// store for next iteration
+	_last_total_time_stamp = total_time_stamp;
+	_last_spent_time_stamp = spent_time_stamp;
 
-	irqstate_t irqstate = enter_critical_section();
-	const hrt_abstime now = system_load.tasks[0].curr_start_time;
-	const hrt_abstime total_runtime = system_load.tasks[0].total_runtime;
-	leave_critical_section(irqstate);
-
-	if ((now == _last_idle_time_sample) || (total_runtime == _last_idle_time)) {
-		return;
-	}
-
-	// compute system load
-	const float interval = now - _last_idle_time_sample;
-	const float interval_idletime = total_runtime - _last_idle_time;
-#endif
-
-	cpuload_s cpuload{};
-#if defined(__PX4_LINUX)
 	/* following calculation is based on free(1)
 	 * https://gitlab.com/procps-ng/procps/-/blob/master/proc/sysinfo.c */
 	char line[256];
@@ -202,7 +182,7 @@ void LoadMon::cpuload()
 			}
 		}
 
-		fseek(_proc_fd, 0, SEEK_SET);
+		fseek(_proc_fd, 0, SEEK_END);
 
 		if (parsedCount == 5) {
 			int32_t kb_main_cached = kb_page_cache + kb_slab_reclaimable;
@@ -225,26 +205,65 @@ void LoadMon::cpuload()
 
 	cpuload.load = interval_spent_time / interval;
 #elif defined(__PX4_NUTTX)
+	hrt_abstime run_times[CONFIG_SMP_NCPUS];
+	hrt_abstime now, slice;
+
+	// Get the current slice
+	irqstate_t flags = px4_enter_critical_section();
+
+	// Gather the current period from all idle tasks
+	for (int i = 0; i < CONFIG_SMP_NCPUS; i++) {
+		run_times[i] = system_load.tasks[i].total_runtime;
+	}
+
+	// Synchronize sampling to CPU0 idle task
+	now = system_load.tasks[0].curr_start_time;
+
+	px4_leave_critical_section(flags);
+
+	// Time slice length
+	slice = now - _last_idle_time_sample;
+	_last_idle_time_sample = now;
+
+	if (slice == 0) {
+		return;
+	}
+
+	// compute system load
+	float idle_load = 0.f;
+
+	for (int i = 0; i < CONFIG_SMP_NCPUS; i++) {
+		const hrt_abstime run_time = run_times[i] - _last_idle_time[i];
+		float load;
+
+		if (run_time == 0) {
+			load = 1.f; // CPU was 100% idle during last period
+
+		} else {
+			load = run_time / (float)slice;
+		}
+
+		if (load > 1.f) {
+			load = 1.f;
+		}
+
+		idle_load += load;
+
+		_last_idle_time[i] = run_times[i];
+	}
+
 	// get ram usage
 	struct mallinfo mem = mallinfo();
 	cpuload.ram_usage = (float)mem.uordblks / mem.arena;
-	cpuload.load = 1.f - interval_idletime / interval;
+	cpuload.load = 1.f - idle_load / CONFIG_SMP_NCPUS;
 #elif defined(__PX4_QURT)
 	cpuload.ram_usage = 0.0f;
 	cpuload.load = px4muorb_get_cpu_load() / 100.0f;
 #endif
+
 	cpuload.timestamp = hrt_absolute_time();
 
 	_cpuload_pub.publish(cpuload);
-
-	// store for next iteration
-#if defined(__PX4_LINUX)
-	_last_total_time_stamp = total_time_stamp;
-	_last_spent_time_stamp = spent_time_stamp;
-#elif defined(__PX4_NUTTX)
-	_last_idle_time = total_runtime;
-	_last_idle_time_sample = now;
-#endif
 }
 
 #if defined(__PX4_NUTTX)
@@ -258,11 +277,12 @@ void LoadMon::stack_usage()
 	static_assert(sizeof(task_stack_info.task_name) == CONFIG_TASK_NAME_SIZE,
 		      "task_stack_info.task_name must match NuttX CONFIG_TASK_NAME_SIZE");
 
-	sched_lock();
+	irqstate_t flags = px4_enter_critical_section();
 
-	if (system_load.tasks[_stack_task_index].valid && (system_load.tasks[_stack_task_index].tcb->pid > 0)) {
+	if (system_load.tasks[_stack_task_index].valid && (system_load.tasks[_stack_task_index].tcb->pid >= CONFIG_SMP_NCPUS)) {
 
-		stack_free = up_check_tcbstack_remain(system_load.tasks[_stack_task_index].tcb);
+		stack_free = system_load.tasks[_stack_task_index].tcb->adj_stack_size - up_check_tcbstack(
+				     system_load.tasks[_stack_task_index].tcb);
 
 		strncpy((char *)task_stack_info.task_name, system_load.tasks[_stack_task_index].tcb->name, CONFIG_TASK_NAME_SIZE - 1);
 		task_stack_info.task_name[CONFIG_TASK_NAME_SIZE - 1] = '\0';
@@ -271,11 +291,11 @@ void LoadMon::stack_usage()
 
 #if CONFIG_NFILE_DESCRIPTORS_PER_BLOCK > 0
 		unsigned int tcb_num_used_fds = 0; // number of used file descriptors
-		struct filelist *filelist = &system_load.tasks[_stack_task_index].tcb->group->tg_filelist;
+		struct fdlist *fdlist = &system_load.tasks[_stack_task_index].tcb->group->tg_fdlist;
 
-		for (int fdr = 0; fdr < filelist->fl_rows; fdr++) {
+		for (int fdr = 0; fdr < fdlist->fl_rows; fdr++) {
 			for (int fdc = 0; fdc < CONFIG_NFILE_DESCRIPTORS_PER_BLOCK; fdc++) {
-				if (filelist->fl_files[fdr][fdc].f_inode) {
+				if (fdlist->fl_fds[fdr][fdc].f_file) {
 					++tcb_num_used_fds;
 				}
 			}
@@ -284,7 +304,7 @@ void LoadMon::stack_usage()
 #endif // CONFIG_NFILE_DESCRIPTORS_PER_BLOCK
 	}
 
-	sched_unlock();
+	px4_leave_critical_section(flags);
 
 	if (checked_task) {
 		task_stack_info.stack_free = stack_free;

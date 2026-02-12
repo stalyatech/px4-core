@@ -102,6 +102,7 @@ static const persistent_key_t public_keys[] = {
 #endif
 
 #ifdef PUBLIC_KEY3
+	,
 	{
 		.key = public_key3,
 		.key_size = sizeof(public_key3)

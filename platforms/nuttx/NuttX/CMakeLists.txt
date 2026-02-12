@@ -83,7 +83,6 @@ add_custom_command(
 )
 add_custom_target(nuttx_context DEPENDS ${NUTTX_DIR}/include/nuttx/config.h)
 
-
 # builtins
 set(builtin_apps_string)
 set(builtin_apps_decl_string)
@@ -122,6 +121,7 @@ if (NOT CONFIG_BUILD_FLAT)
 
 	configure_file(${CMAKE_CURRENT_SOURCE_DIR}/px4_kernel.bdat.in ${CMAKE_CURRENT_BINARY_DIR}/px4_kernel.bdat)
 	configure_file(${CMAKE_CURRENT_SOURCE_DIR}/px4_kernel.pdat.in ${CMAKE_CURRENT_BINARY_DIR}/px4_kernel.pdat)
+	configure_file(${CMAKE_CURRENT_SOURCE_DIR}/rc.sysinit.in      ${CMAKE_CURRENT_BINARY_DIR}/rc.sysinit)
 
 	add_custom_command(OUTPUT ${KERNEL_BUILTIN_DIR}/kernel_builtin_list.h ${KERNEL_BUILTIN_DIR}/kernel_builtin_proto.h
 		WORKING_DIRECTORY  ${KERNEL_BUILTIN_DIR}
@@ -172,6 +172,7 @@ function(add_nuttx_dir nuttx_lib nuttx_lib_dir kernel extra target)
 	file(GLOB_RECURSE nuttx_lib_files LIST_DIRECTORIES false
 		${CMAKE_CURRENT_SOURCE_DIR}/nuttx/${nuttx_lib_dir}/*.c
 		${CMAKE_CURRENT_SOURCE_DIR}/nuttx/${nuttx_lib_dir}/*.h
+		${CMAKE_CURRENT_SOURCE_DIR}/nuttx/${nuttx_lib_dir}/*.S
 	)
 
 	add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/nuttx/${nuttx_lib_dir}/lib${nuttx_lib}.a
@@ -205,9 +206,11 @@ if (NOT CONFIG_BUILD_FLAT)
 	add_nuttx_dir(arch arch/${CONFIG_ARCH}/src n "" arch)
 	add_dependencies(nuttx_arch_build nuttx_karch_build) # can't build these in parallel
 	add_nuttx_dir(karch arch/${CONFIG_ARCH}/src y -D__KERNEL__ karch)
-	add_nuttx_dir(c libs/libc n "" c)
+	add_nuttx_dir(c libs/libc n "-D__PX4_NUTTX" c)
 	add_dependencies(nuttx_c_build nuttx_kc_build) # can't build these in parallel
 	add_nuttx_dir(kc libs/libc y -D__KERNEL__ kc)
+	add_dependencies(nuttx_xx_build nuttx_kxx_build) # can't build these in parallel
+	add_nuttx_dir(kxx libs/libxx y -D__KERNEL__ all xx)
 	add_nuttx_dir(mm mm n "" mm)
 	add_dependencies(nuttx_mm_build nuttx_kmm_build) # can't build these in parallel
 	add_nuttx_dir(kmm mm y -D__KERNEL__ kmm)
@@ -216,7 +219,7 @@ if (NOT CONFIG_BUILD_FLAT)
 	add_nuttx_dir(stubs syscall y -D__KERNEL__ stubs)
 else()
 	add_nuttx_dir(arch arch/${CONFIG_ARCH}/src y -D__KERNEL__ all)
-	add_nuttx_dir(c libs/libc n "" all)
+	add_nuttx_dir(c libs/libc n "-D__PX4_NUTTX" all)
 	add_nuttx_dir(mm mm n "" mm)
 endif()
 

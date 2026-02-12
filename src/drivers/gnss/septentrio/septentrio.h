@@ -704,7 +704,7 @@ private:
 	}
 
 	State                                  _state {State::OpeningSerialPort};                            ///< Driver state which allows for single run loop
-	px4::atomic<int>                       _scheduled_reset {static_cast<int>(ReceiverResetType::None)}; ///< The type of receiver reset that is scheduled
+	px4::atomic<int32_t>                   _scheduled_reset {static_cast<int>(ReceiverResetType::None)}; ///< The type of receiver reset that is scheduled
 	DumpMode                               _dump_communication_mode {DumpMode::Disabled};                ///< GPS communication dump mode
 	device::Serial                         _uart {};                                                     ///< Serial UART port for communication with the receiver
 	char                                   _port[20] {};                                                 ///< The path of the used serial device

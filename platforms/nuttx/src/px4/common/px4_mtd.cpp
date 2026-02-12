@@ -52,6 +52,7 @@
 #include <inttypes.h>
 #include <errno.h>
 #include <stdbool.h>
+#include <fcntl.h>
 #include "systemlib/px4_macros.h"
 
 #include <nuttx/drivers/drivers.h>
@@ -59,7 +60,8 @@
 #include <nuttx/mtd/mtd.h>
 
 extern "C" {
-	struct mtd_dev_s *ramtron_initialize(FAR struct spi_dev_s *dev);
+	struct mtd_dev_s *ramtron_initialize(FAR struct spi_dev_s *dev,
+										 uint16_t spi_devid);
 	struct mtd_dev_s *mtd_partition(FAR struct mtd_dev_s *mtd,
 					off_t firstblock, off_t nblocks);
 }
@@ -96,7 +98,7 @@ static int ramtron_attach(mtd_instance_s &instance)
 		SPI_SELECT(spi, instance.devid, false);
 		SPI_LOCK(spi, false);
 
-		instance.mtd_dev = ramtron_initialize(spi);
+		instance.mtd_dev = ramtron_initialize(spi, instance.devid);
 
 		if (instance.mtd_dev) {
 			/* abort on first valid result */
@@ -414,7 +416,7 @@ memoryout:
 
 			/* Now create a character device on the block device */
 
-			rv = bchdev_register(blockname, instances[i]->partition_names[part], false);
+			rv = bchdev_register(blockname, instances[i]->partition_names[part], O_RDWR);
 
 			if (rv < 0) {
 				PX4_ERR("bchdev_register %s failed: %d", instances[i]->partition_names[part], rv);

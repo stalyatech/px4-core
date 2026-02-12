@@ -1,0 +1,13 @@
+{
+    "board_id": 96,
+    "magic": "NEXUSTPUv2",
+    "description": "Firmware for the Nexus TPU v2 board (SG2000 RISC-V)",
+    "image": "",
+    "build_time": 0,
+    "summary": "NEXUSTPUv2",
+    "version": "2.0",
+    "image_size": 0,
+    "image_maxsize": 1048576,
+    "git_identity": "",
+    "board_revision": 0
+}

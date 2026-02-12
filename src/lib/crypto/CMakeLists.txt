@@ -33,6 +33,8 @@
 
 if (DEFINED PX4_CRYPTO)
 
+add_compile_options(-Wno-calloc-transposed-args)
+
 px4_add_git_submodule(TARGET git_monocypher PATH "monocypher")
 px4_add_git_submodule(TARGET git_libtomcrypt PATH "libtomcrypt")
 px4_add_git_submodule(TARGET git_libtommath PATH "libtommath")

@@ -289,9 +289,10 @@ CDev::poll(file_t *filep, px4_pollfd_struct_t *fds, bool setup)
 
 			/* yes? post the notification */
 			if (fds->revents != 0) {
+#ifndef __PX4_NUTTX
 				px4_sem_post(fds->sem);
+#endif
 			}
-
 		}
 
 		ATOMIC_LEAVE;
@@ -336,7 +337,9 @@ CDev::poll_notify_one(px4_pollfd_struct_t *fds, px4_pollevent_t events)
 	PX4_DEBUG(" Events fds=%p %0x %0x %0x", fds, fds->revents, fds->events, events);
 
 	if (fds->revents != 0) {
+#ifndef __PX4_NUTTX
 		px4_sem_post(fds->sem);
+#endif
 	}
 }
 

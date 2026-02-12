@@ -48,9 +48,12 @@
 #include <errno.h>
 #include <unistd.h>
 #include <time.h>
+#ifdef __PX4_NUTTX
 #include <nuttx/fs/fs.h>
-
+#include <nuttx/crc32.h>
+#else
 #include <crc32.h>
+#endif
 
 #ifdef CONFIG_BOARD_CRASHDUMP
 

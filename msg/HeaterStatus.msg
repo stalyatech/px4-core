@@ -17,4 +17,5 @@ float32 feed_forward_value
 
 uint8 MODE_GPIO  = 1
 uint8 MODE_PX4IO = 2
+uint8 MODE_IOE   = 3
 uint8 mode

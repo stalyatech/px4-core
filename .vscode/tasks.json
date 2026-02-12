@@ -69,7 +69,7 @@
         {
             "label": "gazebo-classic build",
             "type": "shell",
-            "command": "make px4_sitl_default sitl_gazebo-classic",
+            "command": "PX4_ASAN=1 make px4_sitl_default sitl_gazebo-classic",
             "options": {
                 "cwd": "${workspaceFolder}"
             },

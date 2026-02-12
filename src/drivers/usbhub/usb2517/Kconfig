@@ -1,0 +1,5 @@
+menuconfig DRIVERS_USBHUB_USB2517
+	bool "usb2517"
+	default n
+	---help---
+		Enable support for usb2517
