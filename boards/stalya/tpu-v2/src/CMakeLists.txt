@@ -33,10 +33,11 @@
 
 add_library(drivers_board
 	init.c
-	init_entrypt.c
+	tpu_pwm.c
 )
 
 target_link_libraries(drivers_board
 	PRIVATE
 		nuttx_arch
+		nuttx_drivers
 )

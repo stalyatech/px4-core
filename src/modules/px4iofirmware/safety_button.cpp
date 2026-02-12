@@ -88,7 +88,11 @@ failsafe_led_init(void)
 static void
 safety_button_check(void *arg)
 {
+#if defined(GPIO_BTN_SAFETY)
 	const bool safety_button_pressed = px4_arch_gpioread(GPIO_BTN_SAFETY);
+#else
+	const bool safety_button_pressed = false;
+#endif
 
 	/* Keep safety button pressed for one second to trigger safety button event.
 	 * The logic to prevent turning on safety again is in the commander.

@@ -63,6 +63,7 @@
 
 #include <board_config.h>
 #include <drivers/drv_hrt.h>
+#include <systemlib/ppm_decode.h>
 #include <nuttx/board.h>
 
 #define getreg32(a)          (*(volatile uint32_t *)(a))
@@ -108,6 +109,12 @@ static spinlock_t g_hrt_lock = SP_UNLOCKED;
 const uint16_t latency_bucket_count = LATENCY_BUCKET_COUNT;
 const uint16_t latency_buckets[LATENCY_BUCKET_COUNT] = { 1, 2, 5, 10, 20, 50, 100, 1000 };
 __EXPORT uint32_t latency_counters[LATENCY_BUCKET_COUNT + 1];
+
+/* PPM state exported for px4iofirmware/rc input users. */
+__EXPORT uint16_t ppm_buffer[PPM_MAX_CHANNELS];
+__EXPORT uint16_t ppm_frame_length = 0;
+__EXPORT unsigned ppm_decoded_channels = 0;
+__EXPORT hrt_abstime ppm_last_valid_decode = 0;
 
 /* timer-specific functions */
 static void hrt_tim_init(void);

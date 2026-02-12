@@ -22,6 +22,10 @@
 
 #include <arch/board/board.h>
 
+__BEGIN_DECLS
+int board_pwm_setup(void);
+__END_DECLS
+
 __EXPORT void sg2000_boardinitialize(void)
 {
 	syslog(LOG_INFO, "tpu-v2: sg2000_boardinitialize\n");
@@ -30,5 +34,10 @@ __EXPORT void sg2000_boardinitialize(void)
 __EXPORT int board_app_initialize(uintptr_t arg)
 {
 	(void)arg;
+
+	if (board_pwm_setup() != OK) {
+		syslog(LOG_ERR, "tpu-v2: board_pwm_setup failed\n");
+	}
+
 	return OK;
 }
