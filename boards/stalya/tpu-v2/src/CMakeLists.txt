@@ -33,7 +33,9 @@
 
 add_library(drivers_board
 	init.c
+	tpu_ppm.c
 	tpu_pwm.c
+	timer_config.cpp
 )
 
 target_link_libraries(drivers_board

@@ -381,6 +381,11 @@ else()
 	target_link_libraries(nuttx_xx INTERFACE nuttx_c)
 	target_link_libraries(nuttx_fs INTERFACE nuttx_c)
 
+	# SG2000 keeps startup head object outside libarch.a; link it explicitly.
+	if(CONFIG_ARCH_CHIP_SG2000)
+		target_link_libraries(px4 PRIVATE ${NUTTX_DIR}/arch/${CONFIG_ARCH}/src/sg2000_head.o)
+	endif()
+
 		target_link_libraries(px4 PRIVATE
 
 			-nostartfiles

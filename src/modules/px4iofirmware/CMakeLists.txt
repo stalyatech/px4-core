@@ -33,23 +33,37 @@
 
 option(PX4IO_PERF "Enable px4io perf counters" OFF)
 
+if(${PX4_CHIP} STREQUAL "sg2000")
+	set(px4iofirmware_arch_sources
+		sg2000/adc.cpp
+		sg2000/serial.cpp
+	)
+	set(px4iofirmware_arch_libs)
+else()
+	set(px4iofirmware_arch_sources
+		stm32/adc.cpp
+		stm32/serial.cpp
+	)
+	set(px4iofirmware_arch_libs
+		arch_watchdog_iwdg
+	)
+endif()
+
 add_library(px4iofirmware
-	$<$<STREQUAL:${PX4_CHIP},sg2000>:adc_sg2000.cpp>
-	$<$<NOT:$<STREQUAL:${PX4_CHIP},sg2000>>:adc.cpp>
+	${px4iofirmware_arch_sources}
 	controls.cpp
 	mixer.cpp
 	px4io.cpp
 	registers.c
 	safety_button.cpp
-	$<$<STREQUAL:${PX4_CHIP},sg2000>:serial_sg2000.cpp>
-	$<$<NOT:$<STREQUAL:${PX4_CHIP},sg2000>>:serial.cpp>
 )
 
 set_property(GLOBAL APPEND PROPERTY PX4_MODULE_LIBRARIES px4iofirmware)
+target_include_directories(px4iofirmware PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(px4iofirmware
 	PUBLIC
 		arch_io_pins
-		$<$<NOT:$<STREQUAL:${PX4_CHIP},sg2000>>:arch_watchdog_iwdg>
+		${px4iofirmware_arch_libs}
 		nuttx_apps
 		nuttx_arch
 		nuttx_c

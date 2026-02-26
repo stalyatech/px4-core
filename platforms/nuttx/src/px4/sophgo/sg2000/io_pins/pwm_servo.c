@@ -28,26 +28,49 @@
 #define DIRECT_PWM_OUTPUT_CHANNELS 8
 #endif
 
-#define SG2000_PWM_GROUP_COUNT 4
+#define SG2000_PWM_GROUP_MAX 4
+#define SG2000_PWM_GROUP_DEFAULT_COUNT 4
 
 static int g_pwm_fd[DIRECT_PWM_OUTPUT_CHANNELS];
 static uint16_t g_pwm_value[DIRECT_PWM_OUTPUT_CHANNELS];
-static unsigned g_group_rate_hz[SG2000_PWM_GROUP_COUNT] = {50, 50, 50, 50};
+static unsigned g_group_rate_hz[SG2000_PWM_GROUP_MAX] = {50, 50, 50, 50};
 static bool g_armed;
 static bool g_fds_initialized;
 
+/* Weak defaults: boards can override these from their own timer_config.cpp. */
+__attribute__((weak)) const unsigned g_sg2000_pwm_group_count = SG2000_PWM_GROUP_DEFAULT_COUNT;
+__attribute__((weak)) const uint32_t g_sg2000_pwm_group_masks[SG2000_PWM_GROUP_MAX] = {
+	0x03u, /* ch1..ch2 */
+	0x0Cu, /* ch3..ch4 */
+	0x30u, /* ch5..ch6 */
+	0xC0u  /* ch7..ch8 */
+};
+
 static inline uint32_t group_mask(unsigned group)
 {
-	if (group >= SG2000_PWM_GROUP_COUNT) {
+	if (group >= SG2000_PWM_GROUP_MAX) {
 		return 0;
 	}
 
-	return (1u << (group * 2u)) | (1u << (group * 2u + 1u));
+	if (group >= g_sg2000_pwm_group_count) {
+		return 0;
+	}
+
+	return g_sg2000_pwm_group_masks[group];
 }
 
 static inline unsigned channel_group(unsigned channel)
 {
-	return channel / 2u;
+	const uint32_t bit = (1u << channel);
+
+	for (unsigned group = 0; group < SG2000_PWM_GROUP_MAX; group++) {
+		if (group_mask(group) & bit) {
+			return group;
+		}
+	}
+
+	/* No configured group: caller will reject with rate_hz == 0. */
+	return SG2000_PWM_GROUP_MAX;
 }
 
 static int apply_channel(unsigned channel)
@@ -56,7 +79,8 @@ static int apply_channel(unsigned channel)
 		return -1;
 	}
 
-	const unsigned rate_hz = g_group_rate_hz[channel_group(channel)];
+	const unsigned group = channel_group(channel);
+	const unsigned rate_hz = (group < SG2000_PWM_GROUP_MAX) ? g_group_rate_hz[group] : 0;
 
 	if (rate_hz == 0) {
 		return -1;
@@ -138,7 +162,15 @@ void up_pwm_update(unsigned channels_mask)
 
 int up_pwm_servo_set_rate_group_update(unsigned group, unsigned rate)
 {
-	if (group >= SG2000_PWM_GROUP_COUNT || rate == 0 || rate > 10000) {
+	if (group >= SG2000_PWM_GROUP_MAX) {
+		return -1;
+	}
+
+	if (group >= g_sg2000_pwm_group_count) {
+		return -1;
+	}
+
+	if (rate == 0 || rate > 10000) {
 		return -1;
 	}
 

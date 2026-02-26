@@ -39,6 +39,7 @@
 
 #include <nuttx/config.h>
 #include <arch/board/board.h>
+#include <nuttx/arch.h>
 
 #if defined(CONFIG_SCHED_CRITMONITOR) || defined(CONFIG_SCHED_IRQMONITOR)
 
@@ -46,15 +47,13 @@
  * Public Functions
  ************************************************************************************/
 
-#error "critmon not supported yet"
-
 /************************************************************************************
  * Name: up_critmon_gettime
  ************************************************************************************/
 
 uint32_t up_critmon_gettime(void)
 {
-	return 0;
+	return (uint32_t)up_perf_gettime();
 }
 
 /************************************************************************************
@@ -63,6 +62,7 @@ uint32_t up_critmon_gettime(void)
 
 void up_critmon_convert(uint32_t elapsed, FAR struct timespec *ts)
 {
+	up_perf_convert(elapsed, ts);
 }
 
 #endif /* CONFIG_SCHED_CRITMONITOR || CONFIG_SCHED_IRQMONITOR */

@@ -37,8 +37,16 @@ static int read_full(void *buffer, size_t len, int timeout_ms)
 		pfd.events = POLLIN;
 		const int poll_ret = poll(&pfd, 1, timeout_ms);
 
-		if (poll_ret <= 0) {
+		if (poll_ret == 0) {
 			return -ETIMEDOUT;
+		}
+
+		if (poll_ret < 0) {
+			if (errno == EINTR) {
+				continue;
+			}
+
+			return -errno;
 		}
 
 		const ssize_t n = read(_fmu_fd, &dst[received], len - received);
@@ -48,6 +56,32 @@ static int read_full(void *buffer, size_t len, int timeout_ms)
 		}
 
 		received += static_cast<size_t>(n);
+	}
+
+	return OK;
+}
+
+static int write_full(const void *buffer, size_t len)
+{
+	const uint8_t *src = static_cast<const uint8_t *>(buffer);
+	size_t written = 0;
+
+	while (written < len) {
+		const ssize_t n = write(_fmu_fd, &src[written], len - written);
+
+		if (n < 0) {
+			if (errno == EINTR) {
+				continue;
+			}
+
+			return -errno;
+		}
+
+		if (n == 0) {
+			return -EIO;
+		}
+
+		written += static_cast<size_t>(n);
 	}
 
 	return OK;
@@ -99,7 +133,10 @@ static void handle_packet(IOPacket &packet)
 
 	packet.crc = 0;
 	packet.crc = crc_packet(&packet);
-	(void)write(_fmu_fd, &packet, PKT_SIZE(packet));
+
+	if (write_full(&packet, PKT_SIZE(packet)) != OK) {
+		syslog(LOG_ERR, "px4io_sg2000: packet response write failed\n");
+	}
 }
 
 static void *rx_worker(void *arg)
@@ -169,5 +206,11 @@ void interface_init(void)
 #endif
 	(void)tcsetattr(_fmu_fd, TCSANOW, &t);
 
-	(void)pthread_create(&_rx_thread, nullptr, rx_worker, nullptr);
+	const int pthread_ret = pthread_create(&_rx_thread, nullptr, rx_worker, nullptr);
+
+	if (pthread_ret != 0) {
+		syslog(LOG_ERR, "px4io_sg2000: failed to start RX thread (%d)\n", pthread_ret);
+		close(_fmu_fd);
+		_fmu_fd = -1;
+	}
 }

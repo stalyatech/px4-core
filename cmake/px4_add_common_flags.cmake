@@ -92,6 +92,12 @@ function(px4_add_common_flags)
 
 		)
 
+	# TPU-v2 remoteproc firmware should stay minimal; override global debug symbols.
+	if(("${PX4_PLATFORM}" STREQUAL "nuttx") AND ("${PX4_CONFIG}" MATCHES "^stalya_tpu-v2"))
+		add_compile_options(-g0)
+		add_link_options(-Wl,--strip-debug)
+	endif()
+
 	# compiler specific flags
 	if (("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang") OR ("${CMAKE_CXX_COMPILER_ID}" MATCHES "AppleClang"))
 
