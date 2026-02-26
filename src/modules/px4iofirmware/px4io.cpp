@@ -48,6 +48,8 @@
 #include <malloc.h>
 #include <poll.h>
 #include <signal.h>
+#include <fcntl.h>
+#include <unistd.h>
 #ifdef __PX4_NUTTX
 #include <nuttx/crc32.h>
 #else
@@ -100,6 +102,26 @@ static char msg[NUM_MSG][PX4IO_DEBUG_BUFSIZE];
 static void heartbeat_blink(void);
 static void ring_blink(void);
 static void update_mem_usage(void);
+
+#if defined(CONFIG_ARCH_CHIP_SG2000)
+extern "C" int board_app_initialize(uintptr_t arg);
+#endif
+
+#if defined(CONFIG_ARCH_CHIP_SG2000) && defined(PX4IO_DEBUG)
+static void sg2000_debug_uart_write(const char *text)
+{
+	const char *devs[] = {"/dev/ttyS1", "/dev/ttyS0"};
+
+	for (unsigned i = 0; i < sizeof(devs) / sizeof(devs[0]); i++) {
+		const int fd = ::open(devs[i], O_WRONLY | O_NONBLOCK);
+
+		if (fd >= 0) {
+			(void)::write(fd, text, strlen(text));
+			(void)::close(fd);
+		}
+	}
+}
+#endif
 
 void atomic_modify_or(volatile uint16_t *target, uint16_t modification)
 {
@@ -295,6 +317,22 @@ calculate_fw_crc(void)
 
 extern "C" __EXPORT int user_start(int argc, char *argv[])
 {
+#if defined(CONFIG_ARCH_CHIP_SG2000) && defined(PX4IO_DEBUG)
+	sg2000_debug_uart_write("\n[px4io][boot] user_start enter\n");
+#endif
+
+#if defined(CONFIG_ARCH_CHIP_SG2000)
+	const int board_init_ret = board_app_initialize(0);
+
+	if (board_init_ret != OK) {
+		syslog(LOG_ERR, "px4io_sg2000: board_app_initialize failed (%d)\n", board_init_ret);
+#if defined(PX4IO_DEBUG)
+		sg2000_debug_uart_write("[px4io][boot] board_app_initialize failed\n");
+#endif
+		return board_init_ret;
+	}
+#endif
+
 	/* configure the first 8 PWM outputs (i.e. all of them) */
 	up_pwm_servo_init(0xff);
 
@@ -317,6 +355,9 @@ extern "C" __EXPORT int user_start(int argc, char *argv[])
 
 	/* print some startup info */
 	syslog(LOG_INFO, "\nPX4IO: starting\n");
+#if defined(CONFIG_ARCH_CHIP_SG2000) && defined(PX4IO_DEBUG)
+	sg2000_debug_uart_write("[px4io][boot] PX4IO starting\n");
+#endif
 
 	/* default all the LEDs to off while we start */
 	LED_AMBER(false);

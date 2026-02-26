@@ -38,6 +38,7 @@ include_directories(
 )
 
 add_subdirectory(../sg2000_common/adc adc)
+add_subdirectory(px4io_serial px4io_serial)
 
 add_subdirectory(board_critmon board_critmon)
 add_subdirectory(board_reset board_reset)

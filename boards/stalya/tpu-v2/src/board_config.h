@@ -18,8 +18,11 @@
 
 /* TPU-v2 RISC-V PX4IO firmware transport on SG2000 little core. */
 
-#define PX4FMU_SERIAL_DEVICE		"/dev/ttyS4"
+#define PX4FMU_SERIAL_DEVICE		"/dev/ttyS0"
 #define PX4FMU_SERIAL_BAUDRATE		1500000
+
+/* Global PX4IO debug switch: comment this out to disable PX4IO debug logs. */
+#define PX4IO_DEBUG 1
 
 /* Board-specific control/status signals are currently optional on TPU-v2. */
 #define LED_AMBER(_on_true)		do { (void)(_on_true); } while (0)

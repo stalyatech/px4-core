@@ -67,20 +67,8 @@ __BEGIN_DECLS
  */
 #define PX4_CPU_MFGUID_BYTE_LENGTH              PX4_CPU_UUID_BYTE_LENGTH
 
-/* Battery backed up SRAM definitions. TODO: check what memory can actually be used */
+/* Battery backed up SRAM definitions */
 #define PX4_BBSRAM_SIZE             2048
-
-
-// TODO: Use some proper UUID which can be obtained from the HW
-#define PX4_CPU_UUID_BYTE_LENGTH                16
-#define PX4_CPU_UUID_WORD32_LENGTH              (PX4_CPU_UUID_BYTE_LENGTH/sizeof(uint32_t))
-
-/* The mfguid will be an array of bytes with
- * MSD @ index 0 - LSD @ index PX4_CPU_MFGUID_BYTE_LENGTH-1
- *
- * It will be converted to a string with the MSD on left and LSD on the right most position.
- */
-#define PX4_CPU_MFGUID_BYTE_LENGTH              PX4_CPU_UUID_BYTE_LENGTH
 
 /* define common formating across all commands */
 
@@ -94,7 +82,7 @@ __BEGIN_DECLS
 
 static inline struct spi_dev_s *board_spibus_initialize_wrap(int port)
 {
-	return 0;
+	return sg2000_spibus_initialize(port - 1);
 }
 
 #define PX4_BUS_OFFSET       1                  /* MPFS buses are 0 based, so adjustment needed */
@@ -124,7 +112,6 @@ static inline uintptr_t hrt_absolute_time_usr_base(void)
 	return 0;
 }
 
-// TODO!
 #  define px4_cache_aligned_data()
 #  define px4_cache_aligned_alloc malloc
 

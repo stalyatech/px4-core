@@ -43,9 +43,13 @@
 #include <px4_platform/board_determine_hw_info.h>
 #include <px4_arch/device_info.h>
 #include <stdint.h>
+#include <string.h>
+#include <stdio.h>
 
 #include <board_config.h>
 #include <lib/systemlib/px4_macros.h>
+#include <nuttx/arch.h>
+#include <arch/csr.h>
 
 #include <uORB/uORB.h>
 #include <uORB/topics/guid.h>
@@ -73,7 +77,7 @@
 
 __EXPORT const char *board_get_hw_type_name()
 {
-	return (const char *) 0;
+	return "sg2000";
 }
 
 #if defined(BOARD_HAS_HW_SPLIT_VERSIONING)
@@ -93,7 +97,7 @@ __EXPORT const char *board_get_hw_type_name()
 
 __EXPORT const char *board_get_hw_base_type_name()
 {
-	return (const char *) 0;
+	return "sg2000";
 }
 #endif
 
@@ -139,33 +143,94 @@ __EXPORT int board_get_hw_revision()
 	return 0;
 }
 
+/* SG2000 FSBL reads these eFuse words as SoC serial related data. */
+#define SG2000_EFUSE_LEAKAGE 0x03050108u
+#define SG2000_EFUSE_FTSN3   0x0305010cu
+#define SG2000_EFUSE_FTSN4   0x03050110u
+
+static const uint16_t soc_arch_id = PX4_SOC_ARCH_ID;
+
+#define SWAP_UINT32(x) (((x) >> 24) | (((x) & 0x00ff0000) >> 8) | (((x) & 0x0000ff00) << 8) | ((x) << 24))
+
+static void board_read_uuid_words(uuid_uint32_t uuid_words)
+{
+	uuid_words[0] = getreg32(SG2000_EFUSE_FTSN4);
+	uuid_words[1] = getreg32(SG2000_EFUSE_FTSN3);
+	uuid_words[2] = getreg32(SG2000_EFUSE_LEAKAGE);
+	uuid_words[3] = READ_CSR(CSR_MIMPID);
+}
+
 __EXPORT void board_get_uuid32(uuid_uint32_t uuid_words)
 {
+	board_read_uuid_words(uuid_words);
 }
 
 int board_mcu_version(char *rev, const char **revstr, const char **errata)
 {
-	return 0;
+	if (rev) {
+		const uint32_t mimpid = READ_CSR(CSR_MIMPID);
+		const uint32_t rev_id = mimpid & 0xf;
+		*rev = (rev_id < 10) ? ('0' + rev_id) : ('A' + (rev_id - 10));
+	}
+
+	if (revstr) {
+		*revstr = "SG2000";
+	}
+
+	if (errata) {
+		*errata = NULL;
+	}
+
+	return (int)(READ_CSR(CSR_MIMPID) & 0xffff);
 }
 
 const char *board_bl_version_string(void)
 {
-	return 0;
+	return "";
 }
 
 const char *board_fpga_version_string(void)
 {
-	return 0;
+	return "";
 }
 
 int board_get_px4_guid(px4_guid_t px4_guid)
 {
-	return 0;
+	uint8_t *pb = (uint8_t *)&px4_guid[0];
+	*pb++ = (soc_arch_id >> 8) & 0xff;
+	*pb++ = (soc_arch_id & 0xff);
+
+	const int padding = PX4_GUID_BYTE_LENGTH - (int)(sizeof(soc_arch_id) + PX4_CPU_UUID_BYTE_LENGTH);
+
+	for (int i = 0; i < padding; i++) {
+		*pb++ = 0u;
+	}
+
+	uuid_uint32_t chip_uuid = {0};
+	board_read_uuid_words(chip_uuid);
+
+	for (unsigned i = 0; i < PX4_CPU_UUID_WORD32_LENGTH; i++) {
+		uint32_t uuid_bytes = SWAP_UINT32(chip_uuid[(PX4_CPU_UUID_WORD32_LENGTH - 1) - i]);
+		memcpy(pb, &uuid_bytes, sizeof(uint32_t));
+		pb += sizeof(uint32_t);
+	}
+
+	return PX4_GUID_BYTE_LENGTH;
 }
 
 int board_get_px4_guid_formated(char *format_buffer, int size)
 {
-	return 0;
+	px4_guid_t px4_guid;
+	board_get_px4_guid(px4_guid);
+	int offset = 0;
+
+	size = size & 1 ? size : size - 1;
+
+	for (unsigned i = PX4_GUID_BYTE_LENGTH - size / 2; offset < size && i < PX4_GUID_BYTE_LENGTH; i++) {
+		offset += snprintf(&format_buffer[offset], size - offset, "%02x", px4_guid[i]);
+	}
+
+	return offset;
 }
 
 /************************************************************************************
@@ -192,5 +257,15 @@ int board_determine_hw_info(void)
 
 int board_get_mfguid(mfguid_t mfgid)
 {
-	return 0;
+	uint8_t *rv = &mfgid[0];
+	uuid_uint32_t chip_uuid = {0};
+	board_read_uuid_words(chip_uuid);
+
+	for (unsigned i = 0; i < PX4_CPU_UUID_WORD32_LENGTH; i++) {
+		uint32_t uuid_bytes = SWAP_UINT32(chip_uuid[(PX4_CPU_UUID_WORD32_LENGTH - 1) - i]);
+		memcpy(rv, &uuid_bytes, sizeof(uint32_t));
+		rv += sizeof(uint32_t);
+	}
+
+	return PX4_CPU_MFGUID_BYTE_LENGTH;
 }

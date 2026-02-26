@@ -60,11 +60,45 @@
 #include <queue.h>
 #include <errno.h>
 #include <string.h>
+#include <syslog.h>
 
 #include <board_config.h>
 #include <drivers/drv_hrt.h>
 #include <systemlib/ppm_decode.h>
 #include <nuttx/board.h>
+#include <arch/mode.h>
+#include "hardware/sg2000_clint.h"
+
+#ifndef CONFIG_ARCH_RV_EXT_SSTC
+static inline void sg2000_set_timer_compare(uint64_t stime_value)
+{
+#ifdef CONFIG_ARCH_USE_S_MODE
+	register long a0 asm("a0") = (long)stime_value;
+#ifdef CONFIG_ARCH_RV64
+	register long a1 asm("a1") = 0;
+#else
+	register long a1 asm("a1") = (long)(stime_value >> 32);
+#endif
+	register long a2 asm("a2") = 0;
+	register long a3 asm("a3") = 0;
+	register long a4 asm("a4") = 0;
+	register long a5 asm("a5") = 0;
+	register long a6 asm("a6") = 0;          /* SBI_EXT_TIME_SET_TIMER */
+	register long a7 asm("a7") = 0x54494D45; /* SBI_EXT_TIME */
+	asm volatile("ecall"
+		     : "+r"(a0), "+r"(a1)
+		     : "r"(a2), "r"(a3), "r"(a4), "r"(a5), "r"(a6), "r"(a7)
+		     : "memory");
+#else
+	const uintptr_t mtimecmp = SG2000_CLINT_MTIMECMP0 +
+				   (CONFIG_SG2000_BOOT_HART * sizeof(uint64_t));
+	/* 64-bit compare must be updated high/low/high to avoid spurious fire. */
+	putreg32(UINT32_MAX, mtimecmp + 4);
+	putreg32((uint32_t)stime_value, mtimecmp);
+	putreg32((uint32_t)(stime_value >> 32), mtimecmp + 4);
+#endif
+}
+#endif
 
 #define getreg32(a)          (*(volatile uint32_t *)(a))
 #define putreg32(v,a)        (*(volatile uint32_t *)(a) = (v))
@@ -73,6 +107,12 @@
 #  define hrtinfo _info
 #else
 #  define hrtinfo(x...)
+#endif
+
+#ifdef PX4IO_DEBUG
+# define PX4IO_DBG(_fmt, ...) syslog(LOG_INFO, "[px4io][hrt] " _fmt, ##__VA_ARGS__)
+#else
+# define PX4IO_DBG(_fmt, ...)
 #endif
 
 static uint32_t g_hrt_clk_rate_mhz = 1;
@@ -136,9 +176,21 @@ static void hrt_call_invoke(void);
 
 inline static void hrt_set_new_deadline(uint32_t deadline)
 {
-	/* load the new deadline into register and store it locally */
-
 	loadval = hrt_absolute_time() + deadline;
+
+	const uint64_t now_counts = READ_CSR(CSR_TIME);
+	const uint64_t next_counts = now_counts + HRT_TIME_TO_COUNTS(deadline);
+
+#ifdef CONFIG_ARCH_RV_EXT_SSTC
+#ifdef CONFIG_ARCH_RV64
+	WRITE_CSR(CSR_STIMECMP, next_counts);
+#else
+	WRITE_CSR(CSR_STIMECMP, (uint32_t)next_counts);
+	WRITE_CSR(CSR_STIMECMPH, (uint32_t)(next_counts >> 32));
+#endif
+#else
+	sg2000_set_timer_compare(next_counts);
+#endif
 }
 
 /**
@@ -152,6 +204,7 @@ hrt_tim_init(void)
 	/* attach irq */
 	int ret;
 	ret = irq_attach(RISCV_IRQ_TIMER, hrt_tim_isr, NULL);
+	PX4IO_DBG("timer init: irq_attach(timer) ret=%d\n", ret);
 
 	if (ret == OK) {
 
@@ -164,6 +217,7 @@ hrt_tim_init(void)
 
 		/* enable interrupts */
 		up_enable_irq(RISCV_IRQ_TIMER);
+		PX4IO_DBG("timer init: timer irq enabled\n");
 	}
 }
 
@@ -174,30 +228,24 @@ hrt_tim_init(void)
 static int
 hrt_tim_isr(int irq, void *context, void *arg)
 {
-	uint32_t status = 0;
+	(void)irq;
+	(void)context;
+	(void)arg;
 
-	/* read the interrupt status */
+	/* get exclusive access to hrt */
+	spin_lock_notrace(&g_hrt_lock);
 
-	/* was this a timer tick? */
-	if (status & 1) {
-		/* get exclusive access to hrt */
-		spin_lock_notrace(&g_hrt_lock);
+	/* do latency calculations */
+	hrt_latency_update();
 
-		/* do latency calculations */
-		hrt_latency_update();
+	/* run any callouts that have met their deadline */
+	hrt_call_invoke();
 
-		/* run any callouts that have met their deadline */
-		hrt_call_invoke();
+	/* and schedule the next interrupt */
+	hrt_call_reschedule();
 
-		/* and schedule the next interrupt */
-		hrt_call_reschedule();
-
-		/* release exclusive access */
-		spin_unlock_notrace(&g_hrt_lock);
-
-		/* clear the interrupt */
-
-	}
+	/* release exclusive access */
+	spin_unlock_notrace(&g_hrt_lock);
 
 	return OK;
 }
@@ -232,6 +280,8 @@ hrt_init(void)
 	if (perf_freq >= 1000000UL) {
 		g_hrt_clk_rate_mhz = (uint32_t)(perf_freq / 1000000UL);
 	}
+
+	PX4IO_DBG("hrt_init: perf_freq=%lu Hz, clk=%u MHz\n", perf_freq, g_hrt_clk_rate_mhz);
 
 	sq_init(&callout_queue);
 	hrt_tim_init();

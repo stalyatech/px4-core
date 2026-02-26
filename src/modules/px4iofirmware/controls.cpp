@@ -43,18 +43,34 @@
 #include <stdbool.h>
 
 #include <drivers/drv_hrt.h>
+#include <nuttx/timers/capture.h>
 #include <systemlib/ppm_decode.h>
 #include <rc/st24.h>
 #include <rc/sumd.h>
 #include <rc/sbus.h>
 #include <rc/dsm.h>
 #include <uORB/topics/input_rc.h>
+#include <fcntl.h>
+#include <sys/ioctl.h>
+#include <unistd.h>
 
 #if defined(PX4IO_PERF)
 # include <perf/perf_counter.h>
 #endif
 
 #include "px4io.h"
+
+#ifndef PX4IO_PPM_CAPTURE_DEVICE
+#define PX4IO_PPM_CAPTURE_DEVICE "/dev/capture0"
+#endif
+
+#ifndef PPMIOC_GET_CHANNELS
+#define PPMIOC_GET_CHANNELS _CAPIOC(128)
+#endif
+
+#if defined(CONFIG_ARCH_CHIP_SG2000) && !defined(CONFIG_SG2000_PPM)
+#error "SG2000 PX4IO requires CONFIG_SG2000_PPM=y (no HRT PPM fallback available)"
+#endif
 
 static bool	ppm_input(uint16_t *values, uint16_t *num_values, uint16_t *frame_len);
 static bool	dsm_port_input(uint16_t *rssi, bool *dsm_updated, bool *st24_updated, bool *sumd_updated);
@@ -67,6 +83,7 @@ static perf_counter_t c_gather_ppm;
 
 static int _dsm_fd = -1;
 int _sbus_fd = -1;
+static int _ppm_fd = -1;
 
 #ifdef ADC_RSSI
 static unsigned _rssi_adc_counts = 0;
@@ -198,6 +215,9 @@ controls_init(void)
 
 	/* S.bus input (USART3) */
 	_sbus_fd = sbus_init("/dev/ttyS2", false);
+
+	/* Optional SG2000 PPM capture driver path. */
+	_ppm_fd = open(PX4IO_PPM_CAPTURE_DEVICE, O_RDONLY);
 
 #if defined(PX4IO_PERF)
 	c_gather_dsm = perf_alloc(PC_ELAPSED, "c_gather_dsm");
@@ -419,6 +439,31 @@ ppm_input(uint16_t *values, uint16_t *num_values, uint16_t *frame_len)
 		return result;
 	}
 
+	/* Prefer SG2000 capture driver when available. */
+	if (_ppm_fd >= 0) {
+		const int nch = ioctl(_ppm_fd, PPMIOC_GET_CHANNELS, (unsigned long)(uintptr_t)values);
+
+		if (nch > 0) {
+			*num_values = (uint16_t)nch;
+
+			if (*num_values > PX4IO_RC_INPUT_CHANNELS) {
+				*num_values = PX4IO_RC_INPUT_CHANNELS;
+			}
+
+			uint32_t freq_hz = 0;
+
+			if (ioctl(_ppm_fd, CAPIOC_FREQUENCE, (unsigned long)(uintptr_t)&freq_hz) == OK && freq_hz > 0) {
+				*frame_len = (uint16_t)(1000000u / freq_hz);
+			}
+
+			return true;
+		}
+	}
+
+	/* SG2000 must use the capture driver path above. */
+#if defined(CONFIG_ARCH_CHIP_SG2000)
+	return false;
+#else
 	/* avoid racing with PPM updates */
 	irqstate_t state = px4_enter_critical_section();
 
@@ -452,4 +497,5 @@ ppm_input(uint16_t *values, uint16_t *num_values, uint16_t *frame_len)
 	px4_leave_critical_section(state);
 
 	return result;
+#endif
 }
