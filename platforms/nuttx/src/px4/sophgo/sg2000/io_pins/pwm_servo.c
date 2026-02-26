@@ -37,7 +37,7 @@ static unsigned g_group_rate_hz[SG2000_PWM_GROUP_MAX] = {50, 50, 50, 50};
 static bool g_armed;
 static bool g_fds_initialized;
 
-/* Weak defaults: boards can override these from their own timer_config.cpp. */
+/* Weak defaults: boards can override these from their own board timer mapping source file. */
 __attribute__((weak)) const unsigned g_sg2000_pwm_group_count = SG2000_PWM_GROUP_DEFAULT_COUNT;
 __attribute__((weak)) const uint32_t g_sg2000_pwm_group_masks[SG2000_PWM_GROUP_MAX] = {
 	0x03u, /* ch1..ch2 */

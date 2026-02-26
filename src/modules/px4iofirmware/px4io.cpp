@@ -107,22 +107,6 @@ static void update_mem_usage(void);
 extern "C" int board_app_initialize(uintptr_t arg);
 #endif
 
-#if defined(CONFIG_ARCH_CHIP_SG2000) && defined(PX4IO_DEBUG)
-static void sg2000_debug_uart_write(const char *text)
-{
-	const char *devs[] = {"/dev/ttyS1", "/dev/ttyS0"};
-
-	for (unsigned i = 0; i < sizeof(devs) / sizeof(devs[0]); i++) {
-		const int fd = ::open(devs[i], O_WRONLY | O_NONBLOCK);
-
-		if (fd >= 0) {
-			(void)::write(fd, text, strlen(text));
-			(void)::close(fd);
-		}
-	}
-}
-#endif
-
 void atomic_modify_or(volatile uint16_t *target, uint16_t modification)
 {
 	if ((*target | modification) != *target) {
@@ -318,7 +302,7 @@ calculate_fw_crc(void)
 extern "C" __EXPORT int user_start(int argc, char *argv[])
 {
 #if defined(CONFIG_ARCH_CHIP_SG2000) && defined(PX4IO_DEBUG)
-	sg2000_debug_uart_write("\n[px4io][boot] user_start enter\n");
+	syslog(LOG_INFO, "[px4io][boot] user_start enter\n");
 #endif
 
 #if defined(CONFIG_ARCH_CHIP_SG2000)
@@ -327,7 +311,7 @@ extern "C" __EXPORT int user_start(int argc, char *argv[])
 	if (board_init_ret != OK) {
 		syslog(LOG_ERR, "px4io_sg2000: board_app_initialize failed (%d)\n", board_init_ret);
 #if defined(PX4IO_DEBUG)
-		sg2000_debug_uart_write("[px4io][boot] board_app_initialize failed\n");
+		syslog(LOG_ERR, "[px4io][boot] board_app_initialize failed\n");
 #endif
 		return board_init_ret;
 	}
@@ -356,7 +340,7 @@ extern "C" __EXPORT int user_start(int argc, char *argv[])
 	/* print some startup info */
 	syslog(LOG_INFO, "\nPX4IO: starting\n");
 #if defined(CONFIG_ARCH_CHIP_SG2000) && defined(PX4IO_DEBUG)
-	sg2000_debug_uart_write("[px4io][boot] PX4IO starting\n");
+	syslog(LOG_INFO, "[px4io][boot] PX4IO starting\n");
 #endif
 
 	/* default all the LEDs to off while we start */
@@ -411,14 +395,10 @@ extern "C" __EXPORT int user_start(int argc, char *argv[])
 	uint64_t last_debug_time = 0;
 	uint64_t last_heartbeat_time = 0;
 
-#if !defined(CONFIG_ARCH_CHIP_SG2000)
 	watchdog_init();
-#endif
 
 	for (;;) {
-#if !defined(CONFIG_ARCH_CHIP_SG2000)
 		watchdog_pet();
-#endif
 
 #if defined(PX4IO_PERF)
 		/* track the rate at which the loop is running */

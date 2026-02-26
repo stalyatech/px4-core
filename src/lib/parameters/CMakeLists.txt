@@ -91,6 +91,10 @@ endif()
 if(CONFIG_BOARD_IO)
 	set(board_with_io_arg --board-with-io)
 endif()
+set(board_timer_config_file ${PX4_BOARD_DIR}/src/timer_config.cpp)
+if(EXISTS ${PX4_BOARD_DIR}/src/tpu_tmr.cpp)
+	set(board_timer_config_file ${PX4_BOARD_DIR}/src/tpu_tmr.cpp)
+endif()
 
 add_custom_command(OUTPUT ${generated_serial_params_file} ${generated_module_params_file}
 	COMMAND ${CMAKE_COMMAND} -E make_directory ${generated_params_dir}
@@ -102,7 +106,7 @@ add_custom_command(OUTPUT ${generated_serial_params_file} ${generated_module_par
 	COMMAND ${PYTHON_EXECUTABLE} ${PX4_SOURCE_DIR}/Tools/module_config/generate_params.py
 		--params-file ${generated_module_params_file}
 		${added_arguments} ${board_with_io_arg}
-		--timer-config ${PX4_BOARD_DIR}/src/timer_config.cpp
+		--timer-config ${board_timer_config_file}
 		--config-files ${module_config_files}
 		--board ${PX4_BOARD}
 		#--verbose

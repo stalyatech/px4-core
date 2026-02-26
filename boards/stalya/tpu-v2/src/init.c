@@ -25,6 +25,9 @@
 
 #include <arch/board/board.h>
 #include <arch/sg2000/gpio.h>
+#ifdef CONFIG_SG2000_WDT
+#include <arch/sg2000/wdt.h>
+#endif
 
 #ifdef PX4IO_DEBUG
 # define PX4IO_DBG(_fmt, ...) syslog(LOG_INFO, "[px4io][init] " _fmt, ##__VA_ARGS__)
@@ -67,32 +70,17 @@ static void board_led_boot_toggle(void)
 
 __EXPORT void sg2000_boardinitialize(void)
 {
-	up_putc('\n');
-	up_putc('[');
-	up_putc('i');
-	up_putc('o');
-	up_putc(']');
-	up_putc(' ');
-	up_putc('b');
-	up_putc('o');
-	up_putc('o');
-	up_putc('t');
-	up_putc('\n');
 	board_led_boot_toggle();
-	syslog(LOG_INFO, "tpu-v2: sg2000_boardinitialize\n");
 	PX4IO_DBG("boardinitialize: enter\n");
+}
+
+__EXPORT void board_early_initialize(void)
+{
+	sg2000_boardinitialize();
 }
 
 __EXPORT void board_late_initialize(void)
 {
-	up_putc('\n');
-	up_putc('[');
-	up_putc('L');
-	up_putc(']');
-	up_putc('\n');
-
-	PX4IO_DBG("board_late_initialize: enter\n");
-	board_led_boot_toggle();
 	PX4IO_DBG("board_late_initialize: exit\n");
 }
 
@@ -119,5 +107,16 @@ __EXPORT int board_app_initialize(uintptr_t arg)
 	}
 
 	PX4IO_DBG("board_app_initialize: done\n");
+
+#ifdef CONFIG_SG2000_WDT
+	const int wdt_ret = sg2000_wdt_init();
+
+	if (wdt_ret != OK && wdt_ret != -EEXIST) {
+		syslog(LOG_ERR, "tpu-v2: sg2000_wdt_init failed (%d)\n", wdt_ret);
+	} else {
+		PX4IO_DBG("sg2000_wdt_init: %s\n", (wdt_ret == -EEXIST) ? "already registered" : "OK");
+	}
+#endif
+
 	return OK;
 }

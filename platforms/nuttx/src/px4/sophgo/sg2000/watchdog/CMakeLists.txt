@@ -1,6 +1,6 @@
 ############################################################################
 #
-#   Copyright (c) 2015-2017 PX4 Development Team. All rights reserved.
+#   Copyright (c) 2026 Stalya Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -31,49 +31,6 @@
 #
 ############################################################################
 
-option(PX4IO_PERF "Enable px4io perf counters" OFF)
-
-if(${PX4_CHIP} STREQUAL "sg2000")
-	set(px4iofirmware_arch_sources
-		sg2000/adc.cpp
-		sg2000/serial.cpp
-	)
-	set(px4iofirmware_arch_libs
-		arch_watchdog_iwdg
-	)
-else()
-	set(px4iofirmware_arch_sources
-		stm32/adc.cpp
-		stm32/serial.cpp
-	)
-	set(px4iofirmware_arch_libs
-		arch_watchdog_iwdg
-	)
-endif()
-
-add_library(px4iofirmware
-	${px4iofirmware_arch_sources}
-	controls.cpp
-	mixer.cpp
-	px4io.cpp
-	registers.c
-	safety_button.cpp
+px4_add_library(arch_watchdog_iwdg
+	wdt.c
 )
-
-set_property(GLOBAL APPEND PROPERTY PX4_MODULE_LIBRARIES px4iofirmware)
-target_include_directories(px4iofirmware PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(px4iofirmware
-	PUBLIC
-		arch_io_pins
-		${px4iofirmware_arch_libs}
-		nuttx_apps
-		nuttx_arch
-		nuttx_c
-		nuttx_mm
-		rc
-)
-
-if(PX4IO_PERF)
-	target_compile_definitions(px4iofirmware PRIVATE PX4IO_PERF)
-	target_link_libraries(px4iofirmware PRIVATE perf)
-endif()
