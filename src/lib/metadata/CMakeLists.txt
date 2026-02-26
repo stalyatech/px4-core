@@ -36,12 +36,16 @@ get_property(module_config_files GLOBAL PROPERTY PX4_MODULE_CONFIG_FILES)
 if(CONFIG_BOARD_IO)
 	set(board_with_io_arg --board-with-io)
 endif()
+set(board_timer_config_file ${PX4_BOARD_DIR}/src/timer_config.cpp)
+if(EXISTS ${PX4_BOARD_DIR}/src/tpu_tmr.cpp)
+	set(board_timer_config_file ${PX4_BOARD_DIR}/src/tpu_tmr.cpp)
+endif()
 set(generated_actuators_metadata_file ${PX4_BINARY_DIR}/actuators.json)
 add_custom_command(OUTPUT ${generated_actuators_metadata_file}
 	${generated_actuators_metadata_file}.xz
 	COMMAND ${PYTHON_EXECUTABLE} ${PX4_SOURCE_DIR}/Tools/module_config/generate_actuators_metadata.py
 		${board_with_io_arg}
-		--timer-config ${PX4_BOARD_DIR}/src/timer_config.cpp
+		--timer-config ${board_timer_config_file}
 		--config-files ${module_config_files} #--verbose
 		--compress
 		--board ${PX4_BOARD}
