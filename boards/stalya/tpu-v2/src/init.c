@@ -25,6 +25,9 @@
 
 #include <arch/board/board.h>
 #include <arch/sg2000/gpio.h>
+#ifdef CONFIG_SG2000_CMDQU
+#include <arch/sg2000/cmdqu.h>
+#endif
 #ifdef CONFIG_SG2000_WDT
 #include <arch/sg2000/wdt.h>
 #endif
@@ -107,6 +110,14 @@ __EXPORT int board_app_initialize(uintptr_t arg)
 	}
 
 	PX4IO_DBG("board_app_initialize: done\n");
+
+#ifdef CONFIG_SG2000_CMDQU
+	const int cmdqu_ret = sg2000_cmdqu_init();
+
+	if (cmdqu_ret != OK) {
+		syslog(LOG_ERR, "tpu-v2: sg2000_cmdqu_init failed (%d)\n", cmdqu_ret);
+	}
+#endif
 
 #ifdef CONFIG_SG2000_WDT
 	const int wdt_ret = sg2000_wdt_init();

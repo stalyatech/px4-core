@@ -199,6 +199,72 @@ enum {							/* DSM bind states */
 #define PX4IO_THERMAL_OFF			0
 #define PX4IO_THERMAL_FULL			10000
 
+/* TPU-v2 firmware management (FMU -> IO -> Linux agent) */
+#define PX4IO_PAGE_FW_MGMT			56
+#define PX4IO_P_FW_MGMT_CMD			0
+#define PX4IO_P_FW_MGMT_STATUS			1
+#define PX4IO_P_FW_MGMT_ERROR			2
+#define PX4IO_P_FW_MGMT_FLAGS			3
+#define PX4IO_P_FW_MGMT_REQ_HASH_L		4
+#define PX4IO_P_FW_MGMT_REQ_HASH_H		5
+#define PX4IO_P_FW_MGMT_REQ_SIZE_L		6
+#define PX4IO_P_FW_MGMT_REQ_SIZE_H		7
+#define PX4IO_P_FW_MGMT_ACTIVE_HASH_L		8
+#define PX4IO_P_FW_MGMT_ACTIVE_HASH_H		9
+#define PX4IO_P_FW_MGMT_ACTIVE_SIZE_L		10
+#define PX4IO_P_FW_MGMT_ACTIVE_SIZE_H		11
+#define PX4IO_P_FW_MGMT_TIMEOUT_MS		12
+#define PX4IO_P_FW_MGMT_CHUNK_OFFSET_L		13
+#define PX4IO_P_FW_MGMT_CHUNK_OFFSET_H		14
+#define PX4IO_P_FW_MGMT_CHUNK_LEN		15
+#define PX4IO_P_FW_MGMT_DATA_BASE		16
+#define PX4IO_FW_MGMT_DATA_REGS			31
+#define PX4IO_FW_MGMT_CHUNK_MAX_BYTES		(PX4IO_FW_MGMT_DATA_REGS * 2)
+
+#define PX4IO_FW_MGMT_CMD_NOP			0
+#define PX4IO_FW_MGMT_CMD_QUERY_ACTIVE		1
+#define PX4IO_FW_MGMT_CMD_CHECK_HASH		2
+#define PX4IO_FW_MGMT_CMD_REQUEST_UPDATE	3
+#define PX4IO_FW_MGMT_CMD_ABORT			4
+#define PX4IO_FW_MGMT_CMD_BEGIN_UPLOAD		5
+#define PX4IO_FW_MGMT_CMD_WRITE_CHUNK		6
+#define PX4IO_FW_MGMT_CMD_FINISH_UPLOAD		7
+
+#define PX4IO_FW_MGMT_STATUS_IDLE		0
+#define PX4IO_FW_MGMT_STATUS_BUSY		1
+#define PX4IO_FW_MGMT_STATUS_DONE		2
+#define PX4IO_FW_MGMT_STATUS_ERROR		3
+#define PX4IO_FW_MGMT_STATUS_UNSUPPORTED	4
+
+#define PX4IO_FW_MGMT_ERR_NONE			0
+#define PX4IO_FW_MGMT_ERR_TIMEOUT		1
+#define PX4IO_FW_MGMT_ERR_IPC			2
+#define PX4IO_FW_MGMT_ERR_NO_AGENT		3
+#define PX4IO_FW_MGMT_ERR_BAD_PARAM		4
+#define PX4IO_FW_MGMT_ERR_UNSUPPORTED		5
+#define PX4IO_FW_MGMT_ERR_INTERNAL		6
+
+#define PX4IO_FW_MGMT_FLAG_HASH_MATCH		(1 << 0)
+
+/* Shared control block pointed by SG2000 cmdqu param_ptr. */
+struct PX4IOFwMgmtIpc {
+	uint32_t magic;
+	uint16_t version;
+	uint16_t opcode;
+	uint32_t request_hash;
+	uint32_t request_size;
+	uint32_t staging_offset;
+	uint32_t staging_size;
+	uint32_t active_hash;
+	uint32_t active_size;
+	uint16_t result;
+	uint16_t reserved;
+};
+
+#define PX4IO_FW_MGMT_IPC_MAGIC			0x50494f46U /* "PIOF" */
+#define PX4IO_FW_MGMT_IPC_VERSION		1U
+#define PX4IO_FW_MGMT_STAGING_DATA_OFFSET	0x1000U
+
 /* PWM output */
 #define PX4IO_PAGE_DIRECT_PWM			54		/**< 0..CONFIG_ACTUATOR_COUNT-1 */
 
