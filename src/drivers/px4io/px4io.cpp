@@ -45,6 +45,10 @@
 #include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
 #include <px4_platform_common/sem.hpp>
 
+#include <errno.h>
+#include <fcntl.h>
+#include <unistd.h>
+
 #ifdef __PX4_NUTTX
 #include <nuttx/crc32.h>
 #else
@@ -307,6 +311,14 @@ private:
 	 * @param setbits	Bits to set in the register.
 	 */
 	int			io_reg_modify(uint8_t page, uint8_t offset, uint16_t clearbits, uint16_t setbits);
+
+	/**
+	 * Execute firmware-management commands through PX4IO FW_MGMT page.
+	 */
+	int			io_firmware_mgmt(uint16_t command, uint32_t request_hash, uint32_t request_size,
+				uint32_t &active_hash, uint32_t &active_size, uint16_t &flags, uint16_t &error);
+	int			io_firmware_upload_chunk(uint32_t offset, const uint8_t *data, uint16_t len,
+				uint32_t request_hash, uint32_t request_size, uint16_t &error);
 
 	/**
 	 * Handle a status update from IO.
@@ -1228,6 +1240,115 @@ int PX4IO::io_reg_modify(uint8_t page, uint8_t offset, uint16_t clearbits, uint1
 	return io_reg_set(page, offset, value);
 }
 
+int PX4IO::io_firmware_mgmt(uint16_t command, uint32_t request_hash, uint32_t request_size,
+			    uint32_t &active_hash, uint32_t &active_size, uint16_t &flags, uint16_t &error)
+{
+	uint16_t request[4] = {
+		static_cast<uint16_t>(request_hash & 0xffff),
+		static_cast<uint16_t>(request_hash >> 16),
+		static_cast<uint16_t>(request_size & 0xffff),
+		static_cast<uint16_t>(request_size >> 16),
+	};
+
+	if (io_reg_set(PX4IO_PAGE_FW_MGMT, PX4IO_P_FW_MGMT_REQ_HASH_L, request, 4) != OK) {
+		return -EIO;
+	}
+
+	if (io_reg_set(PX4IO_PAGE_FW_MGMT, PX4IO_P_FW_MGMT_CMD, command) != OK) {
+		return -EIO;
+	}
+
+	const hrt_abstime start = hrt_absolute_time();
+	static constexpr hrt_abstime timeout_us = 6_s;
+
+	while (hrt_elapsed_time(&start) < timeout_us) {
+		uint16_t status = io_reg_get(PX4IO_PAGE_FW_MGMT, PX4IO_P_FW_MGMT_STATUS);
+
+		if (status == _io_reg_get_error) {
+			return -EIO;
+		}
+
+		if (status == PX4IO_FW_MGMT_STATUS_DONE || status == PX4IO_FW_MGMT_STATUS_ERROR
+		    || status == PX4IO_FW_MGMT_STATUS_UNSUPPORTED) {
+			uint16_t regs[10] {};
+
+			if (io_reg_get(PX4IO_PAGE_FW_MGMT, PX4IO_P_FW_MGMT_ERROR, regs, 10) != OK) {
+				return -EIO;
+			}
+
+			error = regs[0];
+			flags = regs[1];
+			active_hash = static_cast<uint32_t>(regs[7]) << 16 | regs[6];
+			active_size = static_cast<uint32_t>(regs[9]) << 16 | regs[8];
+
+			if (status == PX4IO_FW_MGMT_STATUS_DONE && error == PX4IO_FW_MGMT_ERR_NONE) {
+				return OK;
+			}
+
+			switch (error) {
+			case PX4IO_FW_MGMT_ERR_TIMEOUT:
+				return -ETIMEDOUT;
+
+			case PX4IO_FW_MGMT_ERR_NO_AGENT:
+				return -ENODEV;
+
+			case PX4IO_FW_MGMT_ERR_UNSUPPORTED:
+				return -ENOTSUP;
+
+			case PX4IO_FW_MGMT_ERR_BAD_PARAM:
+				return -EINVAL;
+
+			default:
+				return -EIO;
+			}
+		}
+
+		usleep(20 * 1000);
+	}
+
+	return -ETIMEDOUT;
+}
+
+int PX4IO::io_firmware_upload_chunk(uint32_t offset, const uint8_t *data, uint16_t len,
+				    uint32_t request_hash, uint32_t request_size, uint16_t &error)
+{
+	if ((data == nullptr) || (len == 0) || (len > PX4IO_FW_MGMT_CHUNK_MAX_BYTES)) {
+		return -EINVAL;
+	}
+
+	uint16_t chunk_meta[3] = {
+		static_cast<uint16_t>(offset & 0xffff),
+		static_cast<uint16_t>(offset >> 16),
+		len
+	};
+
+	if (io_reg_set(PX4IO_PAGE_FW_MGMT, PX4IO_P_FW_MGMT_CHUNK_OFFSET_L, chunk_meta, 3) != OK) {
+		return -EIO;
+	}
+
+	const uint16_t words = (len + 1) / 2;
+	uint16_t packed[PX4IO_FW_MGMT_DATA_REGS] {};
+
+	for (uint16_t i = 0; i < len; i++) {
+		if (i & 1) {
+			packed[i / 2] |= static_cast<uint16_t>(data[i]) << 8;
+
+		} else {
+			packed[i / 2] = data[i];
+		}
+	}
+
+	if (io_reg_set(PX4IO_PAGE_FW_MGMT, PX4IO_P_FW_MGMT_DATA_BASE, packed, words) != OK) {
+		return -EIO;
+	}
+
+	uint32_t active_hash = 0;
+	uint32_t active_size = 0;
+	uint16_t flags = 0;
+	return io_firmware_mgmt(PX4IO_FW_MGMT_CMD_WRITE_CHUNK, request_hash, request_size,
+				active_hash, active_size, flags, error);
+}
+
 int PX4IO::print_status()
 {
 	/* basic configuration */
@@ -1418,6 +1539,63 @@ static device::Device *get_interface()
 	return interface;
 }
 
+static bool is_elf_firmware_path(const char *path)
+{
+	if (path == nullptr) {
+		return false;
+	}
+
+	const char *ext = strrchr(path, '.');
+	return (ext != nullptr) && (strcmp(ext, ".elf") == 0);
+}
+
+static int read_file_crc32_raw(const char *path, uint32_t &crc, uint32_t &size)
+{
+	int fd = ::open(path, O_RDONLY);
+
+	if (fd < 0) {
+		return -errno;
+	}
+
+	crc = 0;
+	size = 0;
+
+	while (true) {
+		uint8_t buf[256];
+		const int n = ::read(fd, buf, sizeof(buf));
+
+		if (n == 0) {
+			break;
+		}
+
+		if (n < 0) {
+			const int read_errno = errno;
+			::close(fd);
+			return -read_errno;
+		}
+
+		crc = crc32part(buf, n, crc);
+		size += n;
+	}
+
+	::close(fd);
+	return OK;
+}
+
+static const char *find_existing_firmware(const char *filenames[])
+{
+	for (unsigned i = 0; filenames[i] != nullptr; i++) {
+		int fd = ::open(filenames[i], O_RDONLY);
+
+		if (fd >= 0) {
+			::close(fd);
+			return filenames[i];
+		}
+	}
+
+	return nullptr;
+}
+
 int PX4IO::checkcrc(int argc, char *argv[])
 {
 	/*
@@ -1450,10 +1628,50 @@ int PX4IO::checkcrc(int argc, char *argv[])
 		PX4_ERR("open of %s failed: %d", argv[0], errno);
 		return 1;
 	}
+	::close(fd);
+
+	const bool use_fw_mgmt = is_elf_firmware_path(argv[0]);
+
+	if (use_fw_mgmt) {
+		uint32_t fw_crc = 0;
+		uint32_t fw_size = 0;
+		int file_ret = read_file_crc32_raw(argv[0], fw_crc, fw_size);
+
+		if (file_ret != OK) {
+			delete dev;
+			PX4_ERR("failed reading %s: %d", argv[0], file_ret);
+			return 1;
+		}
+
+		uint32_t active_hash = 0;
+		uint32_t active_size = 0;
+		uint16_t flags = 0;
+		uint16_t error = 0;
+		int ret = dev->io_firmware_mgmt(PX4IO_FW_MGMT_CMD_CHECK_HASH, fw_crc, fw_size, active_hash, active_size, flags, error);
+
+		delete dev;
+
+		if ((ret != OK) || !(flags & PX4IO_FW_MGMT_FLAG_HASH_MATCH)) {
+			PX4_WARN("ELF check failed: ret=%d io_error=%u expected=0x%08" PRIx32 " active=0x%08" PRIx32,
+				 ret, error, fw_crc, active_hash);
+			return 1;
+		}
+
+		PX4_INFO("IO FW ELF hash match");
+		return 0;
+	}
 
 	const uint32_t app_size_max = 0xf000;
 	uint32_t fw_crc = 0;
 	uint32_t nbytes = 0;
+
+	fd = ::open(argv[0], O_RDONLY);
+
+	if (fd == -1) {
+		delete dev;
+		PX4_ERR("open of %s failed: %d", argv[0], errno);
+		return 1;
+	}
 
 	while (true) {
 		uint8_t buf[16];
@@ -1572,57 +1790,160 @@ int PX4IO::custom_command(int argc, char *argv[])
 			return 1;
 		}
 
+		const char *fn[] = PX4IO_FW_SEARCH_PATHS;
+
+		/* Override defaults if a path is passed on command line */
+		if (argc > 1) {
+			fn[0] = argv[1];
+			fn[1] = nullptr;
+		}
+
+		const char *selected_fw = find_existing_firmware(&fn[0]);
+
+		if (selected_fw == nullptr) {
+			PX4_ERR("PX4IO firmware file not found");
+			return -ENOENT;
+		}
+
+		const bool use_fw_mgmt = is_elf_firmware_path(selected_fw);
+
 		constexpr unsigned MAX_RETRIES = 2;
 		unsigned retries = 0;
 		int ret = PX4_ERROR;
 
-		while (ret != OK && retries < MAX_RETRIES) {
-
-			device::Device *interface = get_interface();
-
-			if (interface == nullptr) {
-				PX4_ERR("interface allocation failed");
-				return 1;
-			}
-
-			PX4IO *dev = new PX4IO(interface);
-
-			if (dev == nullptr) {
-				delete interface;
-				PX4_ERR("driver allocation failed");
-				return 1;
-			}
-
-			retries++;
-			// Sleep 200 ms before the next attempt
-			usleep(200 * 1000);
-
-			// Try to reboot
-			ret = dev->ioctl(nullptr, PX4IO_REBOOT_BOOTLOADER, PX4IO_REBOOT_BL_MAGIC);
-			delete dev;
+		if (use_fw_mgmt) {
+			uint32_t fw_crc = 0;
+			uint32_t fw_size = 0;
+			ret = read_file_crc32_raw(selected_fw, fw_crc, fw_size);
 
 			if (ret != OK) {
-				PX4_WARN("reboot failed - %d, still attempting upgrade", ret);
+				PX4_ERR("failed reading %s: %d", selected_fw, ret);
+				return ret;
 			}
 
-			/* Assume we are using default paths */
+			ret = PX4_ERROR;
 
-			const char *fn[4] = PX4IO_FW_SEARCH_PATHS;
+			while (ret != OK && retries < MAX_RETRIES) {
+				device::Device *interface = get_interface();
 
-			/* Override defaults if a path is passed on command line */
-			if (argc > 1) {
-				fn[0] = argv[1];
-				fn[1] = nullptr;
+				if (interface == nullptr) {
+					PX4_ERR("interface allocation failed");
+					return 1;
+				}
+
+				PX4IO *dev = new PX4IO(interface);
+
+				if (dev == nullptr) {
+					delete interface;
+					PX4_ERR("driver allocation failed");
+					return 1;
+				}
+
+				retries++;
+				usleep(200 * 1000);
+
+				uint32_t active_hash = 0;
+				uint32_t active_size = 0;
+				uint16_t error = 0;
+				uint16_t flags = 0;
+
+				ret = dev->io_firmware_mgmt(PX4IO_FW_MGMT_CMD_BEGIN_UPLOAD, fw_crc, fw_size, active_hash, active_size, flags, error);
+
+				if (ret == OK) {
+					int fd = ::open(selected_fw, O_RDONLY);
+
+					if (fd < 0) {
+						ret = -errno;
+
+					} else {
+						uint32_t offset = 0;
+
+						while (ret == OK) {
+							uint8_t buf[PX4IO_FW_MGMT_CHUNK_MAX_BYTES];
+							const int n = ::read(fd, buf, sizeof(buf));
+
+							if (n == 0) {
+								break;
+							}
+
+							if (n < 0) {
+								ret = -errno;
+								break;
+							}
+
+							ret = dev->io_firmware_upload_chunk(offset, buf, n, fw_crc, fw_size, error);
+
+							if (ret == OK) {
+								offset += n;
+							}
+						}
+
+						::close(fd);
+
+						if ((ret == OK) && (offset != fw_size)) {
+							ret = -EIO;
+						}
+					}
+				}
+
+				if (ret == OK) {
+					ret = dev->io_firmware_mgmt(PX4IO_FW_MGMT_CMD_FINISH_UPLOAD, fw_crc, fw_size, active_hash, active_size, flags, error);
+				}
+
+				if (ret == OK) {
+					ret = dev->io_firmware_mgmt(PX4IO_FW_MGMT_CMD_REQUEST_UPDATE, fw_crc, fw_size, active_hash, active_size, flags, error);
+				}
+
+				if (ret != OK) {
+					uint32_t ignore_hash = 0;
+					uint32_t ignore_size = 0;
+					uint16_t ignore_flags = 0;
+					uint16_t ignore_error = 0;
+					dev->io_firmware_mgmt(PX4IO_FW_MGMT_CMD_ABORT, fw_crc, fw_size, ignore_hash, ignore_size, ignore_flags, ignore_error);
+				}
+
+				delete dev;
 			}
 
-			PX4IO_Uploader *up = new PX4IO_Uploader();
+		} else {
+			while (ret != OK && retries < MAX_RETRIES) {
 
-			if (!up) {
-				ret = -ENOMEM;
+				device::Device *interface = get_interface();
 
-			} else {
-				ret = up->upload(&fn[0]);
-				delete up;
+				if (interface == nullptr) {
+					PX4_ERR("interface allocation failed");
+					return 1;
+				}
+
+				PX4IO *dev = new PX4IO(interface);
+
+				if (dev == nullptr) {
+					delete interface;
+					PX4_ERR("driver allocation failed");
+					return 1;
+				}
+
+				retries++;
+				// Sleep 200 ms before the next attempt
+				usleep(200 * 1000);
+
+				// Try to reboot
+				ret = dev->ioctl(nullptr, PX4IO_REBOOT_BOOTLOADER, PX4IO_REBOOT_BL_MAGIC);
+				delete dev;
+
+				if (ret != OK) {
+					PX4_WARN("reboot failed - %d, still attempting upgrade", ret);
+				}
+
+				PX4IO_Uploader *up = new PX4IO_Uploader();
+
+				if (!up) {
+					ret = -ENOMEM;
+
+				} else {
+					ret = up->upload(&fn[0]);
+					delete up;
+				}
 			}
 		}
 
@@ -1645,6 +1966,14 @@ int PX4IO::custom_command(int argc, char *argv[])
 
 		case -ETIMEDOUT:
 			PX4_ERR("timed out waiting for bootloader - power-cycle and try again");
+			break;
+
+		case -ENODEV:
+			PX4_ERR("TPU-v2 Linux update agent not responding");
+			break;
+
+		case -ENOTSUP:
+			PX4_ERR("firmware-management command unsupported by IO firmware");
 			break;
 
 		default:

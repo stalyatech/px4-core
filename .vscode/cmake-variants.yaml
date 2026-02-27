@@ -441,28 +441,28 @@ CONFIG:
       buildType: MinSizeRel
       settings:
         CONFIG: stalya_nexus-v1_utrap
-    stalya_nexus-v1_bootloader:
-      short: StalyaFC uTRAP BL
-      buildType: MinSizeRel
-      settings:
-        CONFIG: stalya_nexus-v1_bootloader
     stalya_io-v2_default:
-      short: StalyaFC uTRAP IO
+      short: StalyaFC uTRAP IOv2
       buildType: MinSizeRel
       settings:
         CONFIG: stalya_io-v2_default
     stalya_nexus-v1_nexus:
-      short: StalyaFC NexusV2
+      short: StalyaFC Nexus
       buildType: MinSizeRel
       settings:
         CONFIG: stalya_nexus-v1_nexus
+    stalya_nexus-v1_bootloader:
+      short: StalyaFC Nexus BL
+      buildType: MinSizeRel
+      settings:
+        CONFIG: stalya_nexus-v1_bootloader
     stalya_tpu-v2_default:
-      short: StalyaFC NexusV2 TPU
+      short: StalyaFC Nexus TPUv2
       buildType: MinSizeRel
       settings:
         CONFIG: stalya_tpu-v2_default
     stalya_nexus-v2_default:
-      short: StalyaFC NexusV3
+      short: StalyaFC NexusV2
       buildType: MinSizeRel
       settings:
         CONFIG: stalya_nexus-v2_default

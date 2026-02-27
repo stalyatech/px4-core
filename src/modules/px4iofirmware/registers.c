@@ -44,11 +44,22 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
+
+#ifdef __PX4_NUTTX
+#include <nuttx/crc32.h>
+#else
+#include <crc32.h>
+#endif
 
 #include <drivers/drv_hrt.h>
 #include <drivers/drv_pwm_output.h>
 #if !defined(CONFIG_ARCH_CHIP_SG2000)
 #include <stm32_pwr.h>
+#endif
+#if defined(CONFIG_ARCH_CHIP_SG2000) && defined(CONFIG_SG2000_CMDQU)
+#include <arch/sg2000/cmdqu.h>
+#include <arch/board/board_memorymap.h>
 #endif
 #include <rc/dsm.h>
 #include <rc/sbus.h>
@@ -58,6 +69,8 @@
 
 static int	registers_set_one(uint8_t page, uint8_t offset, uint16_t value);
 static void	pwm_configure_rates(uint16_t map, uint16_t defaultrate, uint16_t altrate);
+static int	fw_mgmt_set_one(uint8_t offset, uint16_t value);
+static int	fw_mgmt_exec(uint16_t command);
 
 /**
  * PAGE 0
@@ -180,6 +193,35 @@ uint16_t		r_page_servo_failsafe[PX4IO_SERVO_COUNT] = { 0, 0, 0, 0, 0, 0, 0, 0 };
  */
 uint16_t		r_page_servo_disarmed[PX4IO_SERVO_COUNT] = { 0, 0, 0, 0, 0, 0, 0, 0 };
 
+/**
+ * PAGE 56
+ *
+ * Firmware management bridge registers for TPU-v2.
+ */
+static volatile uint16_t r_page_fw_mgmt[] = {
+	[PX4IO_P_FW_MGMT_CMD]		= PX4IO_FW_MGMT_CMD_NOP,
+	[PX4IO_P_FW_MGMT_STATUS]	= PX4IO_FW_MGMT_STATUS_IDLE,
+	[PX4IO_P_FW_MGMT_ERROR]		= PX4IO_FW_MGMT_ERR_NONE,
+	[PX4IO_P_FW_MGMT_FLAGS]		= 0,
+	[PX4IO_P_FW_MGMT_REQ_HASH_L]	= 0,
+	[PX4IO_P_FW_MGMT_REQ_HASH_H]	= 0,
+	[PX4IO_P_FW_MGMT_REQ_SIZE_L]	= 0,
+	[PX4IO_P_FW_MGMT_REQ_SIZE_H]	= 0,
+	[PX4IO_P_FW_MGMT_ACTIVE_HASH_L]	= 0,
+	[PX4IO_P_FW_MGMT_ACTIVE_HASH_H]	= 0,
+	[PX4IO_P_FW_MGMT_ACTIVE_SIZE_L]	= 0,
+	[PX4IO_P_FW_MGMT_ACTIVE_SIZE_H]	= 0,
+	[PX4IO_P_FW_MGMT_TIMEOUT_MS]	= 3000,
+	[PX4IO_P_FW_MGMT_CHUNK_OFFSET_L]	= 0,
+	[PX4IO_P_FW_MGMT_CHUNK_OFFSET_H]	= 0,
+	[PX4IO_P_FW_MGMT_CHUNK_LEN]		= 0,
+	[PX4IO_P_FW_MGMT_DATA_BASE ...(PX4IO_P_FW_MGMT_DATA_BASE + PX4IO_FW_MGMT_DATA_REGS - 1)] = 0,
+};
+
+static struct PX4IOFwMgmtIpc g_fw_mgmt_ipc;
+static uint32_t g_fw_mgmt_received_bytes;
+static bool g_fw_mgmt_upload_ready;
+
 int
 registers_set(uint8_t page, uint8_t offset, const uint16_t *values, unsigned num_values)
 {
@@ -285,6 +327,284 @@ registers_set(uint8_t page, uint8_t offset, const uint16_t *values, unsigned num
 	}
 
 	return 0;
+}
+
+static uint32_t fw_mgmt_get_u32(uint8_t lo_index)
+{
+	return (uint32_t)r_page_fw_mgmt[lo_index] | ((uint32_t)r_page_fw_mgmt[lo_index + 1] << 16);
+}
+
+static void fw_mgmt_set_u32(uint8_t lo_index, uint32_t value)
+{
+	r_page_fw_mgmt[lo_index] = value & 0xffff;
+	r_page_fw_mgmt[lo_index + 1] = value >> 16;
+}
+
+static uint16_t fw_mgmt_map_error(int ret)
+{
+	switch (ret) {
+	case OK:
+		return PX4IO_FW_MGMT_ERR_NONE;
+
+	case -ETIMEDOUT:
+		return PX4IO_FW_MGMT_ERR_TIMEOUT;
+
+	case -ENODEV:
+	case -ENXIO:
+		return PX4IO_FW_MGMT_ERR_NO_AGENT;
+
+	case -EINVAL:
+		return PX4IO_FW_MGMT_ERR_BAD_PARAM;
+
+	default:
+		return PX4IO_FW_MGMT_ERR_IPC;
+	}
+}
+
+static uint8_t *fw_mgmt_staging_base(size_t *capacity)
+{
+#if defined(CONFIG_ARCH_CHIP_SG2000)
+	const size_t ramdisk_size = (size_t)RAMDISK_SIZE;
+
+	if (capacity != NULL) {
+		*capacity = (ramdisk_size > PX4IO_FW_MGMT_STAGING_DATA_OFFSET) ?
+			    (ramdisk_size - PX4IO_FW_MGMT_STAGING_DATA_OFFSET) : 0;
+	}
+
+	if (ramdisk_size <= PX4IO_FW_MGMT_STAGING_DATA_OFFSET) {
+		return NULL;
+	}
+
+	return (uint8_t *)(uintptr_t)(RAMDISK_START + PX4IO_FW_MGMT_STAGING_DATA_OFFSET);
+#else
+	if (capacity != NULL) {
+		*capacity = 0;
+	}
+
+	return NULL;
+#endif
+}
+
+static int fw_mgmt_begin_upload(void)
+{
+	const uint32_t requested_size = fw_mgmt_get_u32(PX4IO_P_FW_MGMT_REQ_SIZE_L);
+	size_t stage_capacity = 0;
+	uint8_t *stage = fw_mgmt_staging_base(&stage_capacity);
+
+	if ((stage == NULL) || (requested_size == 0) || (requested_size > stage_capacity)) {
+		r_page_fw_mgmt[PX4IO_P_FW_MGMT_ERROR] = PX4IO_FW_MGMT_ERR_BAD_PARAM;
+		r_page_fw_mgmt[PX4IO_P_FW_MGMT_STATUS] = PX4IO_FW_MGMT_STATUS_ERROR;
+		return -EINVAL;
+	}
+
+	g_fw_mgmt_received_bytes = 0;
+	g_fw_mgmt_upload_ready = false;
+	memset(stage, 0, requested_size);
+	r_page_fw_mgmt[PX4IO_P_FW_MGMT_FLAGS] = 0;
+	r_page_fw_mgmt[PX4IO_P_FW_MGMT_ERROR] = PX4IO_FW_MGMT_ERR_NONE;
+	r_page_fw_mgmt[PX4IO_P_FW_MGMT_STATUS] = PX4IO_FW_MGMT_STATUS_DONE;
+	return OK;
+}
+
+static int fw_mgmt_write_chunk(void)
+{
+	size_t stage_capacity = 0;
+	uint8_t *stage = fw_mgmt_staging_base(&stage_capacity);
+
+	if (stage == NULL) {
+		r_page_fw_mgmt[PX4IO_P_FW_MGMT_ERROR] = PX4IO_FW_MGMT_ERR_INTERNAL;
+		r_page_fw_mgmt[PX4IO_P_FW_MGMT_STATUS] = PX4IO_FW_MGMT_STATUS_ERROR;
+		return -ENODEV;
+	}
+
+	const uint32_t requested_size = fw_mgmt_get_u32(PX4IO_P_FW_MGMT_REQ_SIZE_L);
+	const uint32_t chunk_offset = fw_mgmt_get_u32(PX4IO_P_FW_MGMT_CHUNK_OFFSET_L);
+	const uint16_t chunk_len = r_page_fw_mgmt[PX4IO_P_FW_MGMT_CHUNK_LEN];
+
+	if ((chunk_len == 0) || (chunk_len > PX4IO_FW_MGMT_CHUNK_MAX_BYTES) ||
+	    (chunk_offset + chunk_len > requested_size) || (chunk_offset != g_fw_mgmt_received_bytes) ||
+	    (chunk_offset + chunk_len > stage_capacity)) {
+		r_page_fw_mgmt[PX4IO_P_FW_MGMT_ERROR] = PX4IO_FW_MGMT_ERR_BAD_PARAM;
+		r_page_fw_mgmt[PX4IO_P_FW_MGMT_STATUS] = PX4IO_FW_MGMT_STATUS_ERROR;
+		return -EINVAL;
+	}
+
+	for (uint16_t i = 0; i < chunk_len; i++) {
+		const uint16_t reg = r_page_fw_mgmt[PX4IO_P_FW_MGMT_DATA_BASE + (i / 2)];
+		stage[chunk_offset + i] = (i & 1) ? (reg >> 8) : (reg & 0xff);
+	}
+
+	g_fw_mgmt_received_bytes += chunk_len;
+	r_page_fw_mgmt[PX4IO_P_FW_MGMT_ERROR] = PX4IO_FW_MGMT_ERR_NONE;
+	r_page_fw_mgmt[PX4IO_P_FW_MGMT_STATUS] = PX4IO_FW_MGMT_STATUS_DONE;
+	return OK;
+}
+
+static int fw_mgmt_finish_upload(void)
+{
+	size_t stage_capacity = 0;
+	uint8_t *stage = fw_mgmt_staging_base(&stage_capacity);
+
+	if (stage == NULL) {
+		r_page_fw_mgmt[PX4IO_P_FW_MGMT_ERROR] = PX4IO_FW_MGMT_ERR_INTERNAL;
+		r_page_fw_mgmt[PX4IO_P_FW_MGMT_STATUS] = PX4IO_FW_MGMT_STATUS_ERROR;
+		return -ENODEV;
+	}
+
+	const uint32_t requested_size = fw_mgmt_get_u32(PX4IO_P_FW_MGMT_REQ_SIZE_L);
+	const uint32_t requested_hash = fw_mgmt_get_u32(PX4IO_P_FW_MGMT_REQ_HASH_L);
+
+	if ((requested_size > stage_capacity) || (g_fw_mgmt_received_bytes != requested_size)) {
+		r_page_fw_mgmt[PX4IO_P_FW_MGMT_ERROR] = PX4IO_FW_MGMT_ERR_BAD_PARAM;
+		r_page_fw_mgmt[PX4IO_P_FW_MGMT_STATUS] = PX4IO_FW_MGMT_STATUS_ERROR;
+		return -EINVAL;
+	}
+
+	uint32_t crc = 0;
+	crc = crc32part(stage, requested_size, crc);
+
+	if (crc != requested_hash) {
+		r_page_fw_mgmt[PX4IO_P_FW_MGMT_ERROR] = PX4IO_FW_MGMT_ERR_BAD_PARAM;
+		r_page_fw_mgmt[PX4IO_P_FW_MGMT_STATUS] = PX4IO_FW_MGMT_STATUS_ERROR;
+		return -EINVAL;
+	}
+
+	g_fw_mgmt_upload_ready = true;
+	r_page_fw_mgmt[PX4IO_P_FW_MGMT_FLAGS] |= PX4IO_FW_MGMT_FLAG_HASH_MATCH;
+	fw_mgmt_set_u32(PX4IO_P_FW_MGMT_ACTIVE_HASH_L, crc);
+	fw_mgmt_set_u32(PX4IO_P_FW_MGMT_ACTIVE_SIZE_L, requested_size);
+	r_page_fw_mgmt[PX4IO_P_FW_MGMT_ERROR] = PX4IO_FW_MGMT_ERR_NONE;
+	r_page_fw_mgmt[PX4IO_P_FW_MGMT_STATUS] = PX4IO_FW_MGMT_STATUS_DONE;
+	return OK;
+}
+
+static int fw_mgmt_exec(uint16_t command)
+{
+#if defined(CONFIG_ARCH_CHIP_SG2000) && defined(CONFIG_SG2000_CMDQU)
+	struct sg2000_cmdqu_msg_s cmdqu_msg = {};
+	const uint16_t timeout_ms = r_page_fw_mgmt[PX4IO_P_FW_MGMT_TIMEOUT_MS];
+
+	if ((command < PX4IO_FW_MGMT_CMD_QUERY_ACTIVE) || (command > PX4IO_FW_MGMT_CMD_FINISH_UPLOAD)) {
+		r_page_fw_mgmt[PX4IO_P_FW_MGMT_ERROR] = PX4IO_FW_MGMT_ERR_BAD_PARAM;
+		r_page_fw_mgmt[PX4IO_P_FW_MGMT_STATUS] = PX4IO_FW_MGMT_STATUS_ERROR;
+		return -EINVAL;
+	}
+
+	if (command == PX4IO_FW_MGMT_CMD_ABORT) {
+		g_fw_mgmt_received_bytes = 0;
+		g_fw_mgmt_upload_ready = false;
+	}
+
+	if (command == PX4IO_FW_MGMT_CMD_BEGIN_UPLOAD) {
+		return fw_mgmt_begin_upload();
+	}
+
+	if (command == PX4IO_FW_MGMT_CMD_WRITE_CHUNK) {
+		return fw_mgmt_write_chunk();
+	}
+
+	if (command == PX4IO_FW_MGMT_CMD_FINISH_UPLOAD) {
+		return fw_mgmt_finish_upload();
+	}
+
+	r_page_fw_mgmt[PX4IO_P_FW_MGMT_STATUS] = PX4IO_FW_MGMT_STATUS_BUSY;
+	r_page_fw_mgmt[PX4IO_P_FW_MGMT_ERROR] = PX4IO_FW_MGMT_ERR_NONE;
+	r_page_fw_mgmt[PX4IO_P_FW_MGMT_FLAGS] = 0;
+
+	g_fw_mgmt_ipc.magic = PX4IO_FW_MGMT_IPC_MAGIC;
+	g_fw_mgmt_ipc.version = PX4IO_FW_MGMT_IPC_VERSION;
+	g_fw_mgmt_ipc.opcode = command;
+	g_fw_mgmt_ipc.request_hash = fw_mgmt_get_u32(PX4IO_P_FW_MGMT_REQ_HASH_L);
+	g_fw_mgmt_ipc.request_size = fw_mgmt_get_u32(PX4IO_P_FW_MGMT_REQ_SIZE_L);
+	g_fw_mgmt_ipc.staging_offset = PX4IO_FW_MGMT_STAGING_DATA_OFFSET;
+	g_fw_mgmt_ipc.staging_size = g_fw_mgmt_received_bytes;
+	g_fw_mgmt_ipc.active_hash = 0;
+	g_fw_mgmt_ipc.active_size = 0;
+	g_fw_mgmt_ipc.result = PX4IO_FW_MGMT_ERR_INTERNAL;
+	g_fw_mgmt_ipc.reserved = 0;
+
+	if ((command == PX4IO_FW_MGMT_CMD_REQUEST_UPDATE) && !g_fw_mgmt_upload_ready) {
+		r_page_fw_mgmt[PX4IO_P_FW_MGMT_ERROR] = PX4IO_FW_MGMT_ERR_BAD_PARAM;
+		r_page_fw_mgmt[PX4IO_P_FW_MGMT_STATUS] = PX4IO_FW_MGMT_STATUS_ERROR;
+		return -EINVAL;
+	}
+
+	cmdqu_msg.ip_id = SG2000_CMDQU_IP_SYSTEM;
+	cmdqu_msg.cmd_id = 42; // Reserved TPU-v2 firmware management mailbox command
+	cmdqu_msg.block = 1;
+	cmdqu_msg.resv.mstime = timeout_ms;
+	cmdqu_msg.param_ptr = (uint32_t)(uintptr_t)&g_fw_mgmt_ipc;
+
+	int ret = sg2000_cmdqu_send_wait(&cmdqu_msg, cmdqu_msg.cmd_id);
+
+	if (ret < 0) {
+		r_page_fw_mgmt[PX4IO_P_FW_MGMT_ERROR] = fw_mgmt_map_error(ret);
+		r_page_fw_mgmt[PX4IO_P_FW_MGMT_STATUS] = PX4IO_FW_MGMT_STATUS_ERROR;
+		return ret;
+	}
+
+	if ((g_fw_mgmt_ipc.magic != PX4IO_FW_MGMT_IPC_MAGIC) || (g_fw_mgmt_ipc.version != PX4IO_FW_MGMT_IPC_VERSION)) {
+		r_page_fw_mgmt[PX4IO_P_FW_MGMT_ERROR] = PX4IO_FW_MGMT_ERR_IPC;
+		r_page_fw_mgmt[PX4IO_P_FW_MGMT_STATUS] = PX4IO_FW_MGMT_STATUS_ERROR;
+		return -EIO;
+	}
+
+	fw_mgmt_set_u32(PX4IO_P_FW_MGMT_ACTIVE_HASH_L, g_fw_mgmt_ipc.active_hash);
+	fw_mgmt_set_u32(PX4IO_P_FW_MGMT_ACTIVE_SIZE_L, g_fw_mgmt_ipc.active_size);
+
+	r_page_fw_mgmt[PX4IO_P_FW_MGMT_ERROR] = g_fw_mgmt_ipc.result;
+	r_page_fw_mgmt[PX4IO_P_FW_MGMT_STATUS] =
+		(g_fw_mgmt_ipc.result == PX4IO_FW_MGMT_ERR_NONE) ? PX4IO_FW_MGMT_STATUS_DONE : PX4IO_FW_MGMT_STATUS_ERROR;
+
+	if ((command == PX4IO_FW_MGMT_CMD_CHECK_HASH) &&
+	    (g_fw_mgmt_ipc.request_hash == g_fw_mgmt_ipc.active_hash)) {
+		r_page_fw_mgmt[PX4IO_P_FW_MGMT_FLAGS] |= PX4IO_FW_MGMT_FLAG_HASH_MATCH;
+	}
+
+	return (g_fw_mgmt_ipc.result == PX4IO_FW_MGMT_ERR_NONE) ? OK : -EIO;
+#else
+	(void)command;
+	r_page_fw_mgmt[PX4IO_P_FW_MGMT_STATUS] = PX4IO_FW_MGMT_STATUS_UNSUPPORTED;
+	r_page_fw_mgmt[PX4IO_P_FW_MGMT_ERROR] = PX4IO_FW_MGMT_ERR_UNSUPPORTED;
+	return -ENOTSUP;
+#endif
+}
+
+static int fw_mgmt_set_one(uint8_t offset, uint16_t value)
+{
+	switch (offset) {
+	case PX4IO_P_FW_MGMT_CMD:
+		r_page_fw_mgmt[offset] = value;
+
+		if (value == PX4IO_FW_MGMT_CMD_NOP) {
+			r_page_fw_mgmt[PX4IO_P_FW_MGMT_STATUS] = PX4IO_FW_MGMT_STATUS_IDLE;
+			r_page_fw_mgmt[PX4IO_P_FW_MGMT_ERROR] = PX4IO_FW_MGMT_ERR_NONE;
+			r_page_fw_mgmt[PX4IO_P_FW_MGMT_FLAGS] = 0;
+			return OK;
+		}
+
+		return fw_mgmt_exec(value);
+
+	case PX4IO_P_FW_MGMT_REQ_HASH_L:
+	case PX4IO_P_FW_MGMT_REQ_HASH_H:
+	case PX4IO_P_FW_MGMT_REQ_SIZE_L:
+	case PX4IO_P_FW_MGMT_REQ_SIZE_H:
+	case PX4IO_P_FW_MGMT_TIMEOUT_MS:
+	case PX4IO_P_FW_MGMT_CHUNK_OFFSET_L:
+	case PX4IO_P_FW_MGMT_CHUNK_OFFSET_H:
+	case PX4IO_P_FW_MGMT_CHUNK_LEN:
+		r_page_fw_mgmt[offset] = value;
+		return OK;
+
+	default:
+		if ((offset >= PX4IO_P_FW_MGMT_DATA_BASE) &&
+		    (offset < PX4IO_P_FW_MGMT_DATA_BASE + PX4IO_FW_MGMT_DATA_REGS)) {
+			r_page_fw_mgmt[offset] = value;
+			return OK;
+		}
+
+		return -EINVAL;
+	}
 }
 
 static int
@@ -502,6 +822,9 @@ registers_set_one(uint8_t page, uint8_t offset, uint16_t value)
 
 		break;
 
+	case PX4IO_PAGE_FW_MGMT:
+		return fw_mgmt_set_one(offset, value);
+
 	default:
 		return -1;
 	}
@@ -619,6 +942,10 @@ registers_get(uint8_t page, uint8_t offset, uint16_t **values, unsigned *num_val
 
 	case PX4IO_PAGE_DISARMED_PWM:
 		SELECT_PAGE(r_page_servo_disarmed);
+		break;
+
+	case PX4IO_PAGE_FW_MGMT:
+		SELECT_PAGE(r_page_fw_mgmt);
 		break;
 
 	default:
