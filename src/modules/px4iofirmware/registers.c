@@ -46,6 +46,12 @@
 #include <string.h>
 #include <errno.h>
 
+#if defined(CONFIG_ARCH_CHIP_SG2000) && defined(CONFIG_SG2000_CMDQU)
+#include <fcntl.h>
+#include <sys/ioctl.h>
+#include <unistd.h>
+#endif
+
 #ifdef __PX4_NUTTX
 #include <nuttx/crc32.h>
 #else
@@ -361,6 +367,32 @@ static uint16_t fw_mgmt_map_error(int ret)
 	}
 }
 
+#if defined(CONFIG_ARCH_CHIP_SG2000) && defined(CONFIG_SG2000_CMDQU)
+static int fw_mgmt_cmdqu_send_wait(struct sg2000_cmdqu_msg_s *cmdqu_msg)
+{
+#if defined(CONFIG_SG2000_CMDQU_CHARDEV)
+	const char *cmdqu_dev = CONFIG_SG2000_CMDQU_CHARDEVPATH;
+	struct sg2000_cmdqu_send_wait_s req = {
+		.msg = *cmdqu_msg,
+		.wait_cmd_id = cmdqu_msg->cmd_id
+	};
+	int fd = open(cmdqu_dev, O_RDWR);
+
+	if (fd < 0) {
+		return -errno;
+	}
+
+	const int ret = ioctl(fd, SG2000_CMDQUIOC_SEND_WAIT, (unsigned long)&req);
+	const int ioctl_errno = (ret < 0) ? errno : 0;
+	*cmdqu_msg = req.msg;
+	(void)close(fd);
+	return (ret < 0) ? -ioctl_errno : ret;
+#else
+	return sg2000_cmdqu_send_wait(cmdqu_msg, cmdqu_msg->cmd_id);
+#endif
+}
+#endif
+
 static uint8_t *fw_mgmt_staging_base(size_t *capacity)
 {
 #if defined(CONFIG_ARCH_CHIP_SG2000)
@@ -535,7 +567,7 @@ static int fw_mgmt_exec(uint16_t command)
 	cmdqu_msg.resv.mstime = timeout_ms;
 	cmdqu_msg.param_ptr = (uint32_t)(uintptr_t)&g_fw_mgmt_ipc;
 
-	int ret = sg2000_cmdqu_send_wait(&cmdqu_msg, cmdqu_msg.cmd_id);
+	const int ret = fw_mgmt_cmdqu_send_wait(&cmdqu_msg);
 
 	if (ret < 0) {
 		r_page_fw_mgmt[PX4IO_P_FW_MGMT_ERROR] = fw_mgmt_map_error(ret);
