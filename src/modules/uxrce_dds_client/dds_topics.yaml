@@ -38,6 +38,9 @@ publications:
   - topic: /fmu/out/sensor_combined
     type: px4_msgs::msg::SensorCombined
 
+  - topic: /fmu/out/distance_sensor
+    type: px4_msgs::msg::DistanceSensor
+
   - topic: /fmu/out/timesync_status
     type: px4_msgs::msg::TimesyncStatus
 
@@ -67,6 +70,9 @@ publications:
 
   - topic: /fmu/out/vehicle_odometry
     type: px4_msgs::msg::VehicleOdometry
+
+  - topic: /fmu/out/trajectory_setpoint
+    type: px4_msgs::msg::TrajectorySetpoint
 
   - topic: /fmu/out/vehicle_status
     type: px4_msgs::msg::VehicleStatus
