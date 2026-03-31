@@ -11,6 +11,7 @@
 #include <stm32_pwr.h>
 #include <stm32_rtc.h>
 #include <stm32_rcc.h>
+#include "hardware/stm32_syscfg.h"
 #include <nvic.h>
 #include <nuttx/progmem.h>
 #include <lib/systick.h>
@@ -406,6 +407,29 @@ clock_deinit(void)
 {
 	uint32_t regval;
 
+	/* Reset overdrive and VOS configuration so that the application
+	 * can reconfigure power from a clean state. Without this, the
+	 * app's NuttX startup may hang waiting for VOSRDY/ACTVOSRDY
+	 * when it tries to reconfigure the voltage scaling.
+	 */
+
+#if defined(STM32_SYSCFG_PWRCR) && defined(SYSCFG_PWRCR_ODEN)
+	/* Disable overdrive (ODEN = 0) */
+	regval = getreg32(STM32_SYSCFG_PWRCR);
+	regval &= ~SYSCFG_PWRCR_ODEN;
+	putreg32(regval, STM32_SYSCFG_PWRCR);
+#endif
+
+#if defined(STM32_PWR_D3CR)
+	/* Reset VOS to Scale 1 (without overdrive) and wait for ready */
+	regval = getreg32(STM32_PWR_D3CR);
+	regval &= ~STM32_PWR_D3CR_VOS_MASK;
+	regval |= PWR_D3CR_VOS_SCALE_1;
+	putreg32(regval, STM32_PWR_D3CR);
+
+	while ((getreg32(STM32_PWR_D3CR) & STM32_PWR_D3CR_VOSRDY) == 0);
+#endif
+
 	/* Enable internal high-speed oscillator. */
 
 	regval = getreg32(STM32_RCC_CR);
@@ -629,7 +653,38 @@ arch_do_jump(const uint32_t *app_base)
 	uint32_t stacktop = app_base[0];
 	uint32_t entrypoint = app_base[1];
 
-	asm volatile(
+	/* Disable all interrupts to prevent any bootloader interrupt from
+	 * firing after we jump. Without this, pending NVIC interrupts
+	 * (USB, DMA, etc.) can cause an immediate hard fault in the app
+	 * before it has a chance to initialize.
+	 */
+	__asm volatile("cpsid i");
+
+	/* Disable all NVIC interrupt sources and clear all pending flags.
+	 * STM32H7 has up to 150 IRQs, covered by 8 x 32-bit registers.
+	 */
+	for (unsigned i = 0; i < 8; i++) {
+		putreg32(0xFFFFFFFF, ARMV7M_NVIC_BASE + 0x0180 + (i * 4)); /* ICER: clear enable */
+		putreg32(0xFFFFFFFF, ARMV7M_NVIC_BASE + 0x0280 + (i * 4)); /* ICPR: clear pending */
+	}
+
+	/* Clear any pending SysTick and PendSV */
+	putreg32(0, NVIC_SYSTICK_CTRL);
+	putreg32(0, NVIC_SYSTICK_CURRENT);
+
+	/* Reset processor state: BASEPRI, FAULTMASK, CONTROL.
+	 * Ensure Thread mode uses MSP (not PSP) and unprivileged
+	 * mode is not active.
+	 */
+	__asm volatile("msr basepri, %0" :: "r"(0));
+	__asm volatile("msr faultmask, %0" :: "r"(0));
+	__asm volatile("msr control, %0" :: "r"(0));
+	__asm volatile("isb");
+
+	/* DSB to ensure all pending memory operations complete before jump */
+	__asm volatile("dsb sy");
+
+	__asm volatile(
 		"msr msp, %0  \n"
 		"bx %1  \n"
 		: : "r"(stacktop), "r"(entrypoint) :);

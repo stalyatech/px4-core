@@ -210,11 +210,13 @@ controls_init(void)
 	r_raw_rc_count = 0;
 	system_state.rc_channels_timestamp_received = 0;
 
+#if !defined(CONFIG_ARCH_CHIP_SG2000)
 	/* DSM input (USART1) */
 	_dsm_fd = dsm_init("/dev/ttyS0");
 
 	/* S.bus input (USART3) */
 	_sbus_fd = sbus_init("/dev/ttyS2", false);
+#endif
 
 	/* Optional SG2000 PPM capture driver path. */
 	_ppm_fd = open(PX4IO_PPM_CAPTURE_DEVICE, O_RDONLY);
