@@ -202,14 +202,14 @@ void print_load_buffer(char *buffer, int buffer_length, print_load_callback_f cb
 
 		if (system_load.tasks[i].tcb->pid == 0) {
 			stack_size = (CONFIG_ARCH_INTERRUPTSTACK & ~3);
-			stack_free = (CONFIG_ARCH_INTERRUPTSTACK & ~3) - up_check_intstack(this_cpu());
+			stack_free = (CONFIG_ARCH_INTERRUPTSTACK & ~3) - up_check_intstack(this_cpu(), 0);
 
 		} else {
-			stack_free = system_load.tasks[i].tcb->adj_stack_size - up_check_tcbstack(system_load.tasks[i].tcb);
+			stack_free = system_load.tasks[i].tcb->adj_stack_size - up_check_tcbstack(system_load.tasks[i].tcb, 0);
 		}
 
 #else
-		stack_free = system_load.tasks[i].tcb->adj_stack_size - up_check_tcbstack(system_load.tasks[i].tcb);
+		stack_free = system_load.tasks[i].tcb->adj_stack_size - up_check_tcbstack(system_load.tasks[i].tcb, 0);
 #endif
 
 #if CONFIG_ARCH_BOARD_SIM || !defined(CONFIG_PRIORITY_INHERITANCE)

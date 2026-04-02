@@ -69,11 +69,10 @@ bool Spray::init()
 		return false;
 	}
 
-	// execute Run() on every "vehicle_command" publication
-	if (!_vehicle_cmd_sub.registerCallback()) {
-		PX4_ERR("vehicle_command callback registration failed");
-		return false;
-	}
+	// Do NOT register callback on vehicle_command — Spray::ActuatorProc()
+	// publishes DO_SET_ACTUATOR to vehicle_command, which would re-trigger
+	// Run() creating a feedback loop (~100 cmd/sec).  Vehicle commands
+	// (DO_SET_MODE) are polled when Run() fires from other callbacks.
 
 	// execute Run() on every "local_vehicle_position" publication
 	if (!_vehicle_pos_sub.registerCallback()) {
@@ -300,7 +299,18 @@ void Spray::publishVehicleCmdDoSetActuator(float flowrate)
 		}
 	}
 
-	command.timestamp = hrt_absolute_time();
+	const hrt_abstime now = hrt_absolute_time();
+	const bool value_changed = (fabsf(act_out - _last_actuator_value) > 0.001f);
+
+	// Rate-limit to 10 Hz unless the actuator value changed
+	if (!value_changed && hrt_elapsed_time(&_last_actuator_cmd_time) < 100_ms) {
+		return;
+	}
+
+	_last_actuator_cmd_time = now;
+	_last_actuator_value = act_out;
+
+	command.timestamp = now;
 	command.command = vehicle_command_s::VEHICLE_CMD_DO_SET_ACTUATOR;
 	command.param1 = -1;	// Actuator 1
 	command.param2 = -1; 	// Actuator 2
@@ -353,7 +363,6 @@ void Spray::Run()
 	if (should_exit()) {
 		_tank_status_sub.unregisterCallback();
 		_freq_status_sub.unregisterCallback();
-		_vehicle_cmd_sub.unregisterCallback();
 		_vehicle_pos_sub.unregisterCallback();
 		_spray_event_sub.unregisterCallback();
 		exit_and_cleanup();

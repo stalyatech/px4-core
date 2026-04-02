@@ -54,22 +54,31 @@ if [ -b "/dev/mmcsd0" ]
 then
 	if mount -t vfat /dev/mmcsd0 /fs/microsd
 	then
-		if [ -f "/fs/microsd/.format" ]
+		set STORAGE_AVAILABLE yes
+	else
+		usleep 300000
+		if mount -t vfat /dev/mmcsd0 /fs/microsd
 		then
-			echo "INFO [init] format /dev/mmcsd0 requested (/fs/microsd/.format)"
-			set SDCARD_FORMAT yes
-			rm /fs/microsd/.format
-			umount /fs/microsd
-
-		else
 			set STORAGE_AVAILABLE yes
 		fi
 	fi
 
-	if [ $STORAGE_AVAILABLE = no -o $SDCARD_FORMAT = yes ]
+	if [ $STORAGE_AVAILABLE = yes ]
+	then
+		if [ -f "/fs/microsd/.format" ]
+		then
+			echo "INFO [init] format /dev/mmcsd0 requested (/fs/microsd/.format)"
+			set SDCARD_FORMAT yes
+			set STORAGE_AVAILABLE no
+			rm /fs/microsd/.format
+			umount /fs/microsd
+		fi
+	fi
+
+	if [ $STORAGE_AVAILABLE = no ]
 	then
 		echo "INFO [init] formatting /dev/mmcsd0"
-		set STARTUP_TUNE 15 # tune 15 = SD_ERROR (overridden to SD_INIT if format + mount succeeds)
+		set STARTUP_TUNE 15
 
 		if mkfatfs -F 32 /dev/mmcsd0
 		then
@@ -78,7 +87,7 @@ then
 			if mount -t vfat /dev/mmcsd0 /fs/microsd
 			then
 				set STORAGE_AVAILABLE yes
-				set STARTUP_TUNE 14 # tune 14 = SD_INIT
+				set STARTUP_TUNE 14
 			else
 				echo "ERROR [init] card mount failed"
 			fi

@@ -742,19 +742,10 @@ MavlinkMissionManager::handle_mission_request_list(const mavlink_message_t *msg)
 			_state = MAVLINK_WPM_STATE_SENDLIST;
 			_mission_type = (MAV_MISSION_TYPE)wprl.mission_type;
 
-			// make sure our item counts are up-to-date
-			switch (_mission_type) {
-			case MAV_MISSION_TYPE_FENCE:
-				load_geofence_stats();
-				break;
-
-			case MAV_MISSION_TYPE_RALLY:
-				load_safepoint_stats();
-				break;
-
-			default:
-				break;
-			}
+			// Item counts are already cached from init or last upload.
+			// Do NOT call load_geofence_stats()/load_safepoint_stats() here
+			// as their blocking readSync (up to 5s) freezes the MAVLink thread
+			// and causes QGC to timeout waiting for MISSION_COUNT response.
 
 			_transfer_seq = 0;
 			_transfer_count = current_item_count();

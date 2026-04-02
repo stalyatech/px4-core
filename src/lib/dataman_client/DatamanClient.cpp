@@ -37,9 +37,25 @@
 
 #include <dataman_client/DatamanClient.hpp>
 
+// Serialize DatamanClient initialization to prevent uORB request collisions
+static px4_sem_t s_init_lock;
+static bool s_lock_initialized = false;
+
 DatamanClient::DatamanClient()
 {
 	_sync_perf = perf_alloc(PC_ELAPSED, "DatamanClient: sync");
+
+	irqstate_t flags = px4_enter_critical_section();
+
+	if (!s_lock_initialized) {
+		px4_sem_init(&s_init_lock, 0, 1);
+		px4_sem_setprotocol(&s_init_lock, SEM_PRIO_NONE);
+		s_lock_initialized = true;
+	}
+
+	px4_leave_critical_section(flags);
+
+	px4_sem_wait(&s_init_lock);
 
 	_dataman_request_pub.advertise();
 	_dataman_response_sub = orb_subscribe(ORB_ID(dataman_response));
@@ -62,7 +78,7 @@ DatamanClient::DatamanClient()
 		request.request_type = DM_GET_ID;
 		request.client_id = CLIENT_ID_NOT_SET;
 
-		bool success = syncHandler(request, response, timestamp, 1000_ms);
+		bool success = syncHandler(request, response, timestamp, 5000_ms);
 
 		if (success && (response.client_id > CLIENT_ID_NOT_SET)) {
 
@@ -72,6 +88,8 @@ DatamanClient::DatamanClient()
 			PX4_ERR("Failed to get client ID!");
 		}
 	}
+
+	px4_sem_post(&s_init_lock);
 }
 
 DatamanClient::~DatamanClient()
@@ -94,7 +112,7 @@ bool DatamanClient::syncHandler(const dataman_request_s &request, dataman_respon
 
 	while (!response_received && (time_elapsed < timeout)) {
 
-		uint32_t timeout_ms = 100;
+		uint32_t timeout_ms = 20 + (hrt_absolute_time() % 80);
 		ret = px4_poll(&_fds, 1, timeout_ms);
 
 		if (ret < 0) {
@@ -130,6 +148,10 @@ bool DatamanClient::syncHandler(const dataman_request_s &request, dataman_respon
 						response_received = true;
 						break;
 					}
+				}
+
+				if (!response_received) {
+					_dataman_request_pub.publish(request);
 				}
 			}
 		}
