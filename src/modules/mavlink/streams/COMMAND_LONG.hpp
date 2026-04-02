@@ -56,6 +56,8 @@ private:
 	explicit MavlinkStreamCommandLong(Mavlink *mavlink) : MavlinkStream(mavlink) {}
 
 	uORB::Subscription _vehicle_command_sub{ORB_ID(vehicle_command)};
+	bool _vehicle_command_sub_initialized{false};
+	hrt_abstime _last_generation_loss_log{0};
 
 	bool send() override
 	{
@@ -73,10 +75,16 @@ private:
 			vehicle_command_s cmd;
 
 			if (_vehicle_command_sub.update(&cmd)) {
-				if (_vehicle_command_sub.get_last_generation() != last_generation + 1) {
-					PX4_ERR("COMMAND_LONG vehicle_command lost, generation %d -> %d", last_generation,
-						_vehicle_command_sub.get_last_generation());
+				if (_vehicle_command_sub_initialized
+				    && _vehicle_command_sub.get_last_generation() != last_generation + 1) {
+					if (hrt_elapsed_time(&_last_generation_loss_log) > 10_s) {
+						PX4_WARN("COMMAND_LONG vehicle_command lost, generation %d -> %d", last_generation,
+							 _vehicle_command_sub.get_last_generation());
+						_last_generation_loss_log = hrt_absolute_time();
+					}
 				}
+
+				_vehicle_command_sub_initialized = true;
 
 				// mavlink mavlink commands are <= UINT16_MAX
 				const bool px4_internal_cmd = (cmd.command >= vehicle_command_s::VEHICLE_CMD_PX4_INTERNAL_START);

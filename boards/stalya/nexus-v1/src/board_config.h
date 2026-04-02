@@ -113,6 +113,15 @@
 /* HW has to large of R termination on ADC todo:change when HW value is chosen */
 #define BOARD_ADC_OPEN_CIRCUIT_V     (5.6f)
 
+/* Battery voltage divider and current sensing
+ * V_DIV = V_batt / V_adc (measure and calibrate via QGC)
+ * A_PER_V = amps per volt on current sense pin
+ */
+#define BOARD_BATTERY1_V_DIV         (16.0f)
+#define BOARD_BATTERY1_A_PER_V       (24.0f)
+#define BOARD_BATTERY2_V_DIV         (16.0f)
+#define BOARD_BATTERY2_A_PER_V       (24.0f)
+
 /* HW Version and Revision drive signals Default to 1 to detect */
 
 #define BOARD_HAS_HW_VERSIONING

@@ -319,6 +319,8 @@ private:
 	uORB::Subscription _pos_ctrl_landing_status_sub{ORB_ID(position_controller_landing_status)};	/**< position controller landing status subscription */
 	uORB::Subscription _traffic_sub{ORB_ID(transponder_report)};		/**< traffic subscription */
 	uORB::Subscription _vehicle_command_sub{ORB_ID(vehicle_command)};	/**< vehicle commands (onboard and offboard) */
+	bool _vehicle_command_sub_initialized{false};
+	hrt_abstime _last_vehicle_command_loss_log{0};
 
 	uORB::Publication<geofence_result_s>		_geofence_result_pub{ORB_ID(geofence_result)};
 	uORB::Publication<mission_result_s>		_mission_result_pub{ORB_ID(mission_result)};

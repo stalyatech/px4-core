@@ -164,6 +164,9 @@ private:
 	uORB::Publication<spray_status_s> _spray_stat_pub{ORB_ID(spray_status)};
 	uORB::Publication<vehicle_command_s> _vehicle_cmd_pub{ORB_ID(vehicle_command)};
 
+	hrt_abstime _last_actuator_cmd_time{0};
+	float _last_actuator_value{-1.0f};
+
 	spray_status_s _spray_stat{0};
 	tank_status_s  _tank_stat{0};
 	freq_status_s  _freq_stat{0};

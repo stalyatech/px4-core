@@ -278,7 +278,7 @@ for serial_command in serial_commands:
 
 
         commands.append({
-            'command': serial_command['command'],
+            'command': serial_command['command'].replace('${i}', str(i)),
             'label': serial_command['label'],
             'instance': i,
             'multi_instance': num_instances > 1,

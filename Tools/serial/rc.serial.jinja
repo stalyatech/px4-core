@@ -2,31 +2,39 @@
 
 # serial autostart script generated with generate_serial_config.py
 
-
-set PRT_F ${R}etc/init.d/rc.serial_port
-
 {% for command in commands -%}
-set PRT {{ command.port_param_name }}
-{% if command.multi_instance -%}
-set i {{ command.instance }}
-{% endif -%}
-# get the device & baudrate
-. $PRT_F
-if [ $SERIAL_DEV != none ]; then
+{% for serial_device in serial_devices -%}
+if param compare {{ command.port_param_name }} {{ serial_device.index }}
+then
+	if [ "x$PRT_{{ serial_device.tag }}_" = "x" ]
+	then
+		set PRT_{{ serial_device.tag }}_ 1
 {% if not constrained_flash -%}
-	echo "Starting {{ command.label }} on $SERIAL_DEV"
+		echo "Starting {{ command.label }} on {{ serial_device.device }}"
 {% endif -%}
-	{{ command.command }}
+		{{ command.command | replace('${SERIAL_DEV}', serial_device.device) | replace('$SERIAL_DEV', serial_device.device) | replace('${BAUD_PARAM}', 'SER_' ~ serial_device.tag ~ '_BAUD') | replace('$BAUD_PARAM', 'SER_' ~ serial_device.tag ~ '_BAUD') }}
+{% if not constrained_flash -%}
+	else
+		echo "Conflicting config for {{ serial_device.device }}"
+{% endif -%}
+	fi
 fi
+{% endfor -%}
+{% for config in ethernet_configuration -%}
+if param compare {{ command.port_param_name }} {{ config.index }}
+then
+{% if not constrained_flash -%}
+	echo "Starting {{ command.label }} on ethernet"
+{% endif -%}
+	{{ command.command | replace('${SERIAL_DEV}', 'ethernet') | replace('$SERIAL_DEV', 'ethernet') | replace('${BAUD_PARAM}', '') | replace('$BAUD_PARAM', '') }}
+fi
+{% endfor -%}
 
 {% endfor %}
 
 {% for serial_device in serial_devices -%}
 unset PRT_{{ serial_device.tag }}_
 {% endfor %}
-unset i
 unset SERIAL_DEV
-unset PRT
-unset PRT_F
 unset BAUD_PARAM
 unset MAV_ARGS

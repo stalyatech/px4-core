@@ -1076,7 +1076,7 @@ Mavlink::send_autopilot_capabilities()
 			param_t param_handle = param_find_no_notification("MNT_MODE_IN");
 			int32_t mnt_mode_in = 0;
 
-			if (mnt_mode_in != PARAM_INVALID) {
+			if (param_handle != PARAM_INVALID) {
 				param_get(param_handle, &mnt_mode_in);
 
 				if (mnt_mode_in == 4) {
@@ -2685,10 +2685,16 @@ void Mavlink::handleAndGetCurrentCommandAck()
 			const unsigned last_generation = _vehicle_command_ack_sub.get_last_generation();
 
 			if (_vehicle_command_ack_sub.update(&command_ack)) {
-				if (_vehicle_command_ack_sub.get_last_generation() != last_generation + 1) {
-					PX4_ERR("vehicle_command_ack lost, generation %u -> %u", last_generation,
-						_vehicle_command_ack_sub.get_last_generation());
+				if (_vehicle_command_ack_sub_initialized
+				    && _vehicle_command_ack_sub.get_last_generation() != last_generation + 1) {
+					if (hrt_elapsed_time(&_last_cmd_ack_loss_log) > 10_s) {
+						PX4_WARN("vehicle_command_ack lost, generation %u -> %u", last_generation,
+							 _vehicle_command_ack_sub.get_last_generation());
+						_last_cmd_ack_loss_log = hrt_absolute_time();
+					}
 				}
+
+				_vehicle_command_ack_sub_initialized = true;
 
 				const bool is_target_known = _receiver.component_was_seen(command_ack.target_system, command_ack.target_component);
 

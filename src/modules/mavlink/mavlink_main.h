@@ -547,6 +547,8 @@ private:
 	uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
 	uORB::Subscription _vehicle_command_sub{ORB_ID(vehicle_command)};
 	uORB::Subscription _vehicle_command_ack_sub{ORB_ID(vehicle_command_ack)};
+	bool _vehicle_command_ack_sub_initialized{false};
+	hrt_abstime _last_cmd_ack_loss_log{0};
 	uORB::Subscription _vehicle_status_sub{ORB_ID(vehicle_status)};
 	uORB::Subscription _gimbal_v1_command_sub{ORB_ID(gimbal_v1_command)};
 

@@ -341,7 +341,7 @@ static int write_stack_detail(bool inValid, _stack_s *si, char *sp_name,
 	tcb.adj_stack_size = si->size;
 
 	if (verify_ram_address(sbot, si->size)) {
-		n = snprintf(buffer, max,         "  used:   0x%08zx\n", up_check_tcbstack(&tcb));
+		n = snprintf(buffer, max,         "  used:   0x%08zx\n", up_check_tcbstack(&tcb, 0));
 
 	} else {
 		n = snprintf(buffer, max,         "Invalid Stack! (Corrupted TCB)  Stack base:  0x%08" PRIx32 " Stack size:  0x%08"

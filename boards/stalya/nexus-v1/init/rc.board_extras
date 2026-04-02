@@ -3,69 +3,38 @@
 # Board specific applications init
 #------------------------------------------------------------------------------
 
-#
-# Dummy check the pump parameters
-#
-if param greater PWM_PUMP_MIN 0
-then
-fi
-if param greater PWM_PUMP_MAX 0
-then
-fi
-if param greater PWM_PUMP_DISARM 0
-then
-fi
+# Override VTOL default: no airspeed sensor required
+param set-default SYS_HAS_NUM_ASPD 0
+param set-default FW_USE_AIRSPD 0
 
-#
-# Dummy check the tank parameters
-#
-if param greater TANK_FLOW_INP 0
-then
-fi
-if param greater TANK_EMPTY_ACT 0
-then
-fi
-if param greater TANK_VOL_MAX 0
-then
-fi
-if param greater TANK_FLOW_CONV 0
-then
-fi
+# Activate serial port baud parameters so they appear in QGC
+param touch SER_GPS1_BAUD
+param touch SER_GPS2_BAUD
+param touch SER_TEL1_BAUD
+param touch SER_TEL2_BAUD
+param touch SER_TEL3_BAUD
+param touch SER_TEL4_BAUD
 
-#
-# Dummy check the spray parameters
-#
-if param greater SPRAY_MODE 0
-then
-fi
+# Activate pump parameters so they appear in QGC
+#param touch PWM_PUMP_MIN
+#param touch PWM_PUMP_MAX
+#param touch PWM_PUMP_DISARM
 
-if param greater SPRAY_ENABLE 0
-then
-fi
+# Activate tank parameters so they appear in QGC
+param touch TANK_FLOW_INP
+param touch TANK_EMPTY_ACT
+param touch TANK_VOL_MAX
+param touch TANK_FLOW_CONV
 
-if param greater SPRAY_SWITCHOFF 0
-then
-fi
-
-if param greater SPRAY_CHANNEL 0
-then
-fi
-
-if param greater SPRAY_VOLUME 0
-then
-fi
-
-if param greater SPRAY_WIDTH 0
-then
-fi
-
-if param greater SPRAY_VELOCITY 0
-then
-fi
-
-if param greater SPRAY_SPEED_CUR 0
-then
-fi
+# Activate spray parameters so they appear in QGC
+param touch SPRAY_MODE
+param touch SPRAY_ENABLE
+param touch SPRAY_SWITCHOFF
+param touch SPRAY_CHANNEL
+param touch SPRAY_VOLUME
+param touch SPRAY_WIDTH
+param touch SPRAY_VELOCITY
+param touch SPRAY_SPEED_CUR
 
 if param greater SPRAY_SPEED_MAX 0
 then
@@ -97,16 +66,11 @@ then
 	fi
 fi
 
-# Configure USB MAVLink IMU streams after USB autostart has run in rcS.
-echo "rc.board_extras: configuring USB MAVLink IMU streams"
-if ! mavlink stream -d /dev/ttyACM0 -s HIGHRES_IMU -r 50
+# Configure USB MAVLink IMU streams only if instance already exists.
+if mavlink stream -d /dev/ttyACM0 -s HIGHRES_IMU -r 10
 then
-	echo "rc.board_extras: /dev/ttyACM0 has no MAVLink instance yet, starting one"
-	mavlink start -d /dev/ttyACM0 -m onboard
-	mavlink stream -d /dev/ttyACM0 -s HIGHRES_IMU -r 50
+	mavlink stream -d /dev/ttyACM0 -s SCALED_IMU -r 10
+	mavlink stream -d /dev/ttyACM0 -s SCALED_IMU2 -r 10
+	mavlink stream -d /dev/ttyACM0 -s SCALED_IMU3 -r 10
+	mavlink stream -d /dev/ttyACM0 -s VIBRATION -r 2
 fi
-
-mavlink stream -d /dev/ttyACM0 -s SCALED_IMU -r 50
-mavlink stream -d /dev/ttyACM0 -s SCALED_IMU2 -r 50
-mavlink stream -d /dev/ttyACM0 -s SCALED_IMU3 -r 50
-mavlink stream -d /dev/ttyACM0 -s VIBRATION -r 20

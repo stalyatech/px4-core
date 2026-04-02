@@ -250,9 +250,16 @@ void Navigator::run()
 			vehicle_command_s cmd{};
 			_vehicle_command_sub.copy(&cmd);
 
-			if (_vehicle_command_sub.get_last_generation() != last_generation + 1) {
-				PX4_ERR("vehicle_command lost, generation %d -> %d", last_generation, _vehicle_command_sub.get_last_generation());
+			if (_vehicle_command_sub_initialized
+			    && _vehicle_command_sub.get_last_generation() != last_generation + 1) {
+				if (hrt_elapsed_time(&_last_vehicle_command_loss_log) > 10_s) {
+					PX4_WARN("vehicle_command lost, generation %d -> %d", last_generation,
+						 _vehicle_command_sub.get_last_generation());
+					_last_vehicle_command_loss_log = hrt_absolute_time();
+				}
 			}
+
+			_vehicle_command_sub_initialized = true;
 
 			if (cmd.command == vehicle_command_s::VEHICLE_CMD_DO_GO_AROUND) {
 
