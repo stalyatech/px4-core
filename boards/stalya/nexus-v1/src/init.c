@@ -187,7 +187,7 @@ __EXPORT int board_app_initialize(uintptr_t arg)
 	/* initial LED state */
 	drv_led_start();
 
-#ifdef CONFIG_BOARD_CRASHDUMP
+#if defined(CONFIG_BOARD_CRASHDUMP) || defined(CONFIG_BOARD_CRASHDUMP_CUSTOM)
 	if (board_hardfault_init(2, true) != 0) {
 		led_on(LED_RED);
 	}

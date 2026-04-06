@@ -78,13 +78,22 @@ DatamanClient::DatamanClient()
 		request.request_type = DM_GET_ID;
 		request.client_id = CLIENT_ID_NOT_SET;
 
-		bool success = syncHandler(request, response, timestamp, 5000_ms);
+		for (int attempt = 0; attempt < 3; attempt++) {
+			bool success = syncHandler(request, response, timestamp, 3000_ms);
 
-		if (success && (response.client_id > CLIENT_ID_NOT_SET)) {
+			if (success && (response.client_id > CLIENT_ID_NOT_SET)) {
+				_client_id = response.client_id;
+				break;
+			}
 
-			_client_id = response.client_id;
+			if (attempt < 2) {
+				px4_usleep(200000);
+				timestamp = hrt_absolute_time();
+				request.timestamp = timestamp;
+			}
+		}
 
-		} else {
+		if (_client_id == CLIENT_ID_NOT_SET) {
 			PX4_ERR("Failed to get client ID!");
 		}
 	}
