@@ -725,7 +725,7 @@ task_main(int argc, char *argv[])
 	/* Start the endless loop, waiting for then processing work requests */
 	while (true) {
 
-		ret = px4_poll(&fds, 1, 1000);
+		ret = px4_poll(&fds, 1, 200);
 
 		if (ret > 0) {
 
@@ -851,8 +851,10 @@ start()
 
 	px4_sem_setprotocol(&g_init_sema, SEM_PRIO_NONE);
 
-	/* start the worker thread with low priority for disk IO */
-	if (px4_task_spawn_cmd("dataman", SCHED_DEFAULT, SCHED_PRIORITY_DEFAULT - 10,
+	/* start the worker thread with slightly above default priority to avoid
+	 * priority inversion during boot when higher-priority modules (navigator,
+	 * mavlink) create DatamanClient instances that block on DM_GET_ID */
+	if (px4_task_spawn_cmd("dataman", SCHED_DEFAULT, SCHED_PRIORITY_DEFAULT + 2,
 			       PX4_STACK_ADJUSTED(TASK_STACK_SIZE), task_main,
 			       nullptr) < 0) {
 		px4_sem_destroy(&g_init_sema);

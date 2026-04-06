@@ -374,6 +374,7 @@ PARAM_DEFINE_INT32(COM_OBL_RC_ACT, 0);
  * This parameter is kept to allow importing older parameter files that still
  * contain COM_OBS_AVOID without reporting it as missing.
  *
+ * @boolean
  * @group Commander
  * @reboot_required true
  */
