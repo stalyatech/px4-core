@@ -40,7 +40,7 @@
 
 #include <board_config.h>
 
-#ifdef CONFIG_BOARD_CRASHDUMP
+#if defined(CONFIG_BOARD_CRASHDUMP) || defined(CONFIG_BOARD_CRASHDUMP_CUSTOM)
 
 #include <stdio.h>
 #include <stdbool.h>
@@ -258,22 +258,24 @@ static void copy_reverse(stack_word_t *dest, stack_word_t *src, int size)
 
 #ifdef BOARD_CRASHDUMP_BSS
 
-static uint32_t *__attribute__((noinline)) __ebss_addr(void)
+static void *__attribute__((noinline)) __ebss_addr(void)
 {
-	return &_ebss;
+	return (void *)&_ebss;
 }
 
 #else
 
-static uint32_t *__attribute__((noinline)) __sdata_addr(void)
+static void *__attribute__((noinline)) __sdata_addr(void)
 {
-	return &_sdata;
+	return (void *)&_sdata;
 }
 
 #endif
 
 
-__EXPORT void board_crashdump(uintptr_t currentsp, FAR void *tcb, FAR const char *filename, int lineno)
+__EXPORT void board_crashdump(uintptr_t currentsp, FAR struct tcb_s *tcb,
+			      FAR const char *filename, int lineno,
+			      FAR const char *msg, FAR void *regs)
 {
 #ifndef BOARD_CRASHDUMP_RESET_ONLY
 	/* We need a chunk of ram to save the complete context in.
@@ -284,14 +286,12 @@ __EXPORT void board_crashdump(uintptr_t currentsp, FAR void *tcb, FAR const char
 	 */
 
 #ifdef BOARD_CRASHDUMP_BSS
-	fullcontext_s *pdump = (fullcontext_s *)(__ebss_addr() - sizeof(fullcontext_s));
+	fullcontext_s *pdump = (fullcontext_s *)((uint8_t *)__ebss_addr() - sizeof(fullcontext_s));
 #else
 	fullcontext_s *pdump = (fullcontext_s *)__sdata_addr();
 #endif
 
 	(void)enter_critical_section();
-
-	struct tcb_s *rtcb = (struct tcb_s *)tcb;
 
 	/* Zero out everything */
 
@@ -319,16 +319,16 @@ __EXPORT void board_crashdump(uintptr_t currentsp, FAR void *tcb, FAR const char
 	 * fault.
 	 */
 
-	pdump->info.current_regs = (uintptr_t) CURRENT_REGS;
+	pdump->info.current_regs = (uintptr_t)regs;
 
 	/* Save Context */
 
 
 #if CONFIG_TASK_NAME_SIZE > 0
-	strncpy(pdump->info.name, rtcb->name, CONFIG_TASK_NAME_SIZE);
+	strncpy(pdump->info.name, tcb->name, CONFIG_TASK_NAME_SIZE);
 #endif
 
-	pdump->info.pid = rtcb->pid;
+	pdump->info.pid = tcb->pid;
 
 	pdump->info.fault_regs.cfsr  = getreg32(NVIC_CFAULTS);
 	pdump->info.fault_regs.hfsr  = getreg32(NVIC_HFAULTS);
@@ -346,11 +346,11 @@ __EXPORT void board_crashdump(uintptr_t currentsp, FAR void *tcb, FAR const char
 	 * the users context
 	 */
 
-	if (CURRENT_REGS) {
+	if (regs) {
 		pdump->info.stacks.interrupt.sp = currentsp;
 
 		pdump->info.flags |= (eRegsPresent | eUserStackPresent | eIntStackPresent);
-		memcpy(pdump->info.regs, (void *)CURRENT_REGS, sizeof(pdump->info.regs));
+		memcpy(pdump->info.regs, regs, sizeof(pdump->info.regs));
 		pdump->info.stacks.user.sp = pdump->info.regs[REG_R13];
 
 	} else {
@@ -367,8 +367,8 @@ __EXPORT void board_crashdump(uintptr_t currentsp, FAR void *tcb, FAR const char
 		pdump->info.stacks.user.size = CONFIG_IDLETHREAD_STACKSIZE;
 
 	} else {
-		pdump->info.stacks.user.top = (uint32_t) rtcb->stack_base_ptr + rtcb->adj_stack_size;
-		pdump->info.stacks.user.size = (uint32_t) rtcb->adj_stack_size;
+		pdump->info.stacks.user.top = (uint32_t) tcb->stack_base_ptr + tcb->adj_stack_size;
+		pdump->info.stacks.user.size = (uint32_t) tcb->adj_stack_size;
 	}
 
 #if CONFIG_ARCH_INTERRUPTSTACK > 3
@@ -442,4 +442,4 @@ __EXPORT void board_crashdump(uintptr_t currentsp, FAR void *tcb, FAR const char
 	board_reset(CONFIG_BOARD_ASSERT_RESET_VALUE);
 }
 
-#endif /* CONFIG_BOARD_CRASHDUMP */
+#endif /* CONFIG_BOARD_CRASHDUMP || CONFIG_BOARD_CRASHDUMP_CUSTOM */

@@ -127,7 +127,9 @@ ControlAllocator::parameters_updated()
 	}
 
 	for (int i = 0; i < _num_control_allocation; ++i) {
-		_control_allocation[i]->updateParameters();
+		if (_control_allocation[i] != nullptr) {
+			_control_allocation[i]->updateParameters();
+		}
 	}
 
 	update_effectiveness_matrix_if_needed(EffectivenessUpdateReason::CONFIGURATION_UPDATE);

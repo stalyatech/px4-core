@@ -1166,19 +1166,23 @@ Mavlink::configure_stream(const char *stream_name, const float rate)
 		interval = -1;
 	}
 
-	for (const auto &stream : _streams) {
-		if (strcmp(stream_name, stream->get_name()) == 0) {
-			if (interval != 0) {
-				/* set new interval */
-				stream->set_interval(interval);
+	{
+		LockGuard lg{_streams_mutex};
 
-			} else {
-				/* delete stream */
-				_streams.deleteNode(stream);
-				return OK; // must finish with loop after node is deleted
+		for (const auto &stream : _streams) {
+			if (strcmp(stream_name, stream->get_name()) == 0) {
+				if (interval != 0) {
+					/* set new interval */
+					stream->set_interval(interval);
+
+				} else {
+					/* mark for deferred deletion in main loop */
+					stream->mark_for_delete();
+					return OK;
+				}
+
+				return OK;
 			}
-
-			return OK;
 		}
 	}
 
@@ -1188,7 +1192,11 @@ Mavlink::configure_stream(const char *stream_name, const float rate)
 
 	if (stream != nullptr) {
 		stream->set_interval(interval);
-		_streams.add(stream);
+
+		{
+			LockGuard lg{_streams_mutex};
+			_streams.add(stream);
+		}
 
 		return OK;
 	}
@@ -1286,12 +1294,20 @@ Mavlink::update_rate_mult()
 	float rate = 0.0f;
 
 	/* scale down rates if their theoretical bandwidth is exceeding the link bandwidth */
-	for (const auto &stream : _streams) {
-		if (stream->const_rate()) {
-			const_rate += (stream->get_interval() > 0) ? stream->get_size_avg() * 1000000.0f / stream->get_interval() : 0;
+	{
+		LockGuard lg{_streams_mutex};
 
-		} else {
-			rate += (stream->get_interval() > 0) ? stream->get_size_avg() * 1000000.0f / stream->get_interval() : 0;
+		for (const auto &stream : _streams) {
+			if (stream->is_marked_for_delete()) {
+				continue;
+			}
+
+			if (stream->const_rate()) {
+				const_rate += (stream->get_interval() > 0) ? stream->get_size_avg() * 1000000.0f / stream->get_interval() : 0;
+
+			} else {
+				rate += (stream->get_interval() > 0) ? stream->get_size_avg() * 1000000.0f / stream->get_interval() : 0;
+			}
 		}
 	}
 
@@ -2256,6 +2272,7 @@ Mavlink::task_main(int argc, char *argv[])
 	pthread_mutex_init(&_message_buffer_mutex, nullptr);
 	pthread_mutex_init(&_send_mutex, nullptr);
 	pthread_mutex_init(&_radio_status_mutex, nullptr);
+	pthread_mutex_init(&_streams_mutex, nullptr);
 
 	/* if we are passing on mavlink messages, we need to prepare a buffer for this instance */
 	if (get_forwarding_on()) {
@@ -2396,20 +2413,44 @@ Mavlink::task_main(int argc, char *argv[])
 		check_requested_subscriptions();
 
 		/* update streams */
-		for (const auto &stream : _streams) {
-			stream->update(t);
+		{
+			LockGuard lg{_streams_mutex};
 
-			if (!_first_heartbeat_sent) {
-				if (_mode == MAVLINK_MODE_IRIDIUM) {
-					if (stream->get_id() == MAVLINK_MSG_ID_HIGH_LATENCY2) {
-						_first_heartbeat_sent = stream->first_message_sent();
-					}
+			for (const auto &stream : _streams) {
+				if (stream->is_marked_for_delete()) {
+					continue;
+				}
 
-				} else {
-					if (stream->get_id() == MAVLINK_MSG_ID_HEARTBEAT) {
-						_first_heartbeat_sent = stream->first_message_sent();
+				stream->update(t);
+
+				if (!_first_heartbeat_sent) {
+					if (_mode == MAVLINK_MODE_IRIDIUM) {
+						if (stream->get_id() == MAVLINK_MSG_ID_HIGH_LATENCY2) {
+							_first_heartbeat_sent = stream->first_message_sent();
+						}
+
+					} else {
+						if (stream->get_id() == MAVLINK_MSG_ID_HEARTBEAT) {
+							_first_heartbeat_sent = stream->first_message_sent();
+						}
 					}
 				}
+			}
+		}
+
+		/* delete streams marked for deferred deletion */
+		{
+			LockGuard lg{_streams_mutex};
+			MavlinkStream *stream = _streams.getHead();
+
+			while (stream != nullptr) {
+				MavlinkStream *next = stream->getSibling();
+
+				if (stream->is_marked_for_delete()) {
+					_streams.deleteNode(stream);
+				}
+
+				stream = next;
 			}
 		}
 
@@ -2505,7 +2546,10 @@ Mavlink::task_main(int argc, char *argv[])
 	_subscribe_to_stream = nullptr;
 
 	/* delete streams */
-	_streams.clear();
+	{
+		LockGuard lg{_streams_mutex};
+		_streams.clear();
+	}
 
 	if (_uart_fd >= 0) {
 		/* discard all pending data, as close() might block otherwise on NuttX with flow control enabled */
@@ -2527,6 +2571,7 @@ Mavlink::task_main(int argc, char *argv[])
 	pthread_mutex_destroy(&_mavlink_shell_mutex);
 	pthread_mutex_destroy(&_send_mutex);
 	pthread_mutex_destroy(&_radio_status_mutex);
+	pthread_mutex_destroy(&_streams_mutex);
 	pthread_mutex_destroy(&_message_buffer_mutex);
 
 	PX4_INFO("exiting channel %i", (int)_channel);
@@ -2825,7 +2870,10 @@ void Mavlink::publish_telemetry_status()
 	_tstatus.forwarding = get_forwarding_on();
 	_tstatus.mavlink_v2 = (_protocol_version == 2);
 
-	_tstatus.streams = _streams.size();
+	{
+		LockGuard lg{_streams_mutex};
+		_tstatus.streams = _streams.size();
+	}
 
 	// telemetry_status is also updated from the receiver thread, but never the same fields
 	_tstatus.timestamp = hrt_absolute_time();
@@ -3094,29 +3142,37 @@ Mavlink::display_status_streams()
 
 	const float rate_mult = _rate_mult;
 
-	for (const auto &stream : _streams) {
-		const int interval = stream->get_interval();
-		const unsigned size = stream->get_size();
-		char rate_str[20];
+	{
+		LockGuard lg{_streams_mutex};
 
-		if (interval < 0) {
-			strcpy(rate_str, "unlimited");
+		for (const auto &stream : _streams) {
+			if (stream->is_marked_for_delete()) {
+				continue;
+			}
 
-		} else {
-			float rate = 1000000.0f / (float)interval;
-			// Note that the actual current rate can be lower if the associated uORB topic updates at a
-			// lower rate.
-			float rate_current = stream->const_rate() ? rate : rate * rate_mult;
-			snprintf(rate_str, sizeof(rate_str), "%6.2f (%.3f)", (double)rate, (double)rate_current);
-		}
+			const int interval = stream->get_interval();
+			const unsigned size = stream->get_size();
+			char rate_str[20];
 
-		printf("\t%-30s%-16s", stream->get_name(), rate_str);
+			if (interval < 0) {
+				strcpy(rate_str, "unlimited");
 
-		if (size > 0) {
-			printf(" %3u\n", size);
+			} else {
+				float rate = 1000000.0f / (float)interval;
+				// Note that the actual current rate can be lower if the associated uORB topic updates at a
+				// lower rate.
+				float rate_current = stream->const_rate() ? rate : rate * rate_mult;
+				snprintf(rate_str, sizeof(rate_str), "%6.2f (%.3f)", (double)rate, (double)rate_current);
+			}
 
-		} else {
-			printf("\n");
+			printf("\t%-30s%-16s", stream->get_name(), rate_str);
+
+			if (size > 0) {
+				printf(" %3u\n", size);
+
+			} else {
+				printf("\n");
+			}
 		}
 	}
 }

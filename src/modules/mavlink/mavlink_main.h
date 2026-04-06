@@ -412,6 +412,7 @@ public:
 	void			send_protocol_version();
 
 	List<MavlinkStream *> &get_streams() { return _streams; }
+	pthread_mutex_t &get_streams_mutex() { return _streams_mutex; }
 
 	float			get_rate_mult() const { return _rate_mult; }
 
@@ -573,6 +574,7 @@ private:
 	unsigned		_main_loop_delay{1000};	/**< mainloop delay, depends on data rate */
 
 	List<MavlinkStream *>		_streams;
+	pthread_mutex_t			_streams_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 	MavlinkShell		*_mavlink_shell{nullptr};
 	pthread_mutex_t		_mavlink_shell_mutex{};

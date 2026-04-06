@@ -60,9 +60,11 @@ public:
 
 	virtual ~DynamicSparseLayer()
 	{
-		if (_slots.load()) {
-			free(_slots.load());
-		}
+		// Intentionally do NOT free _slots here.
+		// On NuttX flat build, exit() from any task (e.g. NSH) triggers
+		// global C++ static destructors via atexit. This would free the
+		// parameter buffers while other tasks (mavlink, etc.) still use them,
+		// causing heap corruption and overlapping allocations.
 	}
 
 	bool store(param_t param, param_value_u value) override
@@ -200,35 +202,38 @@ private:
 		int max_retries = 5;
 
 		// As malloc uses locking, so we need to re-enable IRQ's during malloc/free and
-		// then atomically exchange the buffer
+		// then atomically publish the fully initialized buffer
 		while (_next_slot >= _n_slots && max_retries-- > 0) {
 			Slot *previous_slots = nullptr;
 			Slot *new_slots = nullptr;
+			int previous_n_slots = 0;
 
 			do {
 				previous_slots = _slots.load();
+				previous_n_slots = _n_slots;
 				transaction.unlock();
 
 				if (new_slots) {
 					free(new_slots);
 				}
 
-				new_slots = (Slot *) malloc(sizeof(Slot) * (_n_slots + _n_grow));
+				new_slots = (Slot *) malloc(sizeof(Slot) * (previous_n_slots + _n_grow));
 				transaction.lock();
 
 				if (new_slots == nullptr) {
 					return false;
 				}
 
-			} while (!_slots.compare_exchange(&previous_slots, new_slots));
+			} while ((_slots.load() != previous_slots) || (_n_slots != previous_n_slots));
 
-			memcpy(new_slots, previous_slots, sizeof(Slot) * _n_slots);
+			memcpy(new_slots, previous_slots, sizeof(Slot) * previous_n_slots);
 
-			for (int i = _n_slots; i < _n_slots + _n_grow; i++) {
+			for (int i = previous_n_slots; i < previous_n_slots + _n_grow; i++) {
 				new_slots[i] = {UINT16_MAX, param_value_u{}};
 			}
 
-			_n_slots += _n_grow;
+			_slots.store(new_slots);
+			_n_slots = previous_n_slots + _n_grow;
 
 			transaction.unlock();
 			free(previous_slots);

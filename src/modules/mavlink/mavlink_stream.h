@@ -122,9 +122,13 @@ public:
 	 */
 	void reset_last_sent() { _last_sent = 0; }
 
+	void mark_for_delete() { _marked_for_delete = true; }
+	bool is_marked_for_delete() const { return _marked_for_delete; }
+
 protected:
 	Mavlink      *const _mavlink;
 	int _interval{1000000};		///< if set to negative value = unlimited rate
+	bool _marked_for_delete{false};
 
 	virtual bool send() = 0;
 
