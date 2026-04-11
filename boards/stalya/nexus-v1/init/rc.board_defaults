@@ -13,6 +13,28 @@ param set-default BAT2_A_PER_V 0
 param set-default SENS_EN_THERMAL 1
 param set-default -s SENS_TEMP_ID 3932170
 
+# Dataman backend selection based on SD card availability.
+#
+# nexus-v1 has an FMU SD card slot but the card may or may not be present at
+# boot. When absent, dataman's default file backend tries (and fails) to open
+# /fs/microsd/dataman, which makes dataman task exit silently. Every mavlink
+# instance then blocks ~15-20 s in DatamanClient retry loops (3x3 s per client
+# + geofence/safepoint reads) during MavlinkMissionManager construction, which
+# delays USB mavlink startup and QGC auto-connect by 90-120 s.
+#
+# Use $STORAGE_AVAILABLE (set by nexfmu_common rcS after the SD mount attempt)
+# to pick the right backend, and `param set` (not set-default) so the value is
+# written to user_config and overrides any MTD-stored value from a previous
+# boot — keeps the board self-healing across SD insertion/removal cycles.
+if [ $STORAGE_AVAILABLE = yes ]
+then
+	# SD mounted — use default file backend (persistent mission storage)
+	param set SYS_DM_BACKEND 0
+else
+	# No SD — force RAM backend to avoid file init failure at boot
+	param set SYS_DM_BACKEND 1
+fi
+
 # Optional override: if a newer IO firmware is present on SD card, use it.
 if [ -f /fs/microsd/etc/extras/stalya_io-v2_default.bin ]
 then
