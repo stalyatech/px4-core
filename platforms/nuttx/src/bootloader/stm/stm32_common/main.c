@@ -361,7 +361,7 @@ board_deinit(void)
 	putreg32(0, STM32_RCC_AHB1ENR);
 }
 
-inline void arch_systic_init(void)
+void arch_systic_init(void)
 {
 	/* (re)start the timer system */
 	systick_set_clocksource(CLKSOURCE_PROCESOR);
@@ -370,7 +370,7 @@ inline void arch_systic_init(void)
 	systick_counter_enable();
 }
 
-inline void arch_systic_deinit(void)
+void arch_systic_deinit(void)
 {
 	/* kill the systick interrupt */
 	systick_interrupt_disable();
@@ -476,7 +476,7 @@ ssize_t arch_flash_write(uintptr_t address, const void *buffer, size_t buflen)
 	return up_progmem_write(address, buffer, buflen);
 }
 
-inline void arch_setvtor(const uint32_t *address)
+void arch_setvtor(const uint32_t *address)
 {
 	putreg32((uint32_t)address, NVIC_VECTAB);
 }

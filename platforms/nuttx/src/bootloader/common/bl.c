@@ -170,7 +170,7 @@ int get_version(int n, uint8_t *version_str)
 	return len;
 }
 
-inline void cinit(void *config, uint8_t interface)
+void cinit(void *config, uint8_t interface)
 {
 #if INTERFACE_USB
 
@@ -187,7 +187,7 @@ inline void cinit(void *config, uint8_t interface)
 
 #endif
 }
-inline void cfini(void)
+void cfini(void)
 {
 #if INTERFACE_USB
 	usb_cfini();
@@ -196,7 +196,7 @@ inline void cfini(void)
 	uart_cfini();
 #endif
 }
-inline int cin(uint32_t devices)
+int cin(uint32_t devices)
 {
 #if INTERFACE_USB
 
@@ -227,7 +227,7 @@ inline int cin(uint32_t devices)
 	return -1;
 }
 
-inline void cout(uint8_t *buf, unsigned len)
+void cout(uint8_t *buf, unsigned len)
 {
 #if INTERFACE_USB
 
