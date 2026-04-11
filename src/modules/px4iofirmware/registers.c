@@ -224,9 +224,11 @@ static volatile uint16_t r_page_fw_mgmt[] = {
 	[PX4IO_P_FW_MGMT_DATA_BASE ...(PX4IO_P_FW_MGMT_DATA_BASE + PX4IO_FW_MGMT_DATA_REGS - 1)] = 0,
 };
 
+#if defined(CONFIG_ARCH_CHIP_SG2000) && defined(CONFIG_SG2000_CMDQU)
 static struct PX4IOFwMgmtIpc g_fw_mgmt_ipc;
 static uint32_t g_fw_mgmt_received_bytes;
 static bool g_fw_mgmt_upload_ready;
+#endif
 
 int
 registers_set(uint8_t page, uint8_t offset, const uint16_t *values, unsigned num_values)
@@ -335,6 +337,7 @@ registers_set(uint8_t page, uint8_t offset, const uint16_t *values, unsigned num
 	return 0;
 }
 
+#if defined(CONFIG_ARCH_CHIP_SG2000) && defined(CONFIG_SG2000_CMDQU)
 static uint32_t fw_mgmt_get_u32(uint8_t lo_index)
 {
 	return (uint32_t)r_page_fw_mgmt[lo_index] | ((uint32_t)r_page_fw_mgmt[lo_index + 1] << 16);
@@ -509,6 +512,7 @@ static int fw_mgmt_finish_upload(void)
 	r_page_fw_mgmt[PX4IO_P_FW_MGMT_STATUS] = PX4IO_FW_MGMT_STATUS_DONE;
 	return OK;
 }
+#endif /* CONFIG_ARCH_CHIP_SG2000 && CONFIG_SG2000_CMDQU */
 
 static int fw_mgmt_exec(uint16_t command)
 {

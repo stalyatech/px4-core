@@ -51,7 +51,7 @@ static inline void fcl_reset(flash_cache_line_t *fcl)
 	memset(fcl, 0xff, sizeof(flash_cache_line_t));
 }
 
-inline void fc_reset(void)
+void fc_reset(void)
 {
 	for (unsigned w = 0; w < FC_NUMBER_LINES; w++) {
 		fcl_reset(&flash_cache[w]);
@@ -71,7 +71,7 @@ static inline flash_cache_line_t *fc_line_select(uintptr_t address)
 	return NULL;
 }
 
-inline int fc_is_dirty(flash_cache_line_t *fl)
+static inline int fc_is_dirty(flash_cache_line_t *fl)
 {
 	return fl->index != FC_CLEAN;
 }
