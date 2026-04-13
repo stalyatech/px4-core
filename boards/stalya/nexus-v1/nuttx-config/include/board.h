@@ -251,9 +251,9 @@
 #define STM32_SDMMC_CLKCR_EDGE      STM32_SDMMC_CLKCR_NEGEDGE
 
 /* SDMMC1 */
-#define GPIO_SDMMC1_D0   GPIO_SDMMC1_D0_0    		/* PC8  */
-#define GPIO_SDMMC1_CK   GPIO_SDMMC1_CK_0    		/* PC12 */
-#define GPIO_SDMMC1_CMD  GPIO_SDMMC1_CMD_0  		/* PD2  */
+#define GPIO_SDMMC1_D0   GPIO_SDMMC1_D0_0    	/* PC8  */
+#define GPIO_SDMMC1_CK   GPIO_SDMMC1_CK_0    	/* PC12 */
+#define GPIO_SDMMC1_CMD  GPIO_SDMMC1_CMD_0  	/* PD2  */
 
 /* UART/USART */
 #define GPIO_USART2_TX   GPIO_USART2_TX_1      	/* PA2 */
@@ -283,11 +283,11 @@
 
 
 /* CAN */
-#define GPIO_CAN1_RX   GPIO_CAN1_RX_3        		/* PD0  */
-#define GPIO_CAN1_TX   GPIO_CAN1_TX_3        		/* PD1  */
+#define GPIO_CAN1_RX   GPIO_CAN1_RX_3        	/* PD0  */
+#define GPIO_CAN1_TX   GPIO_CAN1_TX_3        	/* PD1  */
 
-#define GPIO_CAN2_RX   GPIO_CAN2_RX_2        		/* PB5  */
-#define GPIO_CAN2_TX   GPIO_CAN2_TX_2        		/* PB6  */
+#define GPIO_CAN2_RX   GPIO_CAN2_RX_2        	/* PB5  */
+#define GPIO_CAN2_TX   GPIO_CAN2_TX_2        	/* PB6  */
 
 
 /* SPI */
@@ -306,10 +306,10 @@
 #define GPIO_I2C2_SCL 	GPIO_I2C2_SCL_1      	/* PB10 */
 #define GPIO_I2C2_SDA 	GPIO_I2C2_SDA_1      	/* PB11 */
 
-#define GPIO_I2C4_SCL 	GPIO_I2C4_SCL_5   		/* PB8  */
-#define GPIO_I2C4_SDA 	GPIO_I2C4_SDA_5    		/* PB9  */
+#define GPIO_I2C4_SCL 	GPIO_I2C4_SCL_5   	/* PB8  */
+#define GPIO_I2C4_SDA 	GPIO_I2C4_SDA_5    	/* PB9  */
 
 
 /* USB OTG */
-#define GPIO_OTGFS_DM		GPIO_OTGFS_DM_0				/* PA11 */
-#define GPIO_OTGFS_DP		GPIO_OTGFS_DP_0				/* PA12 */
+#define GPIO_OTGFS_DM	GPIO_OTGFS_DM_0		/* PA11 */
+#define GPIO_OTGFS_DP	GPIO_OTGFS_DP_0		/* PA12 */

@@ -454,7 +454,7 @@ ppm_input(uint16_t *values, uint16_t *num_values, uint16_t *frame_len)
 
 			uint32_t freq_hz = 0;
 
-			if (ioctl(_ppm_fd, CAPIOC_FREQUENCE, (unsigned long)(uintptr_t)&freq_hz) == OK && freq_hz > 0) {
+			if (ioctl(_ppm_fd, CAPIOC_FREQUENCY, (unsigned long)(uintptr_t)&freq_hz) == OK && freq_hz > 0) {
 				*frame_len = (uint16_t)(1000000u / freq_hz);
 			}
 

@@ -143,6 +143,85 @@ PARAM_DEFINE_INT32(GPS_UBX_BAUD2, 230400);
 PARAM_DEFINE_INT32(GPS_UBX_CFG_INTF, 0);
 
 /**
+ * u-blox minimum satellite signal level (C/N0) for navigation
+ *
+ * Signals below this C/N0 threshold (dBHz) are excluded from the navigation
+ * solution. Set to 0 to use the receiver default.
+ *
+ * @min 0
+ * @max 63
+ * @reboot_required true
+ * @group GPS
+ */
+PARAM_DEFINE_INT32(GPS_UBX_MINCNO, 0);
+
+/**
+ * u-blox minimum elevation angle for navigation
+ *
+ * Satellites with elevation below this angle are excluded from the navigation
+ * solution. Set to 0 to use the receiver default.
+ *
+ * @min -90
+ * @max 90
+ * @unit deg
+ * @reboot_required true
+ * @group GPS
+ */
+PARAM_DEFINE_INT32(GPS_UBX_MINELEV, 0);
+
+/**
+ * u-blox DGNSS correction timeout
+ *
+ * Maximum age (seconds) of DGNSS corrections before the receiver falls back to
+ * standalone. Set to 0 to use the receiver default.
+ *
+ * @min 0
+ * @max 255
+ * @unit s
+ * @reboot_required true
+ * @group GPS
+ */
+PARAM_DEFINE_INT32(GPS_UBX_DGNSSTMO, 0);
+
+/**
+ * u-blox navigation output rate
+ *
+ * Navigation solution output rate in Hz. Set to 0 to let the driver pick the
+ * default for the detected module.
+ *
+ * @min 0
+ * @max 25
+ * @unit Hz
+ * @reboot_required true
+ * @group GPS
+ */
+PARAM_DEFINE_INT32(GPS_UBX_OUTRATE, 0);
+
+/**
+ * u-blox PPK output
+ *
+ * If enabled, the u-blox receiver also emits raw observation messages suitable
+ * for Post-Processed Kinematic (PPK) workflows in addition to the normal
+ * navigation output.
+ *
+ * @boolean
+ * @reboot_required true
+ * @group GPS
+ */
+PARAM_DEFINE_INT32(GPS_UBX_PPKOUT, 0);
+
+/**
+ * u-blox jamming detector sensitivity
+ *
+ * If enabled, the receiver's RF jamming detector runs in high-sensitivity mode.
+ *
+ * @boolean
+ * @reboot_required true
+ * @group GPS
+ */
+PARAM_DEFINE_INT32(GPS_UBX_JAMHI, 0);
+
+/**
  * Heading/Yaw offset for dual antenna GPS
  *
  * Heading offset angle for dual antenna GPS setups that support heading estimation.
