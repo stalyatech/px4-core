@@ -827,6 +827,48 @@ GPS::run()
 		param_get(handle, &f9p_uart2_baudrate);
 	}
 
+	int32_t gps_ubx_min_cno = 0;
+	handle = param_find("GPS_UBX_MINCNO");
+
+	if (handle != PARAM_INVALID) {
+		param_get(handle, &gps_ubx_min_cno);
+	}
+
+	int32_t gps_ubx_min_elev = 0;
+	handle = param_find("GPS_UBX_MINELEV");
+
+	if (handle != PARAM_INVALID) {
+		param_get(handle, &gps_ubx_min_elev);
+	}
+
+	int32_t gps_ubx_dgnss_tmo = 0;
+	handle = param_find("GPS_UBX_DGNSSTMO");
+
+	if (handle != PARAM_INVALID) {
+		param_get(handle, &gps_ubx_dgnss_tmo);
+	}
+
+	int32_t gps_ubx_out_rate = 0;
+	handle = param_find("GPS_UBX_OUTRATE");
+
+	if (handle != PARAM_INVALID) {
+		param_get(handle, &gps_ubx_out_rate);
+	}
+
+	int32_t gps_ubx_ppk_output = 0;
+	handle = param_find("GPS_UBX_PPKOUT");
+
+	if (handle != PARAM_INVALID) {
+		param_get(handle, &gps_ubx_ppk_output);
+	}
+
+	int32_t gps_ubx_jam_hi = 0;
+	handle = param_find("GPS_UBX_JAMHI");
+
+	if (handle != PARAM_INVALID) {
+		param_get(handle, &gps_ubx_jam_hi);
+	}
+
 	int32_t gnssSystemsParam = static_cast<int32_t>(GPSHelper::GNSSSystemsMask::RECEIVER_DEFAULTS);
 
 	if (_instance == Instance::Main) {
@@ -908,9 +950,21 @@ GPS::run()
 			_mode = gps_driver_mode_t::UBX;
 
 		/* FALLTHROUGH */
-		case gps_driver_mode_t::UBX:
-			_helper = new GPSDriverUBX(_interface, &GPS::callback, this, &_sensor_gps, _p_report_sat_info,
-						   gps_ubx_dynmodel, heading_offset, f9p_uart2_baudrate, ubx_mode);
+		case gps_driver_mode_t::UBX: {
+				GPSDriverUBX::Settings ubx_settings{};
+				ubx_settings.dynamic_model = (uint8_t)gps_ubx_dynmodel;
+				ubx_settings.dgnss_timeout = (uint8_t)gps_ubx_dgnss_tmo;
+				ubx_settings.min_cno = (uint8_t)gps_ubx_min_cno;
+				ubx_settings.min_elev = (int8_t)gps_ubx_min_elev;
+				ubx_settings.output_rate = (uint8_t)gps_ubx_out_rate;
+				ubx_settings.heading_offset = heading_offset;
+				ubx_settings.uart2_baudrate = f9p_uart2_baudrate;
+				ubx_settings.ppk_output = gps_ubx_ppk_output != 0;
+				ubx_settings.jam_det_sensitivity_hi = gps_ubx_jam_hi != 0;
+				ubx_settings.mode = ubx_mode;
+				_helper = new GPSDriverUBX(_interface, &GPS::callback, this, &_sensor_gps, _p_report_sat_info,
+							   ubx_settings);
+			}
 			set_device_type(DRV_GPS_DEVTYPE_UBX);
 			break;
 #ifndef CONSTRAINED_FLASH
