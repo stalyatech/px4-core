@@ -1,1 +1,5 @@
-# uTRAP profile uses boards/stalya/nexus-v1/default.px4board as-is.
+# uTRAP profile: inherits boards/stalya/nexus-v1/default.px4board and adds
+# variant-specific overrides below.
+
+# NXP SE050A2HQ1/Z01SHZ secure element on I2C2 @ 0x48
+CONFIG_DRIVERS_SECURE_ELEMENT_SE050=y
