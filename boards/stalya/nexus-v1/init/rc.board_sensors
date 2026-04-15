@@ -15,6 +15,14 @@ usb2514 -I -b 2 -a 44 start
 usleep 20000
 
 ###############################################
+# NXP SE050 secure element (utrap variant only)
+# USB2514 finishes its 100 kHz one-shot config first; SE050 then claims
+# I2C2 with per-transfer 400 kHz. Ignored on variants that don't build
+# the 'se050' module.
+###############################################
+se050 start
+
+###############################################
 # Primary IMU Sensors
 ###############################################
 

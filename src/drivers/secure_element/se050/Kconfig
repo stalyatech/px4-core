@@ -1,0 +1,22 @@
+menuconfig DRIVERS_SECURE_ELEMENT_SE050
+	bool "se050 (NXP EdgeLock)"
+	default n
+	---help---
+		NXP SE050 secure element over I2C.
+
+		Provides a PX4 module 'se050' with 'start|stop|status'
+		subcommands. 'se050 start' registers the NuttX /dev/se05x
+		character device on the configured I2C bus.
+
+		Must be started AFTER any slow (100 kHz-only) devices on the
+		same bus have finished their one-shot init, because SE050 uses
+		a per-transfer 400 kHz clock override.
+
+		Requires NuttX defconfig options (not auto-selectable from the
+		PX4 Kconfig tree):
+		    CONFIG_CRYPTO=y
+		    CONFIG_DEV_SE05X=y
+		    CONFIG_DEV_SE05X_PLAIN=y  (or CONFIG_DEV_SE05X_SCP03=y)
+
+		When disabled the module is not built and callers must fall
+		back to a traditional software-based flow.
