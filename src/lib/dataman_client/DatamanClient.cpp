@@ -37,6 +37,10 @@
 
 #include <dataman_client/DatamanClient.hpp>
 
+#if !defined(__PX4_NUTTX)
+#include <mutex>
+#endif
+
 // Serialize DatamanClient initialization to prevent uORB request collisions
 static px4_sem_t s_init_lock;
 static bool s_lock_initialized = false;
@@ -45,6 +49,7 @@ DatamanClient::DatamanClient()
 {
 	_sync_perf = perf_alloc(PC_ELAPSED, "DatamanClient: sync");
 
+#if defined(__PX4_NUTTX)
 	irqstate_t flags = px4_enter_critical_section();
 
 	if (!s_lock_initialized) {
@@ -54,6 +59,15 @@ DatamanClient::DatamanClient()
 	}
 
 	px4_leave_critical_section(flags);
+#else
+	// POSIX: use std::call_once for thread-safe one-time init (no IRQ concept).
+	static std::once_flag s_init_flag;
+	std::call_once(s_init_flag, []() {
+		px4_sem_init(&s_init_lock, 0, 1);
+		px4_sem_setprotocol(&s_init_lock, SEM_PRIO_NONE);
+		s_lock_initialized = true;
+	});
+#endif
 
 	px4_sem_wait(&s_init_lock);
 

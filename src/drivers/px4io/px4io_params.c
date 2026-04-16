@@ -51,3 +51,14 @@
  * @group PWM Outputs
  */
 PARAM_DEFINE_INT32(PWM_SBUS_MODE, 0);
+
+/**
+ * Set usage of IO board
+ *
+ * Can be used to use a setup without IO board, even if one is detected.
+ *
+ * @boolean
+ * @reboot_required true
+ * @group System
+ */
+PARAM_DEFINE_INT32(SYS_USE_IO, 1);

@@ -322,8 +322,13 @@ else()
 			target_link_libraries(px4 PRIVATE romfs)
 		endif()
 
+	# Pad the .bin to a 4-byte boundary with 0xff so the px4io bootloader's
+	# PROG_MULTI handler (which requires count % 4 == 0) accepts the last chunk
+	# of the upload. Trailing 0xff matches erased flash, so it does not affect
+	# verify CRC.
 	add_custom_command(OUTPUT ${PX4_BINARY_OUTPUT}
 		COMMAND ${CMAKE_OBJCOPY} -O binary ${PX4_BINARY_DIR_REL}/${FW_NAME} ${PX4_BINARY_OUTPUT}
+		COMMAND ${PYTHON_EXECUTABLE} ${PX4_SOURCE_DIR}/Tools/pad_bin_to_word.py ${PX4_BINARY_OUTPUT}
 		DEPENDS px4
 	)
 
