@@ -452,7 +452,6 @@ PX4IO_Uploader::program(size_t fw_size)
 		return -ENOMEM;
 	}
 
-	ASSERT((fw_size & 3) == 0);
 	ASSERT((PROG_MULTI_MAX & 3) == 0);
 
 	log("programming %u bytes...", (unsigned)fw_size);
@@ -481,9 +480,18 @@ PX4IO_Uploader::program(size_t fw_size)
 
 		sent += count;
 
+		// Pad partial last chunk to 4-byte boundary with 0xff so the bootloader's
+		// `count % 4` check passes; flash is already 0xff after erase, so the
+		// trailing bytes match what verify_rev3() will CRC.
+		size_t tx_count = (count + 3u) & ~3u;
+
+		while ((size_t)count < tx_count) {
+			file_buf[count++] = 0xff;
+		}
+
 		send(PROTO_PROG_MULTI);
-		send(count);
-		send(file_buf, count);
+		send(tx_count);
+		send(file_buf, tx_count);
 		send(PROTO_EOC);
 
 		ret = get_sync(1000);
@@ -600,7 +608,12 @@ PX4IO_Uploader::verify_rev3(size_t fw_size_local)
 		return ret;
 	}
 
-	/* read through the firmware file again and calculate the checksum*/
+	/* read through the firmware file again and calculate the checksum.
+	 * Each iteration walks a 4-byte window because the bootloader programs and
+	 * CRC's flash word-aligned; if fw_size_local is not a multiple of 4, the
+	 * trailing partial read is padded with 0xff to match the flash contents
+	 * (program() pads the last chunk the same way, and the rest of the sector
+	 * is 0xff after CHIP_ERASE). */
 	while (bytes_read < fw_size_local) {
 		size_t n = fw_size_local - bytes_read;
 
@@ -628,10 +641,13 @@ PX4IO_Uploader::verify_rev3(size_t fw_size_local)
 			return -errno;
 		}
 
-		/* calculate crc32 sum */
-		sum = crc32part((uint8_t *)&file_buf, sizeof(file_buf), sum);
+		while ((size_t)count < sizeof(file_buf)) {
+			file_buf[count++] = fill_blank;
+		}
 
-		bytes_read += count;
+		sum = crc32part(file_buf, sizeof(file_buf), sum);
+
+		bytes_read += sizeof(file_buf);
 	}
 
 	/* fill the rest with 0xff */

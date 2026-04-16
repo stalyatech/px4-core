@@ -387,6 +387,11 @@ else
 	#
 	# px4io
 	#
+	# SYS_USE_IO=0 disables boot-time IO firmware update and `px4io start`,
+	# letting the user run `px4io update` / `px4io start` manually from nsh
+	# without the FMU touching the IO board on every boot.
+	if param compare -s SYS_USE_IO 1
+	then
 	if px4io supported
 	then
 		# Check if PX4IO present and update firmware if needed.
@@ -417,6 +422,7 @@ else
 			echo "PX4IO start failed"
 			set STARTUP_TUNE 2 # tune 2 = ERROR_TUNE
 		fi
+	fi
 	fi
 	fi
 

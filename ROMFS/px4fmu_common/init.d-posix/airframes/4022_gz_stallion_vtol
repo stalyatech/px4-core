@@ -1,0 +1,295 @@
+#!/bin/sh
+#
+# @name SITL Stallion VTOL Y-Tiltrotor
+#
+# @type VTOL Tiltrotor
+# @class VTOL
+#
+# @output Motor1 Front right rotor (tilt, CW)
+# @output Motor2 Front left rotor (tilt, CCW)
+# @output Motor3 Tail rotor (fixed, CCW; MC lift only)
+# @output Servo1 Aileron left
+# @output Servo2 Aileron right
+# @output Servo3 V-tail left (ruddervator)
+# @output Servo4 V-tail right (ruddervator)
+# @output Servo5 Front right tilt servo
+# @output Servo6 Front left tilt servo
+#
+# @maintainer Stalya
+#
+
+. ${R}etc/init.d/rc.vtol_defaults
+
+PX4_SIMULATOR=${PX4_SIMULATOR:=gz}
+PX4_GZ_WORLD=${PX4_GZ_WORLD:=default}
+PX4_SIM_MODEL=${PX4_SIM_MODEL:=stallion_vtol}
+
+param set-default SIM_GZ_EN 1
+
+param set-default MAV_TYPE 21
+param set-default VT_TYPE 1
+
+# --- Control allocation (Y-form, 3 rotors; front two tilt, rear fixed) ---
+param set-default CA_AIRFRAME 3
+param set-default CA_ROTOR_COUNT 3
+
+# Rotor 0 = front right (CW), tilt servo 0
+param set-default CA_ROTOR0_PX 0.44
+param set-default CA_ROTOR0_PY 0.82
+param set-default CA_ROTOR0_PZ 0.0
+param set-default CA_ROTOR0_KM -0.05
+param set-default CA_ROTOR0_TILT 1
+
+# Rotor 1 = front left (CCW), tilt servo 1
+param set-default CA_ROTOR1_PX 0.44
+param set-default CA_ROTOR1_PY -0.82
+param set-default CA_ROTOR1_PZ 0.0
+param set-default CA_ROTOR1_KM 0.05
+param set-default CA_ROTOR1_TILT 2
+
+# Rotor 2 = tail (CCW), fixed vertical lift; stops in FW cruise
+param set-default CA_ROTOR2_PX -1.00
+param set-default CA_ROTOR2_PY 0.00
+param set-default CA_ROTOR2_PZ 0.0
+param set-default CA_ROTOR2_KM 0.05
+param set-default CA_ROTOR2_AX 0.0
+param set-default CA_ROTOR2_AY 0.0
+param set-default CA_ROTOR2_AZ -1.0
+param set-default CA_ROTOR2_TILT 0
+
+# Tilt servos: 0..90 deg
+param set-default CA_SV_TL_COUNT 2
+param set-default CA_SV_TL0_MINA 0
+param set-default CA_SV_TL0_MAXA 90
+param set-default CA_SV_TL0_TD 0
+param set-default CA_SV_TL0_CT 1
+param set-default CA_SV_TL1_MINA 0
+param set-default CA_SV_TL1_MAXA 90
+param set-default CA_SV_TL1_TD 0
+param set-default CA_SV_TL1_CT 1
+
+# Control surfaces — per control mapping document:
+#   MC: ailerons + V-tail LOCKED (via VT_ELEV_MC_LOCK=1)
+#   FW: ailerons do ROLL only, V-tail does PITCH (collective) + YAW (diff)
+# Aileron TRQ_P explicitly 0 so pitch input does not move ailerons.
+param set-default CA_SV_CS_COUNT 4
+param set-default CA_SV_CS0_TYPE 1      # aileron L
+param set-default CA_SV_CS0_TRQ_R -0.5
+param set-default CA_SV_CS0_TRQ_P 0
+param set-default CA_SV_CS1_TYPE 2      # aileron R
+param set-default CA_SV_CS1_TRQ_R 0.5
+param set-default CA_SV_CS1_TRQ_P 0
+# V-tail (ruddervator) provides pitch (collective) and yaw (differential).
+# SDF dihedral reduced to 20° so diff-yaw roll coupling stays within the
+# roll controller's capability to compensate via ailerons.
+param set-default CA_SV_CS2_TYPE 7      # V-tail L (pitch + yaw)
+param set-default CA_SV_CS2_TRQ_P 0.5
+param set-default CA_SV_CS2_TRQ_Y 0.5
+param set-default CA_SV_CS3_TYPE 8      # V-tail R (pitch + yaw)
+param set-default CA_SV_CS3_TRQ_P 0.5
+param set-default CA_SV_CS3_TRQ_Y -0.5
+
+# --- gz_bridge output function mapping ---
+# Motors -> /stallion_vtol/command/motor_speed velocity[0..2]
+param set-default SIM_GZ_EC_FUNC1 101
+param set-default SIM_GZ_EC_FUNC2 102
+param set-default SIM_GZ_EC_FUNC3 103
+
+# F90 28065 1300KV + HQProp 7x4x3 on 6S: loaded max ~22000 rpm = ~2300 rad/s
+param set-default SIM_GZ_EC_MIN1 15
+param set-default SIM_GZ_EC_MIN2 15
+param set-default SIM_GZ_EC_MIN3 15
+param set-default SIM_GZ_EC_MAX1 2300
+param set-default SIM_GZ_EC_MAX2 2300
+param set-default SIM_GZ_EC_MAX3 2300
+
+# Servos -> /model/stallion_vtol/servo_0..5
+# PX4 CA_AIRFRAME=3 allocator order: control surfaces (1..4) then tilts (5..6)
+param set-default SIM_GZ_SV_FUNC1 201  # servo_0 = aileron L
+param set-default SIM_GZ_SV_FUNC2 202  # servo_1 = aileron R
+param set-default SIM_GZ_SV_FUNC3 203  # servo_2 = V-tail L
+param set-default SIM_GZ_SV_FUNC4 204  # servo_3 = V-tail R
+param set-default SIM_GZ_SV_FUNC5 205  # servo_4 = tilt 0 (front R)
+param set-default SIM_GZ_SV_FUNC6 206  # servo_5 = tilt 1 (front L)
+
+# Tilt servos: 0..90 deg operating range (funcs 5, 6)
+param set-default SIM_GZ_SV_MINA5 0
+param set-default SIM_GZ_SV_MAXA5 90
+param set-default SIM_GZ_SV_MINA6 0
+param set-default SIM_GZ_SV_MAXA6 90
+
+# Airspeed sensor is now present in SDF (airspeed_link) for VTOL transition.
+param set-default SYS_HAS_NUM_ASPD 1
+param set-default FD_ESCS_EN 0
+param set-default COM_ARM_CHK_ESCS 0
+
+# --- SITL operating defaults pulled from manual QGC overrides ---
+# Use joystick (QGC) instead of an RC receiver
+param set-default COM_RC_IN_MODE 1
+
+# Relax magnetometer preflight (sim mag noise can fail strict checks)
+param set-default COM_ARM_MAG_ANG 60
+param set-default COM_ARM_MAG_STR 2
+
+# Bypass safety checks not applicable to SITL
+param set-default CBRK_USB_CHK 197848
+param set-default CBRK_IO_SAFETY 22027
+param set-default CBRK_FLIGHTTERM 121212
+
+# VTOL behaviour: takeoff in MC, RC loss = return
+param set-default NAV_FORCE_VT 1
+param set-default NAV_RCL_ACT 2
+
+# MC tuning for 3.1 kg Stallion V2 (Ixx=0.5, Iyy=1.0, Izz=1.4 kg·m²).
+# After first flight log analysis (11_10_51.ulg): pitch rate tracking was weak
+# (sp RMS 50°/s vs measured 27°/s) with integrator saturating at 0.3, and
+# position loop too aggressive (vx sp ±2.4 m/s vs GT ±6 m/s). HTE converged
+# to 0.52, so update feed-forward too.
+# 5th iter — CRITICAL BUG FIX: airframe had DUPLICATE MPC_XY_VEL_* lines
+# later in the file that silently OVERRODE my earlier tuning (I_ACC=0 was
+# becoming I_ACC=4 at load time). Duplicates removed. Two behaviour changes:
+#  (a) Disable HTE (MPC_USE_HTE=0) — pilot throttle sweeps trigger re-learning
+#      which couples vertical thrust bias into horizontal plane. Fixed hover.
+#  (b) Position loop near-passive to break the ±20° pitch limit cycle.
+param set-default MPC_THR_HOVER 0.65
+param set-default MPC_THR_MIN 0.12
+# Thrust curve model: gz MulticopterMotorModel has T = motorConstant × ω² → quadratic.
+# THR_MDL_FAC=1.0 tells PX4 allocator to invert the square for linear thrust response.
+# Required for accurate MC Autotune and for stick feel linearity across throttle range.
+param set-default THR_MDL_FAC 1.0
+
+# Keep simulated battery full during autotune so voltage sag doesn't skew gains
+param set-default SIM_BAT_DRAIN 0
+param set-default SIM_BAT_MIN_PCT 90
+param set-default MPC_TILTMAX_AIR 25
+param set-default MPC_USE_HTE 0
+
+# Position loop — soft (to avoid limit-cycling) but allow meaningful MC speed.
+# Previously clamped at 2.5 m/s (~9 km/h) which was too restrictive. For a
+# VTOL with ~3.1 kg and 1.34 m wingspan, 8 m/s (~29 km/h) is sensible MC max.
+# For CRUISE speed (60-70 km/h) the vehicle must transition to fixed-wing.
+param set-default MPC_XY_P 0.15
+param set-default MPC_XY_VEL_P_ACC 1.2
+param set-default MPC_XY_VEL_I_ACC 0.0
+param set-default MPC_XY_VEL_D_ACC 0.0
+param set-default MPC_XY_VEL_MAX 8
+param set-default MPC_XY_CRUISE 5
+param set-default MPC_JERK_MAX 3
+
+# Attitude loop (outer) — revert pitch to the values that flew well in the
+# Stabilized-mode log (11_22_22.ulg: pitch err RMS 5.5°). 2nd iter's 4.5+0.14
+# combo caused 20° attitude overshoot and ±50° swings in Position mode.
+param set-default MC_ROLL_P 4.5
+param set-default MC_PITCH_P 4.0
+param set-default MC_YAW_P 2.0
+
+# Rate gains scaled to user-specified box-model inertia:
+#   Ixx=0.4705 (roll) — large due to full wingspan inclusion
+#   Iyy=0.2159 (pitch) — smaller, body is only 0.90 m fore-aft in box
+#   Izz=0.6731 (yaw)
+
+# Roll rate — log 12_40_20 under aggressive full-stick input showed roll err
+# RMS 1.83° (was 0.93° on gentler input). Integrator max 0.017 (way below
+# 0.3 limit) → headroom to bump P for tighter tracking.
+param set-default MC_ROLLRATE_P 0.14
+param set-default MC_ROLLRATE_I 0.12
+param set-default MC_ROLLRATE_D 0.005
+param set-default MC_ROLLRATE_MAX 90
+param set-default MC_RR_INT_LIM 0.3
+
+# Pitch rate — log 12_40_20 showed pitch err 2.17° (good, target <2°).
+# Rate integrator only 0.021 max → plenty of headroom, bump P slightly.
+param set-default MC_PITCHRATE_P 0.10
+param set-default MC_PITCHRATE_I 0.10
+param set-default MC_PITCHRATE_D 0.005
+param set-default MC_PITCHRATE_MAX 90
+param set-default MC_PR_INT_LIM 0.3
+
+# VT tuning to match manual settings
+param set-default VT_FWD_THRUST_SC 0.7
+param set-default MAV_USEHILGPS 0
+
+# FW / MC tuning (seed values from 4020_gz_tiltrotor)
+param set-default NPFG_PERIOD 12
+param set-default FW_PR_FF 0.2
+param set-default FW_PR_P 0.9
+param set-default FW_PSP_OFF 2
+param set-default FW_P_LIM_MIN -15
+param set-default FW_RR_FF 0.1
+param set-default FW_RR_P 0.3
+param set-default FW_THR_TRIM 0.45
+param set-default FW_THR_MAX 0.85
+param set-default FW_THR_MIN 0.05
+
+# FW airspeed envelope — target 60-70 km/h cruise (17-19 m/s)
+param set-default FW_AIRSPD_STALL 8
+param set-default FW_AIRSPD_MIN 11
+param set-default FW_AIRSPD_TRIM 18
+param set-default FW_AIRSPD_MAX 22
+
+# VTOL transition tuning:
+# - Full throttle during transition for fastest forward acceleration
+# - Blend begins at 13 m/s (just above stall 12.6) — ensures FW controls
+#   only take over when wing is definitely flying
+# - Transition complete at 17 m/s (35% stall margin)
+param set-default VT_F_TRANS_THR 1.0
+param set-default VT_ARSP_BLEND 13
+param set-default VT_ARSP_TRANS 17
+param set-default FW_T_CLMB_MAX 8
+param set-default FW_T_SINK_MAX 2.7
+param set-default FW_T_SINK_MIN 2.2
+
+param set-default MC_AIRMODE 1
+# Yaw rate — Izz=1.4, diff thrust is weak in tricopter (only rotor 2 + tilt yaw)
+param set-default MC_YAWRATE_P 0.25
+param set-default MC_YAWRATE_I 0.08
+param set-default MC_YAWRATE_D 0.0
+param set-default MC_YAWRATE_MAX 60
+
+# Enable MC autotune so the user can let PX4 refine these gains in flight.
+# Rise-time target tuned for 3.1 kg VTOL with long moment arms (default 0.14s
+# is sized for small agile multirotors — too fast for this vehicle, pitch/yaw
+# fail to converge). 0.30s ≈ 3.3 Hz closed-loop bandwidth, achievable here.
+param set-default MC_AT_EN 1
+param set-default MC_AT_RISE_TIME 0.30
+param set-default MC_AT_APPLY 1
+param set-default MC_AT_SYSID_AMP 0.6
+
+param set-default MIS_TAKEOFF_ALT 10
+
+param set-default VT_FWD_THRUST_EN 0
+param set-default VT_TILT_MC 0
+# Transition profile for Stallion V2 (front rotors at +0.44m → nose-up moment
+# when tilted forward; small wing stalls at ~12.6 m/s):
+# - Smaller tilt angle (27°) keeps rotors mostly vertical → less nose-up moment
+#   and most of the vertical lift budget intact during acceleration.
+# - Longer duration (12s) gives airspeed time to build above stall margin.
+# - Full throttle during transition for fastest forward acceleration.
+param set-default VT_TILT_TRANS 0.3
+param set-default VT_TILT_FW 1.0
+param set-default VT_F_TRANS_DUR 12.0
+param set-default VT_TRANS_TIMEOUT 30
+# Phase-2 ramp tilts from VT_TILT_TRANS=0.3 to VT_TILT_FW=1.0 over this
+# duration. 3.0s observed in log 14_06_45 was still too fast — vehicle
+# pitched -29° and dove because vertical lift dropped before wing could
+# sustain weight at the brief airspeed window. 6s gives wing time to
+# fully take over while motors gradually lose vertical thrust.
+param set-default VT_TRANS_P2_DUR 6.0
+
+# Emergency fallback thresholds — relaxed from log 13_11_39: transient pitch
+# spike to ~20° during MC→FW control handover is normal, not a stall. Only
+# trip quadchute on SUSTAINED departure.
+param set-default VT_FW_QC_HMAX 30
+param set-default VT_FW_QC_P 40
+param set-default VT_FW_QC_R 45
+
+# Pitch stabilisation during transition (absolute pitch floor of -5°
+# prevents front-rotor tilt torque from pitching nose into the ground).
+param set-default VT_PITCH_MIN -5
+# Lock ailerons + V-tail in MC per control mapping document. In MC/hover,
+# attitude control comes purely from motors + tilt servos; aerodynamic
+# surfaces are frozen until transition blending begins.
+param set-default VT_ELEV_MC_LOCK 1
+# Disable motor differential thrust for FW yaw — V-tail differential is
+# the sole yaw mechanism in FW per the control mapping document.
+param set-default VT_FW_DIFTHR_EN 0
