@@ -41,33 +41,63 @@
 __BEGIN_DECLS
 int board_pwm_setup(void);
 int board_ppm_setup(void);
+int board_led_status_start(void);
 __END_DECLS
 
-/* Same LED pin used by milkv_duom_evb reference board appinit. */
-#define TPU_BOOT_LED_GPIO_PIN 29
+/* Early boot indicator. Drives TWO outputs in parallel so we can isolate
+ * which path is alive:
+ *   - PWR_GPIO[6] (LED_STATUS) via raw MMIO. NuttX's sg2000_gpio.c only
+ *     exposes XGPIOA..XGPIOD, so we touch the always-on power-island
+ *     GPIO controller directly (DesignWare GPIO register layout).
+ *   - XGPIOB[0] (LED_BREATH GPIO mode) via NuttX SG2000 GPIO API. The
+ *     PWM driver hasn't been initialized yet at board_early_initialize
+ *     time, so the pin sits in its reset alt-function (GPIO on most
+ *     CV180x SKUs). 5 fast blinks here = board_early_initialize reached.
+ */
+#define TPU_PWR_GPIO_BASE          0x05021000UL
+#define TPU_PWR_GPIO_DR_OFFSET     0x00
+#define TPU_PWR_GPIO_DDR_OFFSET    0x04
+#define TPU_PWR_LED_PIN            6U
+
+/* PWR/RTC domain pinmux (CV180x family RTC_FMUX_GPIO_REG_IOCTRL_*).
+ * Each PWR_GPIO[n] pin has a 32-bit IOCTRL register at base + 4*n;
+ * function-select bits [2:0] = 0 selects native GPIO mode on all
+ * known SKUs.  If the LED stays dark after this fix, the base or
+ * offset layout differs on this part and needs the datasheet value.
+ */
+#define TPU_PWR_PINMUX_BASE        0x05027000UL
+#define TPU_PWR_PINMUX_FUNC_GPIO   0u
+
+/* Flat NuttX index: bank 1 (XGPIOB) * 32 + bit 0. */
+#define TPU_XGPIOB0_PIN            (1U * 32U + 0U)
+
+static inline volatile uint32_t *tpu_pwr_gpio_reg(uintptr_t off)
+{
+	return (volatile uint32_t *)(uintptr_t)(TPU_PWR_GPIO_BASE + off);
+}
 
 static void board_led_boot_toggle(void)
 {
-	const int gpio_init_ret = sg2000_gpio_initialize();
+	/* PWR_GPIO[6]: select GPIO function in PWR pinmux, then DDR=output. */
+	volatile uint32_t *pinmux =
+		(volatile uint32_t *)(uintptr_t)(TPU_PWR_PINMUX_BASE + 4u * TPU_PWR_LED_PIN);
+	*pinmux = (*pinmux & ~0x7u) | (TPU_PWR_PINMUX_FUNC_GPIO & 0x7u);
 
-	if (gpio_init_ret < 0) {
-		syslog(LOG_ERR, "tpu-v2: sg2000_gpio_initialize failed: %d\n", gpio_init_ret);
-		return;
-	}
+	volatile uint32_t *ddr = tpu_pwr_gpio_reg(TPU_PWR_GPIO_DDR_OFFSET);
+	*ddr = *ddr | (1u << TPU_PWR_LED_PIN);
+	volatile uint32_t *dr  = tpu_pwr_gpio_reg(TPU_PWR_GPIO_DR_OFFSET);
 
-	const int cfg_ret = sg2000_gpio_config((TPU_BOOT_LED_GPIO_PIN << SG2000_GPIO_PIN_SHIFT) |
-					       SG2000_GPIO_OUTPUT);
+	/* XGPIOB[0]: NuttX SG2000 GPIO API. */
+	(void)sg2000_gpio_initialize();
+	(void)sg2000_gpio_config((TPU_XGPIOB0_PIN << SG2000_GPIO_PIN_SHIFT) | SG2000_GPIO_OUTPUT);
 
-	if (cfg_ret < 0) {
-		syslog(LOG_ERR, "tpu-v2: sg2000_gpio_config pin %d failed: %d\n", TPU_BOOT_LED_GPIO_PIN, cfg_ret);
-		return;
-	}
-
-	for (int i = 0; i < 3; i++) {
-		sg2000_gpio_write(TPU_BOOT_LED_GPIO_PIN, true);
-		up_udelay(100 * 1000);
-		sg2000_gpio_write(TPU_BOOT_LED_GPIO_PIN, false);
-		up_udelay(100 * 1000);
+	for (int i = 0; i < 5; i++) {
+		*dr = *dr | (1u << TPU_PWR_LED_PIN);
+		sg2000_gpio_write(TPU_XGPIOB0_PIN, true);
+		up_udelay(80 * 1000);
+		*dr = *dr & ~(1u << TPU_PWR_LED_PIN);
+		sg2000_gpio_write(TPU_XGPIOB0_PIN, false);
+		up_udelay(80 * 1000);
 	}
 }
 
@@ -91,7 +121,7 @@ __EXPORT int board_app_initialize(uintptr_t arg)
 {
 	(void)arg;
 	PX4IO_DBG("board_app_initialize: begin\n");
-	PX4IO_DBG("FMU link: %s @ %u bps, debug console: /dev/ttyS1\n", PX4FMU_SERIAL_DEVICE, PX4FMU_SERIAL_BAUDRATE);
+	PX4IO_DBG("FMU link: %s @ %u bps\n", PX4FMU_SERIAL_DEVICE, PX4FMU_SERIAL_BAUDRATE);
 
 	PX4IO_DBG("board_pwm_setup: start\n");
 	if (board_pwm_setup() != OK) {
@@ -107,6 +137,18 @@ __EXPORT int board_app_initialize(uintptr_t arg)
 		syslog(LOG_ERR, "tpu-v2: board_ppm_setup failed (%d), continuing\n", ppm_ret);
 	} else {
 		PX4IO_DBG("board_ppm_setup: OK\n");
+	}
+
+	/* Spawn heartbeat AFTER PWM/PPM nodes are registered so the worker
+	 * can open /dev/pwm0 etc.  High-priority RR worker would otherwise
+	 * monopolize the CPU and never let the registrations run.
+	 */
+	const int led_ret = board_led_status_start();
+
+	if (led_ret != OK) {
+		syslog(LOG_ERR, "tpu-v2: board_led_status_start failed (%d)\n", led_ret);
+	} else {
+		PX4IO_DBG("board_led_status_start: OK\n");
 	}
 
 	PX4IO_DBG("board_app_initialize: done\n");

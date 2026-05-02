@@ -48,6 +48,7 @@
 #include <drivers/drv_hrt.h>
 #include <drivers/drv_ioe.h>
 #include <drivers/drv_io_heater.h>
+#include <uORB/topics/px4io_status.h>
 
 #if defined(IOE_HEATER_ENABLED)
 // Heater on some boards is on IO expander
@@ -172,6 +173,22 @@ void Heater::heater_on()
 
 bool Heater::initialize_topics()
 {
+#if defined(HEATER_PX4IO)
+	/* When the heater is wired to the PX4IO co-processor, wait until the
+	 * px4io driver has finished its own init() and started publishing
+	 * px4io_status before we try to open IO_HEATER_DEVICE_PATH.  This lets
+	 * the heater start in rcS regardless of whether `px4io start` ran
+	 * synchronously or with -d (deferred).
+	 */
+	{
+		uORB::SubscriptionData<px4io_status_s> px4io_status_sub{ORB_ID(px4io_status)};
+
+		if (px4io_status_sub.get().timestamp == 0) {
+			return false;
+		}
+	}
+#endif
+
 	for (uint8_t i = 0; i < ORB_MULTI_MAX_INSTANCES; i++) {
 		uORB::SubscriptionData<sensor_accel_s> sensor_accel_sub{ORB_ID(sensor_accel), i};
 

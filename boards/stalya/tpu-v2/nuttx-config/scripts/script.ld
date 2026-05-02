@@ -149,6 +149,7 @@ SECTIONS
     {
       . = ALIGN(32);
       _ebss = ABSOLUTE(.);
+      _eksram = ABSOLUTE(.);
     } > ksram :ksram
 
   /* Stabs debugging sections.    */

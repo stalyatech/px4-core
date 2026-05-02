@@ -422,12 +422,23 @@ else
 			echo "PX4IO start failed"
 			set STARTUP_TUNE 2 # tune 2 = ERROR_TUNE
 		fi
+	else
+		# No ROMFS IO firmware: the IO board (e.g. TPU mission computer)
+		# loads its own firmware and may take several seconds to come up.
+		# Use deferred init so rcS doesn't block waiting for IO.
+		if ! px4io start -d
+		then
+			echo "PX4IO start (deferred) failed to schedule"
+			set STARTUP_TUNE 2 # tune 2 = ERROR_TUNE
+		fi
 	fi
 	fi
 	fi
 
 	# Heater driver for temperature regulated IMUs.
-	# The heater needs to start after px4io.
+	# On PX4IO-backed heaters, the heater driver waits internally for the
+	# px4io_status uORB topic before opening IO_HEATER_DEVICE_PATH, so this
+	# is safe even when `px4io start -d` defers IO init.
 	if param compare -s SENS_EN_THERMAL 1
 	then
 		heater start

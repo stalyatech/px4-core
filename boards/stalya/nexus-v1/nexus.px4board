@@ -1,2 +1,11 @@
+# NXP SE050A2HQ1/Z01SHZ secure element on I2C2 @ 0x48
+CONFIG_DRIVERS_SECURE_ELEMENT_SE050=y
+
+# TPU-v2 (SG2000 RISC-V) is the IO board for the nexus profile.
 CONFIG_BOARD_IO="stalya_tpu-v2_default"
+
+# IO firmware is provisioned out-of-band by the mission computer over a shared
+# resource; the FMU must not embed or upload it on boot.
+CONFIG_BOARD_NO_ROMFS_IO_FW=y
+
 CONFIG_MODULES_UXRCE_DDS_CLIENT=y

@@ -47,6 +47,7 @@
 #include <string.h>
 #include <malloc.h>
 #include <poll.h>
+#include <sched.h>
 #include <signal.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -398,6 +399,14 @@ extern "C" __EXPORT int user_start(int argc, char *argv[])
 	watchdog_init();
 
 	for (;;) {
+#if defined(CONFIG_ARCH_CHIP_SG2000)
+		/* SG2000 LITTLE core has no preemptive timer for SCHED_RR slice
+		 * end, so the firmware main loop must voluntarily yield each
+		 * iteration; otherwise other RR threads (rx_worker for FMU<->IO
+		 * comms, the LED breath worker) starve.
+		 */
+		sched_yield();
+#endif
 		watchdog_pet();
 
 #if defined(PX4IO_PERF)

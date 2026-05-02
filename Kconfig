@@ -85,6 +85,14 @@ menu "Toolchain"
         help
             name of IO board to be built and included in the ROMFS (requires a valid ROMFSROOT)
 
+    config BOARD_NO_ROMFS_IO_FW
+        bool "Skip embedding IO firmware in ROMFS"
+        help
+            When set, IO firmware binaries (board extras matching *_default.bin)
+            are not copied into /etc/extras of the ROMFS. Use when the IO board
+            firmware is provisioned out-of-band (e.g. by a mission computer over
+            a shared resource) and the FMU must not attempt to upload it on boot.
+
     config BOARD_CONSTRAINED_FLASH
         bool "Contrained flash"
         help
