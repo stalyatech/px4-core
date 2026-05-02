@@ -211,7 +211,16 @@ private:
 	};
 	DeferredInitErr		_last_init_err{DeferredInitErr::None};
 	unsigned		_last_seen_protocol{0xFFFF};
-	static constexpr unsigned PX4IO_DEFERRED_INIT_RETRY_LIMIT = 30;          // 30 × 2s = 60s
+	/* Wall-clock budget per attempt = probe_budget (1s in deferred mode,
+	 * see init()) + INTERVAL.  Sized for the TPU-IO path where the
+	 * BIG-core Linux side performs firmware_class load of the IO
+	 * co-processor image (loading_timeout = 15 s upper bound) before the
+	 * NuttX IO firmware even starts booting.  10 × (1s + 2s) ≈ 30s
+	 * comfortably covers the 15s worst-case load plus IO boot/UART-up,
+	 * while still failing fast (vs. the previous 60s nominal / ~90s
+	 * wall-clock) if the IO never appears at all.
+	 */
+	static constexpr unsigned PX4IO_DEFERRED_INIT_RETRY_LIMIT = 10;          // ~30s wall-clock
 	static constexpr hrt_abstime PX4IO_DEFERRED_INIT_RETRY_INTERVAL = 2_s;
 
 	hrt_abstime		_poll_last{0};

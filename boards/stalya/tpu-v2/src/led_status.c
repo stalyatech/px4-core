@@ -24,7 +24,10 @@
  *     Total cycle = 2500 ms.  Independent busy-wait threads can't
  *     share CPU on this SG2000 SKU (no preemptive timer source for
  *     SCHED_RR slice end on the C906 LITTLE core), so we stay in a
- *     single thread.
+ *     single thread.  The cycle only runs while
+ *     PX4IO_P_STATUS_FLAGS_FMU_OK is set in r_status_flags; with no
+ *     FMU link the LED stays dark and the cycle restarts cleanly from
+ *     fade-in once the link recovers.
  *
  * The boot stage (sg2000_boardinitialize -> board_led_boot_toggle) first
  * drives XGPIOB[0] in raw GPIO mode for a few quick blinks; once
@@ -55,10 +58,26 @@
 
 #include <nuttx/timers/pwm.h>
 
+#include <modules/px4iofirmware/protocol.h>
+
+/* px4iofirmware status page (defined in registers.c).  Reading
+ * r_page_status[PX4IO_P_STATUS_FLAGS] from this thread is safe: it's a
+ * 16-bit aligned volatile load, mixer.cpp updates the FMU_OK bit on a
+ * 500 ms timeout (FMU_INPUT_DROP_LIMIT_US), and a stale read by one
+ * busy_step (~25 ms) doesn't matter for an LED.
+ */
+extern volatile uint16_t r_page_status[];
+
 /* PWR_GPIO controller (always-on power island). */
 #define PWR_GPIO_BASE              0x05021000UL
 #define DW_GPIO_SWPORTA_DR_OFFSET  0x00
 #define DW_GPIO_SWPORTA_DDR_OFFSET 0x04
+
+/* PWR/RTC pinmux for PWR_GPIO[n] — function-select bits [2:0] of
+ * RTC_FMUX_GPIO_REG_IOCTRL_<n>; 0 = native GPIO function.
+ */
+#define PWR_PINMUX_BASE            0x05027000UL
+#define PWR_PINMUX_FUNC_GPIO       0u
 
 #define LED_STATUS_PIN             6U          /* PWR_GPIO[6] */
 
@@ -69,9 +88,9 @@
  * step counts below so that fade-in + fade-out + blank = 2500 ms.
  */
 #define BREATH_STEP_LOOPS          2500000ULL
-#define BREATH_FADE_IN_STEPS       40U   /* 1000 ms */
-#define BREATH_FADE_OUT_STEPS      40U   /* 1000 ms */
-#define BREATH_BLANK_STEPS         20U   /*  500 ms */
+#define BREATH_FADE_IN_STEPS       20U   /* 500 ms */
+#define BREATH_FADE_OUT_STEPS      20U   /* 500 ms */
+#define BREATH_BLANK_STEPS          4U   /* 100 ms */
 #define BREATH_CYCLE_STEPS         (BREATH_FADE_IN_STEPS + BREATH_FADE_OUT_STEPS + BREATH_BLANK_STEPS)
 
 static inline volatile uint32_t *pwr_gpio_reg(uintptr_t off)
@@ -79,18 +98,23 @@ static inline volatile uint32_t *pwr_gpio_reg(uintptr_t off)
 	return (volatile uint32_t *)(uintptr_t)(PWR_GPIO_BASE + off);
 }
 
-/* Public helper used by px4iofirmware's LED_BLUE() macro.  First call
- * lazily flips DDR to output; subsequent calls just toggle the data bit.
+/* Public helper used by px4iofirmware's LED_BLUE() macro.
+ *
+ * Re-asserts pinmux=GPIO and DDR=output every call (idempotent RMW, ~ns
+ * cost at 4 Hz).  PWR_GPIO[6] sits on the always-on PWR/RTC island whose
+ * controller can be perturbed by unrelated PWR-domain activity (RTC
+ * SARADC, cmdqu wakeup, suspend/resume) — without this re-arm the pin
+ * silently drops to input after such a glitch and the LED stays dark
+ * even though heartbeat_blink() keeps writing DR.
  */
 void tpu_v2_led_status_set(bool on)
 {
-	static bool ddr_initialized = false;
+	volatile uint32_t *pinmux =
+		(volatile uint32_t *)(uintptr_t)(PWR_PINMUX_BASE + 4u * LED_STATUS_PIN);
+	*pinmux = (*pinmux & ~0x7u) | (PWR_PINMUX_FUNC_GPIO & 0x7u);
 
-	if (!ddr_initialized) {
-		volatile uint32_t *ddr = pwr_gpio_reg(DW_GPIO_SWPORTA_DDR_OFFSET);
-		*ddr = *ddr | (1u << LED_STATUS_PIN);
-		ddr_initialized = true;
-	}
+	volatile uint32_t *ddr = pwr_gpio_reg(DW_GPIO_SWPORTA_DDR_OFFSET);
+	*ddr = *ddr | (1u << LED_STATUS_PIN);
 
 	volatile uint32_t *dr = pwr_gpio_reg(DW_GPIO_SWPORTA_DR_OFFSET);
 
@@ -105,6 +129,11 @@ void tpu_v2_led_status_set(bool on)
 static void busy_step(void)
 {
 	for (volatile uint64_t i = 0; i < BREATH_STEP_LOOPS; i++) { /* busy */ }
+}
+
+static inline bool fmu_link_ok(void)
+{
+	return (r_page_status[PX4IO_P_STATUS_FLAGS] & PX4IO_P_STATUS_FLAGS_FMU_OK) != 0;
 }
 
 static int pwm_open_and_start(const char *path, ub16_t duty)
@@ -152,8 +181,13 @@ static void *breath_worker(void *arg)
 
 	for (;;) {
 		uint32_t duty;
+		const bool link_ok = fmu_link_ok();
 
-		if (step < BREATH_FADE_IN_STEPS) {
+		if (!link_ok) {
+			duty = 0;
+			step = 0;
+
+		} else if (step < BREATH_FADE_IN_STEPS) {
 			duty = (step * PWM_DUTY_FULL) / BREATH_FADE_IN_STEPS;
 
 		} else if (step < BREATH_FADE_IN_STEPS + BREATH_FADE_OUT_STEPS) {
@@ -171,7 +205,9 @@ static void *breath_worker(void *arg)
 		busy_step();
 		(void)sched_yield();
 
-		step = (step + 1U) % BREATH_CYCLE_STEPS;
+		if (link_ok) {
+			step = (step + 1U) % BREATH_CYCLE_STEPS;
+		}
 	}
 
 	return NULL;

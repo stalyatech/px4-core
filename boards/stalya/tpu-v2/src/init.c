@@ -68,9 +68,6 @@ __END_DECLS
 #define TPU_PWR_PINMUX_BASE        0x05027000UL
 #define TPU_PWR_PINMUX_FUNC_GPIO   0u
 
-/* Flat NuttX index: bank 1 (XGPIOB) * 32 + bit 0. */
-#define TPU_XGPIOB0_PIN            (1U * 32U + 0U)
-
 static inline volatile uint32_t *tpu_pwr_gpio_reg(uintptr_t off)
 {
 	return (volatile uint32_t *)(uintptr_t)(TPU_PWR_GPIO_BASE + off);
@@ -87,17 +84,17 @@ static void board_led_boot_toggle(void)
 	*ddr = *ddr | (1u << TPU_PWR_LED_PIN);
 	volatile uint32_t *dr  = tpu_pwr_gpio_reg(TPU_PWR_GPIO_DR_OFFSET);
 
-	/* XGPIOB[0]: NuttX SG2000 GPIO API. */
-	(void)sg2000_gpio_initialize();
-	(void)sg2000_gpio_config((TPU_XGPIOB0_PIN << SG2000_GPIO_PIN_SHIFT) | SG2000_GPIO_OUTPUT);
-
-	for (int i = 0; i < 5; i++) {
+	/* Keep this short: it is a busy-wait at board_early_initialize time
+	 * before the FMU UART/RX path is up, so every ms here directly eats
+	 * into the FMU px4io probe budget (700 ms non-deferred / 1000 ms
+	 * deferred, src/drivers/px4io/px4io.cpp).  3 × 2 × 50 ms = 300 ms
+	 * is enough to be visually unmistakable without starving the probe.
+	 */
+	for (int i = 0; i < 3; i++) {
 		*dr = *dr | (1u << TPU_PWR_LED_PIN);
-		sg2000_gpio_write(TPU_XGPIOB0_PIN, true);
-		up_udelay(80 * 1000);
+		up_udelay(50 * 1000);
 		*dr = *dr & ~(1u << TPU_PWR_LED_PIN);
-		sg2000_gpio_write(TPU_XGPIOB0_PIN, false);
-		up_udelay(80 * 1000);
+		up_udelay(50 * 1000);
 	}
 }
 
