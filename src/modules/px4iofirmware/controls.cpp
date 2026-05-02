@@ -210,11 +210,19 @@ controls_init(void)
 	r_raw_rc_count = 0;
 	system_state.rc_channels_timestamp_received = 0;
 
-#if !defined(CONFIG_ARCH_CHIP_SG2000)
-	/* DSM input (USART1) */
-	_dsm_fd = dsm_init("/dev/ttyS0");
+#if defined(PX4IO_DSM_DEVICE)
+	_dsm_fd = dsm_init(PX4IO_DSM_DEVICE);
+#endif
 
-	/* S.bus input (USART3) */
+#if defined(PX4IO_SBUS_DEVICE)
+	_sbus_fd = sbus_init(PX4IO_SBUS_DEVICE, false);
+#endif
+
+#if !defined(CONFIG_ARCH_CHIP_SG2000) && !defined(PX4IO_DSM_DEVICE) && !defined(PX4IO_SBUS_DEVICE)
+	/* Legacy STM32 IO board defaults (px4/io-v2, cubepilot/io-v2,
+	 * stalya/io-v2): DSM on USART1, SBUS on USART3.
+	 */
+	_dsm_fd = dsm_init("/dev/ttyS0");
 	_sbus_fd = sbus_init("/dev/ttyS2", false);
 #endif
 

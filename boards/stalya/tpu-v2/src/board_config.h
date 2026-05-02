@@ -22,6 +22,14 @@
 #define PX4FMU_SERIAL_DEVICE		"/dev/ttyS0"
 #define PX4FMU_SERIAL_BAUDRATE		1562500
 
+/* RC: PPM via /dev/capture0 (GPIO52, configured in tpu_ppm.c) plus SBUS
+ * on UART1 (/dev/ttyS1).  The SBUS RX line is inverted by an external
+ * board-level inverter, so the SG2000 UART driver receives standard
+ * non-inverted SBUS framing (100 kbps, 8E2) — no in-driver TIOCSINVERT
+ * needed (and the SG2000 driver does not implement it anyway).
+ */
+#define PX4IO_SBUS_DEVICE		"/dev/ttyS1"
+
 /* Global PX4IO debug switch: comment this out to disable PX4IO debug logs. */
 #define PX4IO_DEBUG 1
 
