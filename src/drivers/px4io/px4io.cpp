@@ -187,6 +187,33 @@ private:
 	bool			_first_update_cycle{true};
 	uint32_t    		_group_channels[PX4IO_P_SETUP_PWM_RATE_GROUP3 - PX4IO_P_SETUP_PWM_RATE_GROUP0 + 1] {};
 
+	/* deferred-init mode: when -d is passed to `start`, init() is not run
+	 * synchronously from task_spawn(); instead Run() retries it until the
+	 * IO co-processor responds.  Used on platforms where the IO CPU has a
+	 * long boot latency (e.g. SG2000 TPU mission computer ~25-30s).
+	 */
+	bool			_initialized{false};
+	bool			_cdev_registered{false};
+	bool			_deferred_init{false};
+	hrt_abstime		_init_start_time{0};
+	unsigned		_init_attempts{0};
+
+	/* Diagnostics for deferred-init failure: stash the last seen state so the
+	 * single warn-log emitted when retry budget runs out tells us whether we
+	 * never got a response, hit a protocol mismatch, or saw a bad config.
+	 */
+	enum class DeferredInitErr : uint8_t {
+		None = 0,
+		CommTimeout,        ///< io_reg_get returned _io_reg_get_error
+		ProtocolMismatch,   ///< version register != PX4IO_PROTOCOL_VERSION
+		ConfigInvalid,      ///< actuator/transfer/rc count out of range
+		ArmingReadFailed,   ///< io_reg_get on PX4IO_P_SETUP_ARMING failed
+	};
+	DeferredInitErr		_last_init_err{DeferredInitErr::None};
+	unsigned		_last_seen_protocol{0xFFFF};
+	static constexpr unsigned PX4IO_DEFERRED_INIT_RETRY_LIMIT = 30;          // 30 × 2s = 60s
+	static constexpr hrt_abstime PX4IO_DEFERRED_INIT_RETRY_INTERVAL = 2_s;
+
 	hrt_abstime		_poll_last{0};
 
 	orb_advert_t		_mavlink_log_pub{nullptr};	///< mavlink log pub
@@ -398,32 +425,61 @@ int PX4IO::init()
 {
 	SmartLock lock_guard(_lock);
 
-	/* do regular cdev init */
-	int ret = CDev::init();
+	/* do regular cdev init (only once across deferred-init retries) */
+	if (!_cdev_registered) {
+		int ret = CDev::init();
 
-	if (ret != OK) {
-		PX4_ERR("init failed %d", ret);
-		return ret;
+		if (ret != OK) {
+			PX4_ERR("init failed %d", ret);
+			return ret;
+		}
+
+		_cdev_registered = true;
 	}
+
+	int ret = OK;
 
 	/* get some parameters */
 	unsigned protocol;
 	hrt_abstime start_try_time = hrt_absolute_time();
 
+	/* In deferred mode each init() invocation is a longer probe so a transient
+	 * miss inside one retry slot doesn't immediately bounce out (we still get
+	 * 2s between Run() retries from PX4IO_DEFERRED_INIT_RETRY_INTERVAL).
+	 */
+	const hrt_abstime probe_budget_us = _deferred_init ? 1000U * 1000U : 700U * 1000U;
+
 	do {
 		px4_usleep(2000);
 		protocol = io_reg_get(PX4IO_PAGE_CONFIG, PX4IO_P_CONFIG_PROTOCOL_VERSION);
-	} while (protocol == _io_reg_get_error && (hrt_elapsed_time(&start_try_time) < 700U * 1000U));
+	} while (protocol == _io_reg_get_error && (hrt_elapsed_time(&start_try_time) < probe_budget_us));
 
 	/* if the error still persists after timing out, we give up */
 	if (protocol == _io_reg_get_error) {
-		mavlink_log_emergency(&_mavlink_log_pub, "Failed to communicate with IO, abort.\t");
-		events::send(events::ID("px4io_comm_failed"), events::Log::Emergency,
-			     "Failed to communicate with IO, aborting initialization");
+		_last_init_err = DeferredInitErr::CommTimeout;
+
+		if (!_deferred_init) {
+			mavlink_log_emergency(&_mavlink_log_pub, "Failed to communicate with IO, abort.\t");
+			events::send(events::ID("px4io_comm_failed"), events::Log::Emergency,
+				     "Failed to communicate with IO, aborting initialization");
+		}
+
 		return -1;
 	}
 
+	_last_seen_protocol = protocol;
+
 	if (protocol != PX4IO_PROTOCOL_VERSION) {
+		_last_init_err = DeferredInitErr::ProtocolMismatch;
+
+		/* Protocol mismatch is a permanent state — IO firmware version is
+		 * incompatible.  Don't retry in deferred mode either; emit the log
+		 * once so the user sees it.
+		 */
+		if (_deferred_init && _init_attempts > 1) {
+			return -1;
+		}
+
 		mavlink_log_emergency(&_mavlink_log_pub, "IO protocol/firmware mismatch, abort.\t");
 		events::send(events::ID("px4io_proto_fw_mismatch"), events::Log::Emergency,
 			     "IO protocol/firmware mismatch, aborting initialization");
@@ -440,18 +496,23 @@ int PX4IO::init()
 	    (_max_transfer < 16) || (_max_transfer > 255)  ||
 	    (_max_rc_input < 1)  || (_max_rc_input > 255)) {
 
-		PX4_ERR("config read error");
-		mavlink_log_emergency(&_mavlink_log_pub, "[IO] config read fail, abort.\t");
-		events::send(events::ID("px4io_config_read_failed"), events::Log::Emergency,
-			     "IO config read failed, aborting initialization");
+		_last_init_err = DeferredInitErr::ConfigInvalid;
 
-		// ask IO to reboot into bootloader as the failure may
-		// be due to mismatched firmware versions and we want
-		// the startup script to be able to load a new IO
-		// firmware
+		if (!_deferred_init) {
+			PX4_ERR("config read error");
+			mavlink_log_emergency(&_mavlink_log_pub, "[IO] config read fail, abort.\t");
+			events::send(events::ID("px4io_config_read_failed"), events::Log::Emergency,
+				     "IO config read failed, aborting initialization");
 
-		// Now the reboot into bootloader mode should succeed.
-		io_reg_set(PX4IO_PAGE_SETUP, PX4IO_P_SETUP_REBOOT_BL, PX4IO_REBOOT_BL_MAGIC);
+			// ask IO to reboot into bootloader as the failure may
+			// be due to mismatched firmware versions and we want
+			// the startup script to be able to load a new IO
+			// firmware
+
+			// Now the reboot into bootloader mode should succeed.
+			io_reg_set(PX4IO_PAGE_SETUP, PX4IO_P_SETUP_REBOOT_BL, PX4IO_REBOOT_BL_MAGIC);
+		}
+
 		return -1;
 	}
 
@@ -476,9 +537,14 @@ int PX4IO::init()
 		      0);
 
 	if (ret != OK) {
-		mavlink_log_critical(&_mavlink_log_pub, "IO RC config upload fail\t");
-		events::send(events::ID("px4io_io_rc_config_upload_failed"), events::Log::Critical,
-			     "IO RC config upload failed, aborting initialization");
+		_last_init_err = DeferredInitErr::ArmingReadFailed;
+
+		if (!_deferred_init) {
+			mavlink_log_critical(&_mavlink_log_pub, "IO RC config upload fail\t");
+			events::send(events::ID("px4io_io_rc_config_upload_failed"), events::Log::Critical,
+				     "IO RC config upload failed, aborting initialization");
+		}
+
 		return ret;
 	}
 
@@ -494,6 +560,8 @@ int PX4IO::init()
 	_px4io_status_pub.advertise();
 
 	update_params();
+
+	_initialized = true;
 
 	ScheduleNow();
 
@@ -530,6 +598,62 @@ void PX4IO::Run()
 
 		exit_and_cleanup();
 		return;
+	}
+
+	/* Deferred-init retry: keep probing until the IO co-processor is up.
+	 * init() is invoked directly here (it acquires _lock internally).
+	 */
+	if (!_initialized) {
+		if (!_deferred_init) {
+			/* synchronous mode shouldn't reach Run() before init() succeeded;
+			 * defensively bail out if it does.
+			 */
+			return;
+		}
+
+		_init_attempts++;
+
+		if (init() == PX4_OK) {
+			PX4_INFO("PX4IO: connected after %u tries (%llu ms)",
+				 _init_attempts,
+				 (unsigned long long)((hrt_absolute_time() - _init_start_time) / 1000));
+			/* init() schedules itself via ScheduleNow(); fall through */
+		} else if (_init_attempts >= PX4IO_DEFERRED_INIT_RETRY_LIMIT) {
+			const char *reason = "unknown";
+
+			switch (_last_init_err) {
+			case DeferredInitErr::CommTimeout:
+				reason = "no response (UART)";
+				break;
+
+			case DeferredInitErr::ProtocolMismatch:
+				reason = "protocol mismatch";
+				break;
+
+			case DeferredInitErr::ConfigInvalid:
+				reason = "invalid config";
+				break;
+
+			case DeferredInitErr::ArmingReadFailed:
+				reason = "arming reg read failed";
+				break;
+
+			default:
+				break;
+			}
+
+			PX4_ERR("PX4IO: deferred init gave up after %u tries (%s, last protocol=0x%04x exp=0x%04x)",
+				_init_attempts, reason, _last_seen_protocol, (unsigned)PX4IO_PROTOCOL_VERSION);
+			mavlink_log_emergency(&_mavlink_log_pub, "PX4IO init failed: %s\t", reason);
+			events::send(events::ID("px4io_deferred_init_failed"), events::Log::Emergency,
+				     "PX4IO deferred init timed out, aborting");
+			request_stop();
+			return;
+
+		} else {
+			ScheduleDelayed(PX4IO_DEFERRED_INIT_RETRY_INTERVAL);
+			return;
+		}
 	}
 
 	SmartLock lock_guard(_lock);
@@ -1738,6 +1862,14 @@ int PX4IO::bind(int argc, char *argv[])
 
 int PX4IO::task_spawn(int argc, char *argv[])
 {
+	bool deferred = false;
+
+	for (int i = 0; i < argc; i++) {
+		if (strcmp(argv[i], "-d") == 0) {
+			deferred = true;
+		}
+	}
+
 	device::Device *interface = get_interface();
 
 	if (interface == nullptr) {
@@ -1747,16 +1879,26 @@ int PX4IO::task_spawn(int argc, char *argv[])
 
 	PX4IO *instance = new PX4IO(interface);
 
-	if (instance) {
-		_object.store(instance);
-		_task_id = task_id_is_work_queue;
-
-		if (instance->init() == PX4_OK) {
-			return PX4_OK;
-		}
-
-	} else {
+	if (instance == nullptr) {
 		PX4_ERR("alloc failed");
+		_object.store(nullptr);
+		_task_id = -1;
+		return PX4_ERROR;
+	}
+
+	_object.store(instance);
+	_task_id = task_id_is_work_queue;
+
+	if (deferred) {
+		instance->_deferred_init = true;
+		instance->_init_start_time = hrt_absolute_time();
+		PX4_INFO("PX4IO: deferred init scheduled");
+		instance->ScheduleNow();
+		return PX4_OK;
+	}
+
+	if (instance->init() == PX4_OK) {
+		return PX4_OK;
 	}
 
 	delete instance;
@@ -2067,6 +2209,7 @@ Output driver communicating with the IO co-processor.
 
 	PRINT_MODULE_USAGE_NAME("px4io", "driver");
 	PRINT_MODULE_USAGE_COMMAND("start");
+	PRINT_MODULE_USAGE_PARAM_FLAG('d', "Deferred init: return immediately, retry connecting to IO in background", true);
 
 	PRINT_MODULE_USAGE_COMMAND_DESCR("checkcrc", "Check CRC for a firmware file against current code on IO");
 	PRINT_MODULE_USAGE_ARG("<filename>", "Firmware file", false);

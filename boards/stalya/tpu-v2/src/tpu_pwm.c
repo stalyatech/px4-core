@@ -94,29 +94,28 @@ int board_pwm_setup(void)
 {
 	PX4IO_DBG("setup begin\n");
 
-	if (TPU_PWM_CHANNEL_COUNT != DIRECT_PWM_OUTPUT_CHANNELS) {
-		syslog(LOG_ERR, "tpu-v2: PWM config mismatch (DIRECT_PWM_OUTPUT_CHANNELS=%u, enabled=%u)\n",
-		       (unsigned)DIRECT_PWM_OUTPUT_CHANNELS, (unsigned)TPU_PWM_CHANNEL_COUNT);
-		return -EINVAL;
-	}
-
 	if (TPU_PWM_CHANNEL_COUNT == 0) {
 		PX4IO_DBG("no PWM channels enabled by config\n");
 		return -ENODEV;
 	}
 
-	for (size_t logical_channel = 0; logical_channel < TPU_PWM_CHANNEL_COUNT; logical_channel++) {
-		const int hw_channel = g_pwm_channels[logical_channel];
-		PX4IO_DBG("init channel logical=%u hw=%d\n", (unsigned)logical_channel, hw_channel);
-		struct pwm_lowerhalf_s *pwm = sg2000_pwminitialize(hw_channel);
+	for (size_t i = 0; i < TPU_PWM_CHANNEL_COUNT; i++) {
+		const unsigned hw_channel = g_pwm_channels[i];
+		PX4IO_DBG("init hw channel %u\n", hw_channel);
+		struct pwm_lowerhalf_s *pwm = sg2000_pwminitialize((int)hw_channel);
 
 		if (pwm == NULL) {
-			PX4IO_DBG("init hw channel %d failed: lowerhalf NULL\n", hw_channel);
+			PX4IO_DBG("init hw channel %u failed: lowerhalf NULL\n", hw_channel);
 			return -ENODEV;
 		}
 
+		/* devpath uses HW channel number directly so /dev/pwmN <-> SG2000 PWM-N.
+		 * This keeps the breath LED on /dev/pwm0 (HW PWM0) while the PX4 servo
+		 * mapping (HW PWM8..15) opens /dev/pwm8../dev/pwm15 — see
+		 * g_sg2000_pwm_servo_hw_channels[] override below.
+		 */
 		char devpath[16];
-		snprintf(devpath, sizeof(devpath), "/dev/pwm%u", (unsigned)logical_channel);
+		snprintf(devpath, sizeof(devpath), "/dev/pwm%u", hw_channel);
 		int ret = pwm_register(devpath, pwm);
 
 		if (ret < 0 && ret != -EEXIST) {
@@ -130,3 +129,12 @@ int board_pwm_setup(void)
 	PX4IO_DBG("setup done\n");
 	return OK;
 }
+
+/* Override the platform-default servo-channel-to-HW-PWM-channel mapping.
+ * On TPU-v2 the PX4 servo channels 0..7 are physically wired to SG2000
+ * HW PWM15..PWM8.  HW PWM0 is the breath LED; HW PWM1..PWM3 are reserved
+ * for other indicators.
+ */
+const uint8_t g_sg2000_pwm_servo_hw_channels[DIRECT_PWM_OUTPUT_CHANNELS] = {
+	15, 14, 13, 12, 11, 10, 9, 8
+};

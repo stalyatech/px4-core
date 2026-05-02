@@ -46,6 +46,38 @@ __attribute__((weak)) const uint32_t g_sg2000_pwm_group_masks[SG2000_PWM_GROUP_M
 	0xC0u  /* ch7..ch8 */
 };
 
+/* Mapping from PX4 servo channel index (0..DIRECT_PWM_OUTPUT_CHANNELS-1) to
+ * the SG2000 HW PWM channel number used to construct the /dev/pwmN path.
+ * Default is identity (servo n -> HW PWM n); boards override when servos are
+ * physically wired to a non-zero-based subset (e.g. TPU-v2 uses HW8..15).
+ */
+__attribute__((weak)) const uint8_t g_sg2000_pwm_servo_hw_channels[DIRECT_PWM_OUTPUT_CHANNELS] = {
+#if DIRECT_PWM_OUTPUT_CHANNELS >= 1
+	0,
+#endif
+#if DIRECT_PWM_OUTPUT_CHANNELS >= 2
+	1,
+#endif
+#if DIRECT_PWM_OUTPUT_CHANNELS >= 3
+	2,
+#endif
+#if DIRECT_PWM_OUTPUT_CHANNELS >= 4
+	3,
+#endif
+#if DIRECT_PWM_OUTPUT_CHANNELS >= 5
+	4,
+#endif
+#if DIRECT_PWM_OUTPUT_CHANNELS >= 6
+	5,
+#endif
+#if DIRECT_PWM_OUTPUT_CHANNELS >= 7
+	6,
+#endif
+#if DIRECT_PWM_OUTPUT_CHANNELS >= 8
+	7,
+#endif
+};
+
 static inline uint32_t group_mask(unsigned group)
 {
 	if (group >= SG2000_PWM_GROUP_MAX) {
@@ -122,8 +154,9 @@ int up_pwm_servo_init(uint32_t channel_mask)
 		}
 
 		if (channel_mask & (1u << channel)) {
+			const unsigned hw_channel = g_sg2000_pwm_servo_hw_channels[channel];
 			char devpath[16];
-			snprintf(devpath, sizeof(devpath), "/dev/pwm%u", channel);
+			snprintf(devpath, sizeof(devpath), "/dev/pwm%u", hw_channel);
 			g_pwm_fd[channel] = open(devpath, O_RDONLY);
 		}
 	}

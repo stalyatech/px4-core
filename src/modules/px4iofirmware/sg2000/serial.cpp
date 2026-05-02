@@ -14,6 +14,7 @@
 
 #include <poll.h>
 #include <pthread.h>
+#include <sched.h>
 #include <syslog.h>
 #include <termios.h>
 #include <unistd.h>
@@ -155,7 +156,14 @@ static void *rx_worker(void *arg)
 			continue;
 		}
 
-		if (read_full(packet.regs, count * sizeof(uint16_t), 20) != OK) {
+		/* Bigger inter-byte timeout for the regs portion: a short timeout
+		 * + `continue` would leave the regs bytes behind in the RX queue
+		 * and the next header read would lock onto garbage, breaking the
+		 * stream permanently.  We've already committed to this packet
+		 * once the header is in, so wait long enough that scheduler jitter
+		 * (cooperative SCHED_RR on the C906 LITTLE) can't trip us.
+		 */
+		if (read_full(packet.regs, count * sizeof(uint16_t), 200) != OK) {
 			continue;
 		}
 
@@ -179,34 +187,53 @@ void interface_init(void)
 	}
 
 	struct termios t{};
-	(void)tcgetattr(_fmu_fd, &t);
-	cfmakeraw(&t);
-#ifdef PX4FMU_SERIAL_BAUDRATE
-	speed_t baud = B115200;
 
-	switch (PX4FMU_SERIAL_BAUDRATE) {
-	case 1500000:
-#ifdef B1500000
-		baud = B1500000;
-#endif
-		break;
-
-	case 921600:
-#ifdef B921600
-		baud = B921600;
-#endif
-		break;
-
-	default:
-		baud = B115200;
-		break;
+	if (tcgetattr(_fmu_fd, &t) < 0) {
+		syslog(LOG_ERR, "px4io_sg2000: tcgetattr failed (%d)\n", errno);
+		close(_fmu_fd);
+		_fmu_fd = -1;
+		return;
 	}
 
-	(void)cfsetspeed(&t, baud);
-#endif
-	(void)tcsetattr(_fmu_fd, TCSANOW, &t);
+	cfmakeraw(&t);
 
-	const int pthread_ret = pthread_create(&_rx_thread, nullptr, rx_worker, nullptr);
+	/* SG2000 UART driver has a TCSETS handler that reads termios.c_speed
+	 * directly, so any baud (B-macro mask or raw integer) is accepted.
+	 * cfsetspeed() looks the value up in g_baud_table — for matched rates
+	 * it stores the raw baud in c_speed and the BSD-style mask in CBAUD,
+	 * and for non-standard rates it stores the raw baud in c_speed and
+	 * sets CBAUD=BOTHER.  Either way the driver consumes c_speed.
+	 */
+	if (cfsetspeed(&t, PX4FMU_SERIAL_BAUDRATE) < 0) {
+		syslog(LOG_ERR, "px4io_sg2000: cfsetspeed(%u) failed (%d)\n",
+		       (unsigned)PX4FMU_SERIAL_BAUDRATE, errno);
+	}
+
+	if (tcsetattr(_fmu_fd, TCSANOW, &t) < 0) {
+		syslog(LOG_ERR, "px4io_sg2000: tcsetattr failed (%d)\n", errno);
+		close(_fmu_fd);
+		_fmu_fd = -1;
+		return;
+	}
+
+	/* RX worker must run at highest practical priority so RX bytes are
+	 * drained before the upper-half buffer overruns and so the inter-byte
+	 * timeout never trips.  The C906 LITTLE core has no preemptive timer
+	 * for SCHED_RR slice-end, so equal-priority threads serialise; we
+	 * therefore boost ourselves above the default.
+	 */
+	pthread_attr_t attr;
+	pthread_attr_init(&attr);
+	pthread_attr_setstacksize(&attr, 4096);
+
+	struct sched_param sp;
+	sp.sched_priority = sched_get_priority_max(SCHED_RR) - 1;
+	(void)pthread_attr_setschedpolicy(&attr, SCHED_RR);
+	(void)pthread_attr_setschedparam(&attr, &sp);
+	(void)pthread_attr_setinheritsched(&attr, PTHREAD_EXPLICIT_SCHED);
+
+	const int pthread_ret = pthread_create(&_rx_thread, &attr, rx_worker, nullptr);
+	pthread_attr_destroy(&attr);
 
 	if (pthread_ret != 0) {
 		syslog(LOG_ERR, "px4io_sg2000: failed to start RX thread (%d)\n", pthread_ret);

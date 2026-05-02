@@ -115,7 +115,7 @@ static inline void sg2000_set_timer_compare(uint64_t stime_value)
 # define PX4IO_DBG(_fmt, ...)
 #endif
 
-static uint32_t g_hrt_clk_rate_mhz = 1;
+static uint32_t g_hrt_clk_rate_mhz = CONFIG_SG2000_TIMER_CLK_FREQ / 1000000;
 
 #define CLOCK_RATE_MHZ          (g_hrt_clk_rate_mhz)
 
@@ -275,13 +275,11 @@ hrt_store_absolute_time(volatile hrt_abstime *t)
 void
 hrt_init(void)
 {
-	unsigned long perf_freq = up_perf_getfreq();
-
-	if (perf_freq >= 1000000UL) {
-		g_hrt_clk_rate_mhz = (uint32_t)(perf_freq / 1000000UL);
-	}
-
-	PX4IO_DBG("hrt_init: perf_freq=%lu Hz, clk=%u MHz\n", perf_freq, g_hrt_clk_rate_mhz);
+	/* g_hrt_clk_rate_mhz is fixed (mtime rate) at file scope.
+	 * Don't overwrite from up_perf_getfreq() — that returns the CPU
+	 * cycle counter rate which is unrelated to CSR_TIME.
+	 */
+	PX4IO_DBG("hrt_init: clk=%u MHz (mtime)\n", g_hrt_clk_rate_mhz);
 
 	sq_init(&callout_queue);
 	hrt_tim_init();

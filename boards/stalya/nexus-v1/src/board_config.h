@@ -56,7 +56,7 @@
 #define PX4IO_SERIAL_RCC_REG           STM32_RCC_APB2ENR
 #define PX4IO_SERIAL_RCC_EN            RCC_APB2ENR_USART6EN
 #define PX4IO_SERIAL_CLOCK             STM32_PCLK2_FREQUENCY
-#define PX4IO_SERIAL_BITRATE           1500000               /* 1.5Mbps -> max rate for IO */
+#define PX4IO_SERIAL_BITRATE           1562500               /* 1.5625Mbps -> max rate for IO */
 #define BOARD_PX4IO_FW_SEARCH_PATHS    {"/etc/extras/stalya_tpu-v2_default.elf", \
 										CONFIG_BOARD_ROOT_PATH "/stalya_tpu-v2_default.elf", \
 										"/etc/extras/stalya_tpu-v2_default.bin", \

@@ -222,6 +222,9 @@ foreach(board_extra_file ${OPTIONAL_BOARD_EXTRAS})
 			list(REMOVE_ITEM OPTIONAL_BOARD_EXTRAS ${board_extra_file})
 		endif()
 
+	elseif(CONFIG_BOARD_NO_ROMFS_IO_FW AND ${extra_file_base_name} MATCHES "_default\\.bin$")
+		# IO firmware is provisioned out-of-band; do not embed it in ROMFS.
+		list(REMOVE_ITEM OPTIONAL_BOARD_EXTRAS ${board_extra_file})
 	endif()
 endforeach()
 
