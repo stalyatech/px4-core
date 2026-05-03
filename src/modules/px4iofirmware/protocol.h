@@ -195,6 +195,8 @@ enum {							/* DSM bind states */
 #define PX4IO_P_SETUP_PWM_RATE_GROUP2            21	/* Configure timer group 2 update rate in Hz */
 #define PX4IO_P_SETUP_PWM_RATE_GROUP3            22	/* Configure timer group 3 update rate in Hz */
 
+#define PX4IO_P_SETUP_RC_INPUT_SEL               23	/**< Board RC input mux: 0=SBUS, 1=DSM (TPU-v2 XGPIOB_22) */
+
 #define PX4IO_THERMAL_IGNORE			UINT16_MAX
 #define PX4IO_THERMAL_OFF			0
 #define PX4IO_THERMAL_FULL			10000

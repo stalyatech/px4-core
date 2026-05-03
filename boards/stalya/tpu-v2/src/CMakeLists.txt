@@ -34,6 +34,7 @@
 add_library(drivers_board
 	init.c
 	led_status.c
+	rc_mux.c
 	tpu_ppm.c
 	tpu_pwm.c
 	tpu_tmr.cpp

@@ -282,7 +282,12 @@ controls_tick()
 
 	if (!(r_status_flags & (PX4IO_P_STATUS_FLAGS_RC_DSM | PX4IO_P_STATUS_FLAGS_RC_ST24 | PX4IO_P_STATUS_FLAGS_RC_SUMD))) {
 		bool sbus_failsafe, sbus_frame_drop;
-		sbus_updated = sbus_input(_sbus_fd, r_raw_rc_values, &r_raw_rc_count, &sbus_failsafe, &sbus_frame_drop,
+
+		/* sbus_input now drains the UART RX buffer internally (loops
+		 * read until -EAGAIN); a single call per tick is enough.
+		 */
+		sbus_updated = sbus_input(_sbus_fd, r_raw_rc_values, &r_raw_rc_count,
+					  &sbus_failsafe, &sbus_frame_drop,
 					  PX4IO_RC_INPUT_CHANNELS);
 
 		if (sbus_updated) {
@@ -391,6 +396,12 @@ controls_tick()
 		/* set RC OK flag, as we got an update */
 		atomic_modify_or(&r_status_flags, PX4IO_P_STATUS_FLAGS_RC_OK);
 		r_raw_rc_flags |= PX4IO_P_RAW_RC_FLAGS_RC_OK;
+
+		/* fresh RC frame — clear the latched RC_LOST alarm so a brief
+		 * boot-time / frame-drop window does not leave the bit stuck
+		 * set even after the link recovers.
+		 */
+		atomic_modify_clear(&r_status_alarms, PX4IO_P_STATUS_ALARMS_RC_LOST);
 
 		/* if we have enough channels (5) to control the vehicle, the mapping is ok */
 		if (assigned_channels > 4) {
