@@ -384,6 +384,7 @@ private:
 
 	DEFINE_PARAMETERS(
 		(ParamInt<px4::params::PWM_SBUS_MODE>) _param_pwm_sbus_mode,
+		(ParamInt<px4::params::PX4IO_RC_MUX>) _param_px4io_rc_mux,
 		(ParamInt<px4::params::RC_RSSI_PWM_CHAN>) _param_rc_rssi_pwm_chan,
 		(ParamInt<px4::params::RC_RSSI_PWM_MAX>) _param_rc_rssi_pwm_max,
 		(ParamInt<px4::params::RC_RSSI_PWM_MIN>) _param_rc_rssi_pwm_min,
@@ -777,6 +778,15 @@ void PX4IO::Run()
 				io_reg_modify(PX4IO_PAGE_SETUP, PX4IO_P_SETUP_FEATURES,
 					      (PX4IO_P_SETUP_FEATURES_SBUS1_OUT | PX4IO_P_SETUP_FEATURES_SBUS2_OUT), 0);
 			}
+
+			/* Tell the IO board which RC input to wire to UART1_RX. Boards
+			 * without a hardware mux (BOARD_HAS_RC_INPUT_SEL undefined)
+			 * silently drop the write in registers.c.  PX4IO_RC_MUX is
+			 * owned by this driver (px4io_params.c) so it is always in
+			 * the FMU param store and visible to QGC.
+			 */
+			const uint16_t rc_mux = (_param_px4io_rc_mux.get() != 0) ? 1 : 0;
+			io_reg_set(PX4IO_PAGE_SETUP, PX4IO_P_SETUP_RC_INPUT_SEL, rc_mux);
 		}
 	}
 

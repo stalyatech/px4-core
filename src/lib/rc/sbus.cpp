@@ -274,48 +274,63 @@ sbus_input(int sbus_fd, uint16_t *values, uint16_t *num_values, bool *sbus_fails
 	 */
 	uint8_t buf[SBUS_FRAME_SIZE * 2];
 
-	int ret = read(sbus_fd, &buf[0], SBUS_FRAME_SIZE);
+	bool latest_decoded = false;
 
-	/* if the read failed for any reason, just give up here */
-	if (ret < 1) {
-		return false;
-	}
+	/* Drain the UART RX buffer in this call: when controls_tick runs
+	 * slower than the SBUS frame rate (~71 Hz), several frames pile up
+	 * between ticks and a single 25-byte read leaves stale bytes in the
+	 * buffer that desynchronise the next call.  Loop until the kernel
+	 * read returns 0/-EAGAIN; cap iterations so a flooded line cannot
+	 * stall this tick.
+	 */
 
-	const hrt_abstime now = hrt_absolute_time();
+	for (unsigned attempts = 0; attempts < 32; attempts++) {
+		const int ret = read(sbus_fd, &buf[0], SBUS_FRAME_SIZE);
+
+		if (ret < 1) {
+			break;
+		}
+
+		const hrt_abstime now = hrt_absolute_time();
 #ifdef __PX4_NUTTX /* limit time-based hardening to RTOS's where we have reliable timing */
 
-	/*
-	 * The S.BUS protocol doesn't provide reliable framing,
-	 * so we detect frame boundaries by the inter-frame delay.
-	 *
-	 * The minimum frame spacing is 7ms; with 25 bytes at 100000bps
-	 * frame transmission time is 3ms.
-	 *
-	 * We expect to only be called when bytes arrive for processing,
-	 * and if an interval of more than 3ms passes between calls,
-	 * the first byte we read will be the first byte of a frame.
-	 *
-	 * In the case where byte(s) are dropped from a frame, this also
-	 * provides a degree of protection. Of course, it would be better
-	 * if we didn't drop bytes...
-	 */
-	if (now - last_rx_time > 4_ms) {
-		if (partial_frame_count > 0) {
-			partial_frame_count = 0;
-			sbus_decode_state = SBUS2_DECODE_STATE_DESYNC;
+		/*
+		 * The S.BUS protocol doesn't provide reliable framing,
+		 * so we detect frame boundaries by the inter-frame delay.
+		 *
+		 * The minimum frame spacing is 7ms; with 25 bytes at 100000bps
+		 * frame transmission time is 3ms.
+		 *
+		 * We expect to only be called when bytes arrive for processing,
+		 * and if an interval of more than 3ms passes between calls,
+		 * the first byte we read will be the first byte of a frame.
+		 *
+		 * In the case where byte(s) are dropped from a frame, this also
+		 * provides a degree of protection. Of course, it would be better
+		 * if we didn't drop bytes...
+		 */
+		if (now - last_rx_time > 4_ms) {
+			if (partial_frame_count > 0) {
+				partial_frame_count = 0;
+				sbus_decode_state = SBUS2_DECODE_STATE_DESYNC;
 #if defined(SBUS_DEBUG_LEVEL) && SBUS_DEBUG_LEVEL > 0
-			printf("SBUS: RESET (TIME LIM)\n");
+				printf("SBUS: RESET (TIME LIM)\n");
 #endif
+			}
 		}
-	}
 
 #endif /* __PX4_NUTTX */
 
-	/*
-	 * Try to decode something with what we got
-	 */
-	return sbus_parse(now, &buf[0], ret, values, num_values, sbus_failsafe,
-			  sbus_frame_drop, &sbus_frame_drops, max_channels);
+		/*
+		 * Try to decode something with what we got
+		 */
+		if (sbus_parse(now, &buf[0], ret, values, num_values, sbus_failsafe,
+			       sbus_frame_drop, &sbus_frame_drops, max_channels)) {
+			latest_decoded = true;
+		}
+	}
+
+	return latest_decoded;
 }
 
 bool

@@ -164,7 +164,8 @@ volatile uint16_t	r_page_setup[] = {
 	[PX4IO_P_SETUP_CRC ...(PX4IO_P_SETUP_CRC + 1)] = 0,
 	[PX4IO_P_SETUP_THERMAL] = PX4IO_THERMAL_IGNORE,
 	[PX4IO_P_SETUP_ENABLE_FLIGHTTERMINATION] = 0,
-	[PX4IO_P_SETUP_PWM_RATE_GROUP0 ... PX4IO_P_SETUP_PWM_RATE_GROUP3] = 0
+	[PX4IO_P_SETUP_PWM_RATE_GROUP0 ... PX4IO_P_SETUP_PWM_RATE_GROUP3] = 0,
+	[PX4IO_P_SETUP_RC_INPUT_SEL] = 0
 };
 
 #define PX4IO_P_SETUP_FEATURES_VALID	(PX4IO_P_SETUP_FEATURES_SBUS1_OUT | PX4IO_P_SETUP_FEATURES_SBUS2_OUT | PX4IO_P_SETUP_FEATURES_ADC_RSSI)
@@ -786,6 +787,13 @@ registers_set_one(uint8_t page, uint8_t offset, uint16_t value)
 		case PX4IO_P_SETUP_DSM:
 #ifdef SPEKTRUM_POWER
 			dsm_bind(value & 0x0f, (value >> 4) & 0xF);
+#endif
+			break;
+
+		case PX4IO_P_SETUP_RC_INPUT_SEL:
+#ifdef BOARD_HAS_RC_INPUT_SEL
+			tpu_v2_rc_input_select_dsm(value != 0);
+			r_page_setup[PX4IO_P_SETUP_RC_INPUT_SEL] = (value != 0) ? 1 : 0;
 #endif
 			break;
 

@@ -62,3 +62,19 @@ PARAM_DEFINE_INT32(PWM_SBUS_MODE, 0);
  * @group System
  */
 PARAM_DEFINE_INT32(SYS_USE_IO, 1);
+
+/**
+ * PX4IO RC input mux
+ *
+ * Selects which physical receiver is routed to the IO board's UART1_RX on
+ * boards that expose a hardware mux pin (BOARD_HAS_RC_INPUT_SEL, e.g.
+ * tpu-v2 XGPIOB_22).  0 = SBUS, 1 = DSM.  Boards without the mux ignore
+ * this parameter — the IO firmware silently drops the register write.
+ *
+ * @value 0 SBUS
+ * @value 1 DSM
+ * @min 0
+ * @max 1
+ * @group PWM Outputs
+ */
+PARAM_DEFINE_INT32(PX4IO_RC_MUX, 0);

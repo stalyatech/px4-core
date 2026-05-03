@@ -140,8 +140,16 @@ extern struct sys_state_s system_state;
 #endif
 
 # define PX4IO_ADC_CHANNEL_COUNT	2
-# define ADC_VSERVO			4
-# define ADC_RSSI			5
+/* Default ADC channel IDs match the legacy STM32 PX4IO mapping; boards may
+ * override these (e.g. tpu-v2 wires VSERVO=ADC2, RSSI=ADC3) by defining
+ * them in board_config.h before this header is fully processed.
+ */
+# ifndef ADC_VSERVO
+#  define ADC_VSERVO		4
+# endif
+# ifndef ADC_RSSI
+#  define ADC_RSSI			5
+# endif
 
 #define PX4_CRITICAL_SECTION(cmd)	{ irqstate_t flags = px4_enter_critical_section(); cmd; px4_leave_critical_section(flags); }
 

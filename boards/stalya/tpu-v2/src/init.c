@@ -90,10 +90,8 @@ static void board_led_boot_toggle(void)
 	 * deferred, src/drivers/px4io/px4io.cpp).  3 × 2 × 50 ms = 300 ms
 	 * is enough to be visually unmistakable without starving the probe.
 	 */
-	for (int i = 0; i < 3; i++) {
-		*dr = *dr | (1u << TPU_PWR_LED_PIN);
-		up_udelay(50 * 1000);
-		*dr = *dr & ~(1u << TPU_PWR_LED_PIN);
+	for (int i = 0; i < 5; i++) {
+		*dr = *dr ^ (1u << TPU_PWR_LED_PIN);
 		up_udelay(50 * 1000);
 	}
 }
@@ -119,6 +117,19 @@ __EXPORT int board_app_initialize(uintptr_t arg)
 	(void)arg;
 	PX4IO_DBG("board_app_initialize: begin\n");
 	PX4IO_DBG("FMU link: %s @ %u bps\n", PX4FMU_SERIAL_DEVICE, PX4FMU_SERIAL_BAUDRATE);
+
+	/* Bring up the RC I/O mux pins (SBUS_OUT_EN, RC_INPUT_SEL) before any
+	 * driver opens UART1 — boot defaults are SBUS_OUT off (RSSI valid) and
+	 * SBUS input selected.  FMU later writes PX4IO_P_SETUP_RC_INPUT_SEL
+	 * to switch to DSM if RC_INPUT_PROTO requests it.
+	 */
+	const int mux_ret = tpu_v2_rc_mux_init();
+
+	if (mux_ret != OK) {
+		syslog(LOG_ERR, "tpu-v2: tpu_v2_rc_mux_init failed (%d)\n", mux_ret);
+	} else {
+		PX4IO_DBG("tpu_v2_rc_mux_init: OK\n");
+	}
 
 	PX4IO_DBG("board_pwm_setup: start\n");
 	if (board_pwm_setup() != OK) {
