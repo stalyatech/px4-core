@@ -98,6 +98,21 @@ static void board_led_boot_toggle(void)
 
 __EXPORT void sg2000_boardinitialize(void)
 {
+#ifdef CONFIG_SG2000_CMDQU
+	/* Attach the AMP mailbox ISR as early as possible. CPU IRQs may still
+	 * be masked at this stage, but sg2000_cmdqu_init() drains any pending
+	 * mailbox bit synchronously by invoking the ISR by hand — so a Linux
+	 * SYS_CMD_INFO_LINUX_INIT_DONE that lands during NuttX bring-up gets
+	 * answered before the SOPHGO cv-mailbox driver's 200 ms send_wait
+	 * window expires.
+	 */
+	const int cmdqu_ret = sg2000_cmdqu_init();
+
+	if (cmdqu_ret != OK) {
+		syslog(LOG_ERR, "tpu-v2: sg2000_cmdqu_init failed (%d)\n", cmdqu_ret);
+	}
+#endif
+
 	board_led_boot_toggle();
 	PX4IO_DBG("boardinitialize: enter\n");
 }
@@ -160,14 +175,6 @@ __EXPORT int board_app_initialize(uintptr_t arg)
 	}
 
 	PX4IO_DBG("board_app_initialize: done\n");
-
-#ifdef CONFIG_SG2000_CMDQU
-	const int cmdqu_ret = sg2000_cmdqu_init();
-
-	if (cmdqu_ret != OK) {
-		syslog(LOG_ERR, "tpu-v2: sg2000_cmdqu_init failed (%d)\n", cmdqu_ret);
-	}
-#endif
 
 #ifdef CONFIG_SG2000_WDT
 	const int wdt_ret = sg2000_wdt_init();
