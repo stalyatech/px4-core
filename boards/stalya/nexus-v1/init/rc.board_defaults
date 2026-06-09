@@ -35,10 +35,11 @@ else
 	param set SYS_DM_BACKEND 1
 fi
 
-# Optional override: if a newer IO firmware is present on SD card, use it.
-if [ -f /fs/microsd/etc/extras/stalya_io-v2_default.bin ]
-then
-	set IOFW "/fs/microsd/etc/extras/stalya_io-v2_default.bin"
-fi
+# IO firmware on this board lives on the mission computer (TPU-v2 image at
+# /lib/firmware/firmware.elf, loaded into the C906L coprocessor by Linux
+# remoteproc). Clear IOFW so rcS skips the legacy upload path and instead
+# uses `px4io fw verify/update`, which talks to the MC tpufw daemon over
+# the page-56 / cmdqu bridge.
+set IOFW ""
 
 safety_button start

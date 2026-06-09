@@ -388,8 +388,42 @@ else
 	#
 	if px4io supported
 	then
-	# Check if PX4IO present and update firmware if needed.
-		if [ -f $IOFW ]
+	# Boards whose IO image is loaded out-of-band (e.g. TPU-v2 brought up by
+	# the mission computer over remoteproc) leave IOFW empty in their
+	# board-specific rc snippet. In that case we drop the legacy upload path
+	# and use the new `fw` bridge which talks to the MC tpufw daemon. A CRC
+	# mismatch triggers an in-place update + remoteproc reboot, mirroring the
+	# classic checkcrc/update behaviour for the operator.
+		if [ -z "$IOFW" ]
+		then
+			if ! px4io fw verify
+			then
+				tune_control play -t 16 # tune 16 = PROG_PX4IO
+
+				if px4io fw update
+				then
+					usleep 200000
+					tune_control stop
+
+					if px4io fw verify
+					then
+						tune_control play -t 17 # tune 17 = PROG_PX4IO_OK
+					else
+						tune_control play -t 18 # tune 18 = PROG_PX4IO_ERR
+					fi
+
+				else
+					tune_control stop
+				fi
+			fi
+
+			if ! px4io start
+			then
+				echo "PX4IO start failed"
+				set STARTUP_TUNE 2 # tune 2 = ERROR_TUNE
+			fi
+
+		elif [ -f $IOFW ]
 		then
 			if ! px4io checkcrc ${IOFW}
 			then

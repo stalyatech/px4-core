@@ -2149,6 +2149,104 @@ int PX4IO::custom_command(int argc, char *argv[])
 	}
 
 
+	if (!strcmp(verb, "fw")) {
+		const char *sub = (argc > 1) ? argv[1] : "status";
+		const bool driver_was_running = is_running();
+
+		device::Device *interface = nullptr;
+		PX4IO *dev = nullptr;
+		int ret = OK;
+
+		if (!driver_was_running) {
+			interface = get_interface();
+
+			if (interface == nullptr) {
+				PX4_ERR("interface allocation failed");
+				return 1;
+			}
+
+			dev = new PX4IO(interface);
+
+			if (dev == nullptr) {
+				delete interface;
+				PX4_ERR("driver allocation failed");
+				return 1;
+			}
+		}
+
+		PX4IO *target = driver_was_running ? get_instance() : dev;
+
+		uint32_t active_hash = 0;
+		uint32_t active_size = 0;
+		uint16_t flags = 0;
+		uint16_t error = 0;
+
+		if (!strcmp(sub, "status")) {
+			ret = target->io_firmware_mgmt(PX4IO_FW_MGMT_CMD_QUERY_ACTIVE, 0, 0,
+						       active_hash, active_size, flags, error);
+
+			if (ret == OK) {
+				PX4_INFO("IO active: hash=0x%08" PRIx32 " size=%" PRIu32 " flags=0x%04x",
+					 active_hash, active_size, flags);
+			}
+
+		} else if (!strcmp(sub, "verify")) {
+			/* request_hash == 0 + request_size == 0 tells the MC tpufw daemon
+			 * to use its own manifest as the comparison reference. The result
+			 * lands in the FLAG_HASH_MATCH bit and the active_hash field, so
+			 * a no-file verify is sufficient on TPU-v2 boards.
+			 */
+			ret = target->io_firmware_mgmt(PX4IO_FW_MGMT_CMD_CHECK_HASH, 0, 0,
+						       active_hash, active_size, flags, error);
+
+			if (ret != OK) {
+				PX4_WARN("verify failed: ret=%d io_error=%u", ret, error);
+
+			} else if (flags & PX4IO_FW_MGMT_FLAG_HASH_MATCH) {
+				PX4_INFO("IO firmware matches manifest (hash=0x%08" PRIx32 ")", active_hash);
+
+			} else {
+				PX4_WARN("IO firmware mismatch: active=0x%08" PRIx32 " (manifest disagrees)", active_hash);
+				ret = -EINVAL;
+			}
+
+		} else if (!strcmp(sub, "update")) {
+			/* request_size == 0 is the "install whatever you have on disk"
+			 * sentinel; the MC daemon ignores any staging buffer and pulls
+			 * firmware.elf from /lib/firmware/.
+			 */
+			ret = target->io_firmware_mgmt(PX4IO_FW_MGMT_CMD_REQUEST_UPDATE, 0, 0,
+						       active_hash, active_size, flags, error);
+
+			if (ret != OK) {
+				PX4_ERR("update request failed: ret=%d io_error=%u", ret, error);
+			} else {
+				PX4_INFO("update request acknowledged; IO will reboot momentarily");
+			}
+
+		} else if (!strcmp(sub, "restart")) {
+			ret = target->io_firmware_mgmt(PX4IO_FW_MGMT_CMD_REQUEST_UPDATE, 0, 0,
+						       active_hash, active_size, flags, error);
+
+			if (ret != OK) {
+				PX4_ERR("restart request failed: ret=%d io_error=%u", ret, error);
+			} else {
+				PX4_INFO("restart request acknowledged");
+			}
+
+		} else {
+			PX4_ERR("usage: px4io fw {status|verify|update|restart}");
+			ret = -EINVAL;
+		}
+
+		if (!driver_was_running) {
+			delete dev;
+		}
+
+		return (ret == OK) ? 0 : 1;
+	}
+
+
 	/* commands below here require a started driver */
 	if (!is_running()) {
 		PX4_ERR("not running");
@@ -2237,6 +2335,8 @@ Output driver communicating with the IO co-processor.
 	PRINT_MODULE_USAGE_ARG("<filename>", "Firmware file", false);
 	PRINT_MODULE_USAGE_COMMAND_DESCR("update", "Update IO firmware");
 	PRINT_MODULE_USAGE_ARG("<filename>", "Firmware file", true);
+	PRINT_MODULE_USAGE_COMMAND_DESCR("fw", "TPU-v2 firmware bridge (status|verify|update|restart)");
+	PRINT_MODULE_USAGE_ARG("status|verify|update|restart", "subcommand (default: status)", true);
 	PRINT_MODULE_USAGE_COMMAND_DESCR("debug", "set IO debug level");
 	PRINT_MODULE_USAGE_ARG("<debug_level>", "0=disabled, 9=max verbosity", false);
 	PRINT_MODULE_USAGE_COMMAND_DESCR("bind", "DSM bind");

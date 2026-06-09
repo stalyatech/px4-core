@@ -66,6 +66,8 @@
 #if defined(CONFIG_ARCH_CHIP_SG2000) && defined(CONFIG_SG2000_CMDQU)
 #include <arch/sg2000/cmdqu.h>
 #include <arch/board/board_memorymap.h>
+#include <fwmgmt_proto.h>
+extern const struct fwmgmt_manifest_v1 g_self_manifest;
 #endif
 #include <rc/dsm.h>
 #include <rc/sbus.h>
@@ -229,6 +231,30 @@ static volatile uint16_t r_page_fw_mgmt[] = {
 static struct PX4IOFwMgmtIpc g_fw_mgmt_ipc;
 static uint32_t g_fw_mgmt_received_bytes;
 static bool g_fw_mgmt_upload_ready;
+
+/* Map a PX4IO_PAGE_FW_MGMT command (the verb the FMU writes to the bridge
+ * register) to the cmdqu cmd_id observed on the wire by the Linux mission
+ * computer's `tpufw` daemon. Values come from the shared
+ * src/lib/tpu_fwmgmt_proto/fwmgmt_proto.h header.
+ *
+ * BEGIN/CHUNK/FINISH never reach this point because fw_mgmt_exec() handles
+ * those locally (the staging buffer lives in TPU ramdisk); the wire-side
+ * cmd_ids are still listed here for completeness if a future change starts
+ * forwarding chunk traffic through the daemon.
+ */
+static uint8_t fw_mgmt_cmd_to_cmdqu(uint16_t command)
+{
+	switch (command) {
+	case PX4IO_FW_MGMT_CMD_QUERY_ACTIVE:    return SYS_CMD_FWMGMT_GET_VERSION;
+	case PX4IO_FW_MGMT_CMD_CHECK_HASH:      return SYS_CMD_FWMGMT_GET_CRC;
+	case PX4IO_FW_MGMT_CMD_BEGIN_UPLOAD:    return SYS_CMD_FWMGMT_BEGIN_UPDATE;
+	case PX4IO_FW_MGMT_CMD_WRITE_CHUNK:     return SYS_CMD_FWMGMT_CHUNK;
+	case PX4IO_FW_MGMT_CMD_FINISH_UPLOAD:   return SYS_CMD_FWMGMT_END_UPDATE;
+	case PX4IO_FW_MGMT_CMD_REQUEST_UPDATE:  return SYS_CMD_FWMGMT_END_UPDATE;
+	case PX4IO_FW_MGMT_CMD_ABORT:           return SYS_CMD_FWMGMT_ERROR;
+	default:                                return SYS_CMD_FWMGMT_STATUS;
+	}
+}
 #endif
 
 int
@@ -348,6 +374,16 @@ static void fw_mgmt_set_u32(uint8_t lo_index, uint32_t value)
 {
 	r_page_fw_mgmt[lo_index] = value & 0xffff;
 	r_page_fw_mgmt[lo_index + 1] = value >> 16;
+}
+
+void px4io_fw_mgmt_seed_from_manifest(void)
+{
+	if (g_self_manifest.magic != FWMGMT_MANIFEST_MAGIC) {
+		return;
+	}
+
+	fw_mgmt_set_u32(PX4IO_P_FW_MGMT_ACTIVE_HASH_L, g_self_manifest.crc32_image);
+	fw_mgmt_set_u32(PX4IO_P_FW_MGMT_ACTIVE_SIZE_L, g_self_manifest.image_size);
 }
 
 static uint16_t fw_mgmt_map_error(int ret)
@@ -560,14 +596,23 @@ static int fw_mgmt_exec(uint16_t command)
 	g_fw_mgmt_ipc.result = PX4IO_FW_MGMT_ERR_INTERNAL;
 	g_fw_mgmt_ipc.reserved = 0;
 
-	if ((command == PX4IO_FW_MGMT_CMD_REQUEST_UPDATE) && !g_fw_mgmt_upload_ready) {
+	/* Two valid paths into REQUEST_UPDATE: (a) FMU has streamed a fresh image
+	 * via BEGIN/CHUNK/FINISH and we have it staged in the carveout, or
+	 * (b) the FMU passes request_size == 0 to mean "MC, install from disk
+	 * using whatever firmware.elf you already hold" — used when the source
+	 * of truth lives on the mission computer.
+	 */
+	const uint32_t requested_size_check = fw_mgmt_get_u32(PX4IO_P_FW_MGMT_REQ_SIZE_L);
+
+	if ((command == PX4IO_FW_MGMT_CMD_REQUEST_UPDATE) && !g_fw_mgmt_upload_ready &&
+	    (requested_size_check != 0)) {
 		r_page_fw_mgmt[PX4IO_P_FW_MGMT_ERROR] = PX4IO_FW_MGMT_ERR_BAD_PARAM;
 		r_page_fw_mgmt[PX4IO_P_FW_MGMT_STATUS] = PX4IO_FW_MGMT_STATUS_ERROR;
 		return -EINVAL;
 	}
 
 	cmdqu_msg.ip_id = SG2000_CMDQU_IP_SYSTEM;
-	cmdqu_msg.cmd_id = 42; // Reserved TPU-v2 firmware management mailbox command
+	cmdqu_msg.cmd_id = fw_mgmt_cmd_to_cmdqu(command);
 	cmdqu_msg.block = 1;
 	cmdqu_msg.resv.mstime = timeout_ms;
 	cmdqu_msg.param_ptr = (uint32_t)(uintptr_t)&g_fw_mgmt_ipc;

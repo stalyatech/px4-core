@@ -421,6 +421,24 @@ else()
 			target_link_libraries(px4 PRIVATE romfs)
 		endif()
 
+	# Stamp the TPU-v2 firmware manifest into the freshly linked ELF and emit
+	# a sidecar firmware.manifest consumed by the MC tpufw daemon. Must run
+	# before the .bin extraction so the embedded manifest reaches downstream.
+	if(CONFIG_ARCH_CHIP_SG2000)
+		set(TPUFW_ELF ${PX4_BINARY_DIR}/${PX4_CONFIG}.elf)
+		set(TPUFW_MANIFEST ${PX4_BINARY_DIR}/firmware.manifest)
+		add_custom_command(TARGET px4 POST_BUILD
+			COMMAND ${PYTHON_EXECUTABLE}
+				${PX4_SOURCE_DIR}/Tools/tpufw_self_manifest.py
+				--elf ${TPUFW_ELF}
+				--manifest-out ${TPUFW_MANIFEST}
+				--repo-root ${PX4_SOURCE_DIR}
+			BYPRODUCTS ${TPUFW_MANIFEST}
+			COMMENT "Stamping TPU-v2 firmware manifest into ${PX4_CONFIG}.elf"
+			VERBATIM
+		)
+	endif()
+
 	# Pad the .bin to a 4-byte boundary with 0xff so the px4io bootloader's
 	# PROG_MULTI handler (which requires count % 4 == 0) accepts the last chunk
 	# of the upload. Trailing 0xff matches erased flash, so it does not affect
