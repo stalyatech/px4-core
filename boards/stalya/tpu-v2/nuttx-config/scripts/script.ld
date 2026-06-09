@@ -95,6 +95,16 @@ SECTIONS
       _erodata = . ;
     } > kflash :kflash
 
+  /* TPU-v2 firmware self-attestation manifest (stamped post-link). 128 bytes,
+   * 64-byte aligned. Kept explicitly so --gc-sections does not drop it.
+   */
+  .note.fwmanifest : ALIGN(64)
+    {
+      __fwmanifest_start = . ;
+      KEEP(*(.note.fwmanifest))
+      __fwmanifest_end = . ;
+    } > kflash :kflash
+
   .tdata :
     {
       _stdata = ABSOLUTE(.);

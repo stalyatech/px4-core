@@ -37,9 +37,11 @@ if(${PX4_CHIP} STREQUAL "sg2000")
 	set(px4iofirmware_arch_sources
 		sg2000/adc.cpp
 		sg2000/serial.cpp
+		fw_manifest.c
 	)
 	set(px4iofirmware_arch_libs
 		arch_watchdog_iwdg
+		tpu_fwmgmt_proto
 	)
 else()
 	set(px4iofirmware_arch_sources

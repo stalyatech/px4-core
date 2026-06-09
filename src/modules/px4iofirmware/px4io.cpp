@@ -69,6 +69,11 @@
 #define DEBUG
 #include "px4io.h"
 
+#if defined(CONFIG_ARCH_CHIP_SG2000)
+#include <fwmgmt_proto.h>
+extern "C" const struct fwmgmt_manifest_v1 g_self_manifest;
+#endif
+
 #ifndef PX4IO_DEBUG_BUFSIZE
 # if defined(CONFIG_USART1_TXBUFSIZE)
 #  define PX4IO_DEBUG_BUFSIZE CONFIG_USART1_TXBUFSIZE
@@ -287,8 +292,17 @@ calculate_fw_crc(void)
 	uint32_t sum = 0;
 
 #if defined(CONFIG_ARCH_CHIP_SG2000)
-	/* SG2000 image layout is not at the STM32 flash base used below. */
-	sum = 0;
+	/* SG2000 (TPU-v2) is loaded from disk by the mission computer's
+	 * remoteproc driver, so it cannot recompute its own image CRC at
+	 * runtime. The post-link `tpufw_self_manifest.py` step bakes the
+	 * authoritative CRC into the .note.fwmanifest section, and we surface
+	 * that value via the standard PX4IO_P_SETUP_CRC register so the FMU's
+	 * px4io driver sees a non-zero hash to compare against the manifest
+	 * sidecar held by the MC.
+	 */
+	if (g_self_manifest.magic == FWMGMT_MANIFEST_MAGIC) {
+		sum = g_self_manifest.crc32_image;
+	}
 #else
 	for (unsigned p = 0; p < APP_SIZE_MAX; p += 4) {
 		uint32_t bytes = *(uint32_t *)(uintptr_t)(p + APP_LOAD_ADDRESS);
@@ -329,6 +343,10 @@ extern "C" __EXPORT int user_start(int argc, char *argv[])
 
 	/* calculate our fw CRC so FMU can decide if we need to update */
 	calculate_fw_crc();
+
+#if defined(CONFIG_ARCH_CHIP_SG2000) && defined(CONFIG_SG2000_CMDQU)
+	px4io_fw_mgmt_seed_from_manifest();
+#endif
 
 	/*
 	 * Poll at 1ms intervals for received bytes that have not triggered

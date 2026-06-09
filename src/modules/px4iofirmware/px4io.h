@@ -180,6 +180,14 @@ extern void	interface_tick(void);
 extern int	registers_set(uint8_t page, uint8_t offset, const uint16_t *values, unsigned num_values);
 extern int	registers_get(uint8_t page, uint8_t offset, uint16_t **values, unsigned *num_values);
 
+#if defined(CONFIG_ARCH_CHIP_SG2000) && defined(CONFIG_SG2000_CMDQU)
+/* Populate the FW_MGMT page's ACTIVE_HASH/SIZE registers from the post-link
+ * stamped manifest. Called once at boot from user_start() so the FMU sees
+ * the running image identity on its first read.
+ */
+extern void	px4io_fw_mgmt_seed_from_manifest(void);
+#endif
+
 /**
  * Sensors/misc inputs
  */
