@@ -115,7 +115,6 @@ void TattuCan::Run()
 		battery_status.connected = true;
 		battery_status.cell_count = 12;
 
-		battery_status.serial_number = tattu_message.manufacturer;
 		battery_status.id = static_cast<uint8_t>(tattu_message.sku);
 
 		battery_status.cycle_count = tattu_message.cycle_life;
