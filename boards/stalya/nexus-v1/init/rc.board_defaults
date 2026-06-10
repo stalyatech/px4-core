@@ -40,10 +40,11 @@ param set-default EKF2_HGT_REF 0
 # offset (deg) for this airframe.
 param set-default EKF2_GPS_CTRL 15
 
-# External-vision YAW only (VBL absolute heading) -> mag-independent heading when
-# RTK yaw is jammed/denied. Bit 3 = Yaw.
-param set-default EKF2_EV_CTRL 8
-param set-default EKF2_EV_DELAY 100	# tune to measured VBL + uXRCE-DDS latency
+# External vision: YAW (bit 3, VBL absolute heading -> mag-independent in denied
+# mode) + VELOCITY (bit 2, Tier-2 mc-vio ground odometry -> bounds drift between
+# absolute fixes). Bits 0/1 (EV position) stay off; absolute position is AGP.
+param set-default EKF2_EV_CTRL 12
+param set-default EKF2_EV_DELAY 100	# tune to measured VBL/VIO + uXRCE-DDS latency
 #------------------------------------------------------------------------------
 
 # Dataman backend selection based on SD card availability.
