@@ -13,6 +13,39 @@ param set-default BAT2_A_PER_V 0
 param set-default SENS_EN_THERMAL 1
 param set-default -s SENS_TEMP_ID 3932170
 
+#------------------------------------------------------------------------------
+# GNSS-denied navigation: visual aiding + RTK heading + graceful fallback
+#
+# The mission computer publishes the absolute VBL fix to aux_global_position and
+# an external-vision yaw to vehicle_visual_odometry. Optical flow gives velocity
+# aiding. With these aids running continuously, EKF2 falls back seamlessly when
+# the real GNSS is jammed/spoofed/rejected (EKF2_GPS_CHECK default 2047 already
+# gates sat/PDOP/EPH/EPV/SACC/drift/spoofing; EKF2_GPS_MODE Automatic resets to
+# the remaining sources on GNSS timeout).
+
+# Absolute visual fix (lat/lon) -> aux global position, horizontal only.
+param set-default EKF2_AGP_CTRL 1
+param set-default EKF2_AGP_MODE 0
+param set-default EKF2_AGP_DELAY 100	# tune to measured VBL + uXRCE-DDS latency
+
+# Optical flow velocity aiding (bounds drift between absolute fixes).
+# Set EKF2_OF_POS_{X,Y,Z} to the camera offset from the IMU for this airframe.
+param set-default EKF2_OF_CTRL 1
+
+# Height reference: baro (robust when GNSS is denied), not GPS.
+param set-default EKF2_HGT_REF 0
+
+# Heading: dual-antenna RTK GNSS yaw when GNSS is available (bit 3) in addition
+# to lon/lat + alt + 3D velocity. Set EKF2_GPS_YAW_OFF to the antenna baseline
+# offset (deg) for this airframe.
+param set-default EKF2_GPS_CTRL 15
+
+# External-vision YAW only (VBL absolute heading) -> mag-independent heading when
+# RTK yaw is jammed/denied. Bit 3 = Yaw.
+param set-default EKF2_EV_CTRL 8
+param set-default EKF2_EV_DELAY 100	# tune to measured VBL + uXRCE-DDS latency
+#------------------------------------------------------------------------------
+
 # Dataman backend selection based on SD card availability.
 #
 # nexus-v1 has an FMU SD card slot but the card may or may not be present at
