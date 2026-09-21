@@ -62,6 +62,14 @@ else()
 		set(lib_dir "lib")
 	endif()
 
+	# The UDP transport needs a socket API; a board whose NuttX has no
+	# networking (the link to the host is a serial one) cannot build it.
+	if(CONFIG_NET)
+		set(uclient_profile_udp ON)
+	else()
+		set(uclient_profile_udp OFF)
+	endif()
+
 	include(ExternalProject)
 
 	ExternalProject_Add(
@@ -78,7 +86,7 @@ else()
 			-DCMAKE_EXE_LINKER_FLAGS:STRING=${CMAKE_EXE_LINKER_FLAGS}
 			-DUCLIENT_PIC:BOOL=OFF
 			-DUCLIENT_PROFILE_TCP:BOOL=OFF
-			-DUCLIENT_PROFILE_UDP:BOOL=ON
+			-DUCLIENT_PROFILE_UDP:BOOL=${uclient_profile_udp}
 			-DUCLIENT_PROFILE_SERIAL:BOOL=ON
 			-DUCLIENT_PROFILE_DISCOVERY:BOOL=OFF
 			-DUCLIENT_PROFILE_CUSTOM_TRANSPORT:BOOL=OFF

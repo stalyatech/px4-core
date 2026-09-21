@@ -2,3 +2,9 @@
 #
 # board specific defaults
 #------------------------------------------------------------------------------
+
+# The link to Linux is the rpmsg tty that TELEM 2 points at. There is no
+# parameter storage on this board yet, so the DDS client is pointed at it
+# here rather than with a saved parameter.
+param set-default UXRCE_DDS_CFG 102
+param set-default SER_TEL2_BAUD 921600
