@@ -69,6 +69,11 @@
 #include <px4_platform_common/init.h>
 #include <px4_platform/gpio.h>
 
+#ifdef CONFIG_SAPPHIRE_RPTUN
+#  include <nuttx/serial/uart_rpmsg_raw.h>
+#  include "sapphire_rptun.h"
+#endif
+
 /****************************************************************************
  * Pre-Processor Definitions
  ****************************************************************************/
@@ -148,6 +153,20 @@ __EXPORT int board_app_initialize(uintptr_t arg)
 
 	px4_platform_configure();
 
+#ifdef CONFIG_SAPPHIRE_RPTUN
+	/* The link to Linux: rpmsg over the vrings in the shared region. The tty
+	 * on top of it is registered from rpmsg_serialrawinit() below, which the
+	 * driver layer calls on its own.
+	 */
+
+	ret = sapphire_rptun_init(CONFIG_SAPPHIRE_RPTUN_CPUNAME);
+
+	if (ret < 0) {
+		syslog(LOG_ERR, "ERROR: rptun init failed: %d\n", ret);
+	}
+
+#endif /* CONFIG_SAPPHIRE_RPTUN */
+
 #ifdef CONFIG_FS_PROCFS
 	ret = mount(NULL, "/proc", "procfs", 0, NULL);
 
@@ -161,3 +180,20 @@ __EXPORT int board_app_initialize(uintptr_t arg)
 	UNUSED(ret);
 	return OK;
 }
+
+#ifdef CONFIG_RPMSG_UART_RAW
+/****************************************************************************
+ * Name: rpmsg_serialrawinit
+ *
+ * Description:
+ *   Called by the driver layer to register the ttys carried over rpmsg. The
+ *   peer name must be the one rptun knows Linux by; Linux sees this channel
+ *   as /dev/ttyRPMSG0 once the endpoint is announced.
+ *
+ ****************************************************************************/
+
+void rpmsg_serialrawinit(void)
+{
+	uart_rpmsg_raw_init(CONFIG_SAPPHIRE_RPTUN_CPUNAME, "RPMSG0", 4096, false);
+}
+#endif /* CONFIG_RPMSG_UART_RAW */

@@ -81,6 +81,16 @@ SECTIONS
         _etext = ABSOLUTE(.);
     } > progmem :text
 
+    /* The host reads this out of the ELF, fills in the addresses it chose
+     * and loads it back here before it starts us (rptun reads it again).
+     */
+
+    .resource_table : ALIGN(8) {
+        _sresource_table = ABSOLUTE(.);
+        KEEP(*(.resource_table))
+        _eresource_table = ABSOLUTE(.);
+    } > progmem :text
+
     .init_section : ALIGN(4) {
         _sinit = ABSOLUTE(.);
         KEEP(*(SORT_BY_INIT_PRIORITY(.init_array.*) SORT_BY_INIT_PRIORITY(.ctors.*)))

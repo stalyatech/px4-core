@@ -135,6 +135,15 @@ list(APPEND nuttx_libs
 	nuttx_xx
 	)
 
+if (CONFIG_RPTUN OR CONFIG_OPENAMP)
+	list(APPEND nuttx_libs nuttx_openamp)
+
+	# rptun and rpmsg live in nuttx_drivers and call into both of these;
+	# the link list repeats nuttx_drivers after the group, so the two have
+	# to follow it there as well.
+	target_link_libraries(nuttx_drivers INTERFACE nuttx_openamp nuttx_mm)
+endif()
+
 if (NOT CONFIG_BUILD_FLAT)
 	list(APPEND nuttx_libs
 		px4_board_ctrl

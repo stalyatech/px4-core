@@ -227,6 +227,11 @@ if(CONFIG_NET)
 	add_nuttx_dir(net net y -D__KERNEL__ all)
 endif()
 
+# OpenAMP and libmetal, the transport under rptun/rpmsg
+if(CONFIG_RPTUN OR CONFIG_OPENAMP)
+	add_nuttx_dir(openamp openamp y -D__KERNEL__ all)
+endif()
+
 ###############################################################################
 # NuttX oldconfig: Update a configuration using a provided .config as base
 add_custom_target(oldconfig_nuttx
