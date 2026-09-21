@@ -66,6 +66,8 @@
 
 #include "sapphire_memorymap.h"
 #include "sapphire_clockconfig.h"
+#include "hardware/sapphire_timer.h"
+#include "hardware/sapphire_clint.h"
 
 #define getreg32(a)          (*(volatile uint32_t *)(a))
 #define putreg32(v,a)        (*(volatile uint32_t *)(a) = (v))
@@ -87,7 +89,7 @@
 #define HRT_TIME_TO_COUNTS(_a) ((_a) * CLOCK_RATE_MHZ)
 
 #define HRT_INTERVAL_MIN 50UL                          // 50 microseconds
-#define HRT_INTERVAL_MAX HRT_COUNTS_TO_TIME(0xFFFFFFFF) // ~28.6s at 150MHz timer
+#define HRT_INTERVAL_MAX 0xFFFFFFFFUL                  // 32 bit limit, 1 MHz tick
 
 /*
  * Queue of callout entries.
@@ -127,9 +129,23 @@ static void hrt_call_invoke(void);
  * Always call with interrupts disabled.
  */
 
+/* Arm the deadline timer to fire in "deadline" microseconds. Writing the
+ * value register clears the count, so the timer starts from zero and raises
+ * its interrupt when it reaches the limit.
+ */
+
 inline static void hrt_set_new_deadline(uint32_t deadline)
 {
-	/* load the new deadline into register and store it locally */
+	if (deadline < HRT_INTERVAL_MIN) {
+		deadline = HRT_INTERVAL_MIN;
+	}
+
+	putreg32(0, SAPPHIRE_TIMER0_CTRL);
+	putreg32(deadline, SAPPHIRE_TIMER0_LIMIT);
+	putreg32(0, SAPPHIRE_TIMER0_VALUE);
+	putreg32(TIMER_CONFIG_WITH_PRESCALER, SAPPHIRE_TIMER0_CTRL);
+
+	/* what the interrupt measures its own latency against */
 
 	loadval = hrt_absolute_time() + deadline;
 }
@@ -140,23 +156,23 @@ inline static void hrt_set_new_deadline(uint32_t deadline)
 static void
 hrt_tim_init(void)
 {
-	/* e.g. connect hrt_tim_isr to a timer vector, initialize the timer */
-
-	/* attach irq */
 	int ret;
+
+	/* One tick per microsecond out of the prescaler this timer block owns;
+	 * the divider register takes the ratio minus one.
+	 */
+
+	putreg32(0, SAPPHIRE_TIMER0_CTRL);
+	putreg32(CLOCK_RATE_MHZ - 1, SAPPHIRE_TIMER0_CKDIV);
+
 	ret = irq_attach(SAPPHIRE_IRQ_TIMER0, hrt_tim_isr, NULL);
 
 	if (ret == OK) {
-
-		/* Assumes that the clock for timer is enabled and not in reset */
-
-		/* set an initial timeout to 1 ms*/
-		hrt_set_new_deadline(1000);
-
-		/* enable interrupt for timer, set periodic mode and enable timer */
-
-		/* enable interrupts */
 		up_enable_irq(SAPPHIRE_IRQ_TIMER0);
+
+		/* first deadline, 1 ms out; the callout queue takes over from there */
+
+		hrt_set_new_deadline(1000);
 	}
 }
 
@@ -167,30 +183,32 @@ hrt_tim_init(void)
 static int
 hrt_tim_isr(int irq, void *context, void *arg)
 {
-	uint32_t status = 0;
+	/* Stop the timer and clear its count: that takes the interrupt away.
+	 * hrt_call_reschedule() arms the next deadline below.
+	 */
 
-	/* read the interrupt status */
+	putreg32(0, SAPPHIRE_TIMER0_CTRL);
+	putreg32(0, SAPPHIRE_TIMER0_VALUE);
 
-	/* was this a timer tick? */
-	if (status & 1) {
-		/* get exclusive access to hrt */
-		spin_lock_notrace(&g_hrt_lock);
+	/* get exclusive access to hrt */
 
-		/* do latency calculations */
-		hrt_latency_update();
+	spin_lock_notrace(&g_hrt_lock);
 
-		/* run any callouts that have met their deadline */
-		hrt_call_invoke();
+	/* do latency calculations */
 
-		/* and schedule the next interrupt */
-		hrt_call_reschedule();
+	hrt_latency_update();
 
-		/* release exclusive access */
-		spin_unlock_notrace(&g_hrt_lock);
+	/* run any callouts that have met their deadline */
 
-		/* clear the interrupt */
+	hrt_call_invoke();
 
-	}
+	/* and schedule the next interrupt */
+
+	hrt_call_reschedule();
+
+	/* release exclusive access */
+
+	spin_unlock_notrace(&g_hrt_lock);
 
 	return OK;
 }
@@ -202,7 +220,19 @@ hrt_tim_isr(int irq, void *context, void *arg)
 hrt_abstime
 hrt_absolute_time(void)
 {
-	return getreg32(SAPPHIRE_CLINT_MTIME);
+	uint32_t hi;
+	uint32_t lo;
+
+	/* The CLINT time is 64 bits behind a 32 bit bus: read the high word
+	 * again to catch a carry that lands between the two reads.
+	 */
+
+	do {
+		hi = clint_get_timehi();
+		lo = clint_get_timelo();
+	} while (hi != clint_get_timehi());
+
+	return HRT_COUNTS_TO_TIME(((uint64_t)hi << 32) | lo);
 }
 
 /**

@@ -36,7 +36,14 @@
  ****************************************************************************/
 
 #define BOARD_MAKE_GPIO(port, pin, irq) { (port), (pin), (irq) }
-#define BOARD_MAKE_PIN(port, pin, irq) 	(((port) << 16U) | ((pin) << 8U) | (irq))
+/* Each field is masked: an irq of -1, which is how a pin without an
+ * interrupt is written, would otherwise set every bit of the word and turn
+ * the port into 0xff.
+ */
+
+#define BOARD_MAKE_PIN(port, pin, irq) 	((((port) & 0xffU) << 16U) | \
+																							 ((((pin) & 0xffU) << 8U)) | \
+																							 ((irq) & 0xffU))
 
 #define BOARD_GET_PRT(iomask) 					((iomask >> 16U) & 0xff)
 #define BOARD_GET_PIN(iomask) 					((iomask >>  8U) & 0xff)

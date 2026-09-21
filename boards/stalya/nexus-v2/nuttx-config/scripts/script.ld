@@ -20,12 +20,22 @@
  *
  ****************************************************************************/
 
+/* The FCU region of the DDR, as the Linux device tree reserves it
+ * (br2-efinix tools/efx/dts/ti375_oob-linux.dtsi, fcu@1e000000, 32 MiB):
+ *
+ *   0x1E000000  8 MiB   progmem: text, rodata and the load image of .data
+ *   0x1E800000  22 MiB  sram: .data, .bss, heap and the hart stacks
+ *   0x1FE00000  2 MiB   rpmsg vrings and buffers, owned by Linux
+ *
+ * Linux loads this ELF with remoteproc, so the load image of .data stays
+ * separate from .data itself: a restart re-enters the image and hart 0
+ * copies .data and clears .bss again.
+ */
+
 MEMORY
 {
-  progmem (rx)  : ORIGIN = 0x00001000, LENGTH = 4M - 4K
-  sram    (rwx) : ORIGIN = 0x00400000, LENGTH = 4M - 64K
-  l2lim_sec (rw): ORIGIN = 0x007F0000, LENGTH = 32k
-  l2lim_info (r): ORIGIN = 0x007F8000, LENGTH = 4k
+  progmem (rx)  : ORIGIN = 0x1E000000, LENGTH = 8M
+  sram    (rwx) : ORIGIN = 0x1E800000, LENGTH = 22M
 }
 
 OUTPUT_ARCH("riscv")

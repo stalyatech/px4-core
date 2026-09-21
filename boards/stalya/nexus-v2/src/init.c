@@ -36,11 +36,12 @@
 /**
  * @file init.c
  *
- * Icicle-specific early startup code.  This file implements the
- * board_app_initializ() function that is called early by nsh during startup.
+ * nexus-v2 early startup. Linux loads and starts this firmware over
+ * remoteproc; by the time anything here runs the DDR is already up.
  *
- * Code here is run before the rcS script is invoked; it should start required
- * subsystems and perform board-specific initialisation.
+ * Code here runs before the rcS script; it starts the subsystems the board
+ * needs. P0 brings up the core only, so there is no sensor bus, no storage
+ * and no output stage yet.
  */
 
 /****************************************************************************
@@ -58,12 +59,6 @@
 #include <sys/mount.h>
 #include <nuttx/config.h>
 #include <nuttx/board.h>
-#include <nuttx/spi/spi.h>
-#include <nuttx/sdio.h>
-#include <nuttx/mmcsd.h>
-#include <nuttx/analog/adc.h>
-#include <nuttx/mm/gran.h>
-#include <nuttx/eeprom/i2c_xx24xx.h>
 #include <chip.h>
 #include <arch/board/board.h>
 
@@ -73,164 +68,76 @@
 #include <systemlib/px4_macros.h>
 #include <px4_platform_common/init.h>
 #include <px4_platform/gpio.h>
-#include <px4_platform/board_determine_hw_info.h>
-#include <px4_platform/board_dma_alloc.h>
 
 /****************************************************************************
  * Pre-Processor Definitions
  ****************************************************************************/
 
-/* Configuration ************************************************************/
-
-/*
- * Ideally we'd be able to get these from arm_internal.h,
- * but since we want to be able to disable the NuttX use
- * of leds for system indication at will and there is no
- * separate switch, we need to build independent of the
- * CONFIG_ARCH_LEDS configuration switch.
- */
 __BEGIN_DECLS
 extern void led_init(void);
 extern void led_on(int led);
 extern void led_off(int led);
 __END_DECLS
 
-
 /************************************************************************************
  * Name: board_peripheral_reset
- *
- * Description:
- *
  ************************************************************************************/
+
 __EXPORT void board_peripheral_reset(int ms)
 {
 	syslog(LOG_DEBUG, "board_peripheral_reset\n");
 
-	/* TODO: peripheral reset */
-
+	/* Nothing to reset yet: the peripherals arrive with the fabric blocks */
 }
 
 /************************************************************************************
  * Name: board_on_reset
  *
  * Description:
- * Optionally provided function called on entry to board_system_reset
- * It should perform any house keeping prior to the rest.
+ *   Called on entry to board_system_reset.
  *
- * status - 1 if resetting to boot loader
- *          0 if just resetting
+ *   status - 1 if resetting to boot loader
+ *            0 if just resetting
  *
  ************************************************************************************/
+
 __EXPORT void board_on_reset(int status)
 {
-	syslog(LOG_DEBUG, "board_on_reset\n");
-
-	/* TODO: reset handling */
+	syslog(LOG_DEBUG, "board_on_reset %d\n", status);
 }
 
 /************************************************************************************
  * Name: sapphire_boardinitialize
  *
  * Description:
- *   This entry point is called early in the initialization -- after all memory
- *  has been configured and mapped but before any devices have been initialized.
+ *   Called early, after memory is up and before any device is initialized.
  *
  ************************************************************************************/
 
 __EXPORT void sapphire_boardinitialize(void)
 {
-	/* TODO: board specific initialization */
-
-	syslog(LOG_DEBUG, "sapphire_boardinitialize\n");
 	board_autoled_initialize();
 
 	/* this call exists to fix a weird linking issue */
 
 	up_udelay(0);
-
-	/* Configure Safety button GPIO */
 }
 
 /****************************************************************************
  * Name: board_app_initialize
  *
  * Description:
- *   Perform application specific initialization.  This function is never
- *   called directly from application code, but only indirectly via the
- *   (non-standard) boardctl() interface using the command BOARDIOC_INIT.
- *
- * Input Parameters:
- *   arg - The boardctl() argument is passed to the board_app_initialize()
- *         implementation without modification.  The argument has no
- *         meaning to NuttX; the meaning of the argument is a contract
- *         between the board-specific initalization logic and the the
- *         matching application logic.  The value cold be such things as a
- *         mode enumeration value, a set of DIP switch switch settings, a
- *         pointer to configuration data read from a file or serial FLASH,
- *         or whatever you would like to do with it.  Every implementation
- *         should accept zero/NULL as a default configuration.
- *
- * Returned Value:
- *   Zero (OK) is returned on success; a negated errno value is returned on
- *   any failure to indicate the nature of the failure.
+ *   Board specific initialization, reached through boardctl(BOARDIOC_INIT).
  *
  ****************************************************************************/
 
-
 __EXPORT int board_app_initialize(uintptr_t arg)
 {
-	int ret = OK;
+	int ret;
 
-	/* Power on Interfaces */
-
-#ifdef CONFIG_USBDEV
-	sapphire_usbinitialize();
-#endif
-
-	/* Need hrt running before using the ADC */
+	/* hrt first: everything below and the rcS script depend on it */
 
 	px4_platform_init();
-
-	if (OK == board_determine_hw_info()) {
-		syslog(LOG_INFO, "[boot] Rev 0x%1x : Ver 0x%1x %s\n", board_get_hw_revision(), board_get_hw_version(),
-		       board_get_hw_type_name());
-	} else {
-		syslog(LOG_ERR, "[boot] Failed to read HW revision and version\n");
-	}
-
-	/* configure SPI interfaces and devices (after we determined the HW version) */
-
-	board_spidev_init();
-	board_spibus_init();
-
-#if defined(CONFIG_FAT_DMAMEMORY) && defined(CONFIG_GRAN)
-	/* configure the DMA allocator */
-
-	if (sapphire_dma_alloc_init() < 0) {
-		syslog(LOG_ERR, "[boot] DMA alloc FAILED\n");
-	}
-
-#endif
-
-#if defined(SERIAL_HAVE_RXDMA)
-	/* set up the serial DMA polling */
-
-	static struct hrt_call serial_dma_call;
-
-	/*
-	 * Poll at 1ms intervals for received bytes that have not triggered
-	 * a DMA event.
-	 */
-	struct timespec ts;
-	ts.tv_sec = 0;
-	ts.tv_nsec = 1000000;
-
-	hrt_call_every(&serial_dma_call,
-		       ts_to_abstime(&ts),
-		       ts_to_abstime(&ts),
-		       (hrt_callout)sapphire_serial_dma_poll,
-		       NULL);
-#endif
 
 	/* initial LED state */
 
@@ -239,54 +146,18 @@ __EXPORT int board_app_initialize(uintptr_t arg)
 	led_on(LED_GREEN);
 	led_off(LED_BLUE);
 
-#ifdef CONFIG_MMCSD
-	ret = board_emmcsd_init();
-
-	if (ret != OK) {
-		led_on(LED_RED);
-		syslog(LOG_ERR, "ERROR: Failed to initialize SD card");
-	}
-#endif /* CONFIG_MMCSD */
-
-	/* Configure the HW based on the manifest */
-
 	px4_platform_configure();
 
 #ifdef CONFIG_FS_PROCFS
-  /* Mount the procfs file system */
+	ret = mount(NULL, "/proc", "procfs", 0, NULL);
 
-  ret = mount(NULL, "/proc", "procfs", 0, NULL);
-  if (ret < 0)
-    {
-      syslog(LOG_ERR,
-             "ERROR: Failed to mount the PROC filesystem: %d\n", ret);
-      return ret;
-    }
+	if (ret < 0) {
+		syslog(LOG_ERR, "ERROR: Failed to mount the PROC filesystem: %d\n", ret);
+		return ret;
+	}
+
 #endif /* CONFIG_FS_PROCFS */
 
-#ifdef CONFIG_PWM
-  /* Initialize PWM and register the PWM device */
-
-  ret = board_pwm_setup();
-  if (ret < 0)
-    {
-      syslog(LOG_ERR,
-             "ERROR: Failed to initialize PWM driver: %d\n", ret);
-    }
-#endif /* CONFIG_PWM */
-
-#ifdef CONFIG_MTD
-#ifdef CONFIG_MTD_IS25XP
-	/* Configure IS25XP MTD driver */
-
-	ret = board_spinor_init();
-	if (ret < 0)
-		{
-			syslog(LOG_ERR,
-						 "Failed to initialize IS25XP driver: %d\n", ret);
-		}
-#endif /* CONFIG_MTD_IS25XP */
-#endif /* CONFIG_MTD */
-
+	UNUSED(ret);
 	return OK;
 }

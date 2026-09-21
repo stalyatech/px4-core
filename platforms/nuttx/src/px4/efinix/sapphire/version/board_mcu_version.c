@@ -71,10 +71,12 @@
  *
  ************************************************************************************/
 
+#if defined(BOARD_HAS_VERSIONING)
 __EXPORT const char *board_get_hw_type_name()
 {
 	return (const char *) 0;
 }
+#endif
 
 #if defined(BOARD_HAS_HW_SPLIT_VERSIONING)
 /************************************************************************************
@@ -113,10 +115,12 @@ __EXPORT const char *board_get_hw_base_type_name()
  *
  ************************************************************************************/
 
+#if defined(BOARD_HAS_VERSIONING)
 __EXPORT int board_get_hw_version()
 {
 	return 0;
 }
+#endif
 
 /************************************************************************************
  * Name: board_get_hw_revision
@@ -134,13 +138,23 @@ __EXPORT int board_get_hw_version()
  *
  ************************************************************************************/
 
+#if defined(BOARD_HAS_VERSIONING)
 __EXPORT int board_get_hw_revision()
 {
 	return 0;
 }
+#endif
+
+/* The soft SoC has no unique id of its own. Until the board has its FRAM,
+ * and a serial number in it, hand out a stable id so that everything
+ * downstream at least sees the same value across boots.
+ */
 
 __EXPORT void board_get_uuid32(uuid_uint32_t uuid_words)
 {
+	for (unsigned i = 0; i < PX4_CPU_UUID_WORD32_LENGTH; i++) {
+		uuid_words[i] = 0x4E455855u + i;	/* "NEXU" */
+	}
 }
 
 int board_mcu_version(char *rev, const char **revstr, const char **errata)
@@ -185,10 +199,12 @@ int board_get_px4_guid_formated(char *format_buffer, int size)
  *
  ************************************************************************************/
 
+#if defined(BOARD_HAS_VERSIONING)
 int board_determine_hw_info(void)
 {
 	return OK;
 }
+#endif
 
 int board_get_mfguid(mfguid_t mfgid)
 {

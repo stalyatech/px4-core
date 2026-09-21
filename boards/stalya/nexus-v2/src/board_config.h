@@ -36,7 +36,11 @@
 /**
  * @file board_config.h
  *
- * Nexus internal definitions
+ * nexus-v2: PX4 on the soft FCU of the Ti375C529, started by Linux over
+ * remoteproc. There is no I/O coprocessor on this board: the FCU drives every
+ * output itself, through blocks in the FPGA fabric.
+ *
+ * P0 brings up the core only, so most of the I/O is not described here yet.
  */
 
 #pragma once
@@ -57,58 +61,32 @@
 #define BOARD_REVISIONS {{"Nexus FC V2", '1', NULL}, \
 												 {"Nexus FC V2", '1', NULL}}
 
-/* Configuration ************************************************************************************/
-
-#define BOARD_HAS_BUS_MANIFEST 			(1)
-#define BOARD_HAS_HW_VERSIONING			(1)
-#define HW_INFO_INIT_PREFIX     		"Nexus FC "
-
-/* Efinix GPIOs *************************************************************************************/
-
-#define GPIO_LED_SAFETY 				BOARD_MAKE_PIN(0, 4, -1)
-#define GPIO_BTN_SAFETY 				BOARD_MAKE_PIN(0, 0, -1)
-
-#define TONE_ALARM_PWM_OUT_PATH 		"/dev/pwm0"
-
-/* LEDS */
+/* LEDs on GPIO0 of the soft SoC */
 
 #define GPIO_LED_RED						BOARD_MAKE_PIN(0, 1, -1)
 #define GPIO_LED_GREEN					BOARD_MAKE_PIN(0, 2, -1)
 #define GPIO_LED_BLUE						BOARD_MAKE_PIN(0, 3, -1)
 
-/* I2C */
-
-#define I2C_RESET_SPEED         		100000
-#define BOARD_I2C_BUS_CLOCK_INIT 		{100000, 100000}
-
-/* RC Serial port */
-
-#define RC_SERIAL_PORT					"/dev/ttyS2"
-#define RC_SERIAL_SINGLEWIRE
-
-#define BOARD_HAS_ON_RESET 				1
+#define GPIO_LED_SAFETY 				BOARD_MAKE_PIN(0, 4, -1)
+#define GPIO_BTN_SAFETY 				BOARD_MAKE_PIN(0, 0, -1)
 
 #define PX4_GPIO_INIT_LIST { \
 	}
 
+#define BOARD_HAS_ON_RESET 				1
+
+/* The console is a pair of ring buffers in memory Linux also reads
+ * (CONFIG_SAPPHIRE_RAMCON), so let PX4 buffer its own output as well.
+ */
+
 #define BOARD_ENABLE_CONSOLE_BUFFER
 
+/* No timer-driven outputs yet: PWM, DShot and RC come from fabric blocks in
+ * P3, together with the UART block that carries GPS, telemetry and RC.
+ */
+
 #define BOARD_NUM_IO_TIMERS 			0
-
-#define BOARD_DSHOT_MOTOR_ASSIGNMENT 	{0, 1, 2, 3, 4, 5, 6, 7};
-
-/* eMMC/SD */
-
-#define SDIO_SLOTNO						0
-#define SDIO_MINOR  					0
-
-/* Battery ADC */
-
-#define ADC_CHANNELS 					(1 << 1) | (1 << 2)
-#define ADC_BATTERY_VOLTAGE_CHANNEL 	1
-#define ADC_BATTERY_CURRENT_CHANNEL 	2
-
-/* SPI */
+#define DIRECT_PWM_OUTPUT_CHANNELS		0
 
 #define BOARD_SPI_BUS_MAX_BUS_ITEMS 	1
 
@@ -129,20 +107,8 @@ __BEGIN_DECLS
  ****************************************************************************************************/
 
 extern void	board_peripheral_reset(int ms);
-extern void board_spidev_init(void);
-extern int 	board_spinor_init(void);
-extern int 	board_spiflash_init(struct mtd_dev_s *mtd, const char *path,
-							const char *mnt_pt, bool register_mtd);
-extern int 	board_spibus_init(void);
-extern int 	board_pwmdev_init(void);
-extern int 	board_emmcsd_init(void);
-extern int 	board_ihc_init(void);
-extern int 	board_register_partition(uint32_t partition);
 
 #include <px4_platform_common/board_common.h>
-
-const char *board_bl_version_string(void);
-#define PX4_BL_VERSION board_bl_version_string()
 
 #endif /* __ASSEMBLY__ */
 
