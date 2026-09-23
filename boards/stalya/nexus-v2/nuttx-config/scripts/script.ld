@@ -24,7 +24,8 @@
  * (br2-efinix tools/efx/dts/ti375_oob-linux.dtsi, fcu@1e000000, 32 MiB):
  *
  *   0x1E000000  8 MiB   progmem: text, rodata and the load image of .data
- *   0x1E800000  22 MiB  sram: .data, .bss, heap and the hart stacks
+ *   0x1E800000  22 MiB - 64 KiB  sram: .data, .bss, heap and the hart stacks
+ *   0x1FDF0000  64 KiB  console rings shared with Linux (CONFIG_SAPPHIRE_RAMCON)
  *   0x1FE00000  2 MiB   rpmsg vrings and buffers, owned by Linux
  *
  * Linux loads this ELF with remoteproc, so the load image of .data stays
@@ -35,7 +36,7 @@
 MEMORY
 {
   progmem (rx)  : ORIGIN = 0x1E000000, LENGTH = 8M
-  sram    (rwx) : ORIGIN = 0x1E800000, LENGTH = 22M
+  sram    (rwx) : ORIGIN = 0x1E800000, LENGTH = 22M - 64K
 }
 
 OUTPUT_ARCH("riscv")

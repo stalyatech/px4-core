@@ -74,6 +74,11 @@
 #  include "sapphire_rptun.h"
 #endif
 
+#ifdef CONFIG_SAPPHIRE_I2C0
+#  include <nuttx/i2c/i2c_master.h>
+#  include "sapphire_i2c.h"
+#endif
+
 /****************************************************************************
  * Pre-Processor Definitions
  ****************************************************************************/
@@ -167,15 +172,20 @@ __EXPORT int board_app_initialize(uintptr_t arg)
 
 #endif /* CONFIG_SAPPHIRE_RPTUN */
 
-#ifdef CONFIG_FS_PROCFS
-	ret = mount(NULL, "/proc", "procfs", 0, NULL);
+#if defined(CONFIG_SAPPHIRE_I2C0) && defined(CONFIG_I2C_DRIVER)
+	/* The dev board's own I2C bus (RTC PCF8523, EMC1413 temperature sensor,
+	 * TCA9546A mux) as /dev/i2c0, for bring-up with the i2c tool.
+	 */
 
-	if (ret < 0) {
-		syslog(LOG_ERR, "ERROR: Failed to mount the PROC filesystem: %d\n", ret);
-		return ret;
+	struct i2c_master_s *i2c0 = sapphire_i2cbus_initialize(0);
+
+	if (i2c0 == NULL || i2c_register(i2c0, 0) < 0) {
+		syslog(LOG_ERR, "ERROR: I2C0 init failed\n");
 	}
 
-#endif /* CONFIG_FS_PROCFS */
+#endif /* CONFIG_SAPPHIRE_I2C0 && CONFIG_I2C_DRIVER */
+
+	/* /proc is mounted by px4_platform_init() above. */
 
 	UNUSED(ret);
 	return OK;
