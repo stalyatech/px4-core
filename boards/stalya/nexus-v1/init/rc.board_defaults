@@ -26,7 +26,8 @@ param set-default -s SENS_TEMP_ID 3932170
 # Absolute visual fix (lat/lon) -> aux global position, horizontal only.
 param set-default EKF2_AGP_CTRL 1
 param set-default EKF2_AGP_MODE 0
-param set-default EKF2_AGP_DELAY 100	# tune to measured VBL + uXRCE-DDS latency
+# Tune EKF2_AGP_DELAY to the measured VBL + uXRCE-DDS latency.
+param set-default EKF2_AGP_DELAY 100
 
 # Optical flow velocity aiding (bounds drift between absolute fixes).
 # Set EKF2_OF_POS_{X,Y,Z} to the camera offset from the IMU for this airframe.
@@ -44,7 +45,8 @@ param set-default EKF2_GPS_CTRL 15
 # mode) + VELOCITY (bit 2, Tier-2 mc-vio ground odometry -> bounds drift between
 # absolute fixes). Bits 0/1 (EV position) stay off; absolute position is AGP.
 param set-default EKF2_EV_CTRL 12
-param set-default EKF2_EV_DELAY 100	# tune to measured VBL/VIO + uXRCE-DDS latency
+# Tune EKF2_EV_DELAY to the measured VBL/VIO + uXRCE-DDS latency.
+param set-default EKF2_EV_DELAY 100
 #------------------------------------------------------------------------------
 
 # Dataman backend selection based on SD card availability.
