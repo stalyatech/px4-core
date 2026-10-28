@@ -202,6 +202,9 @@ menu "File paths"
         default "/fs/mtd_params"
 endmenu
 
+# Board specific options (hardware revision and the like)
+osource "boards/$(VENDOR)/$(MODEL)/Kconfig"
+
 menu "drivers"
 source "src/drivers/Kconfig"
 endmenu

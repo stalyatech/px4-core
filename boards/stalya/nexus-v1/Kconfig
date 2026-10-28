@@ -1,0 +1,24 @@
+menu "simpleTRAP FMU (nexus-v1)"
+
+choice
+	prompt "FMU hardware revision"
+	default BOARD_FMU_REV02
+	---help---
+		MCU pin assignment of the simpleTRAP FMU board. Select the
+		revision printed on the board.
+
+config BOARD_FMU_REV01
+	bool "Rev01"
+	---help---
+		I/O expander reset on PE14, ICM-20689 chip select on PA4,
+		buzzer on PE15 (on/off only), no hardware revision divider.
+
+config BOARD_FMU_REV02
+	bool "Rev02"
+	---help---
+		I/O expander reset on PE15, ICM-20689 chip select on PE14,
+		buzzer on PB3 (TIM2_CH2), hardware revision divider on PA4.
+
+endchoice
+
+endmenu

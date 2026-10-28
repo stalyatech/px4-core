@@ -314,7 +314,12 @@ I2CSPIDriverBase *USB2514::instantiate(const I2CSPIDriverConfig &config, int run
 		return nullptr;
 	}
 
-	instance->Configure();
+	if (!instance->Configure()) {
+		// The hub power also moves the USB mux from the MCU to the hub: keep
+		// the direct MCU path when the hub could not be configured.
+		PX4_WARN("hub not configured, keeping USB on the MCU");
+		instance->PowerOff();
+	}
 
 	return instance;
 }//instantiate

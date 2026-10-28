@@ -127,8 +127,13 @@ __EXPORT px4_hw_mft_item board_query_manifest(px4_hw_mft_item_id_t id)
 	static px4_hw_mft_list_entry boards_manifest = px4_hw_mft_list_uninitialized;
 
 	if (boards_manifest == px4_hw_mft_list_uninitialized) {
+#if defined(CONFIG_BOARD_FMU_REV01)
+		// Rev01 has no revision divider (PA4 is a chip select): use the Rev02 list
+		uint32_t ver_rev = V2X01;
+#else
 		uint32_t ver_rev = board_get_hw_version() << 8;
 		ver_rev |= board_get_hw_revision();
+#endif
 
 		for (unsigned i = 0; i < arraySize(mft_lists); i++) {
 			if (mft_lists[i].hw_ver_rev == ver_rev) {

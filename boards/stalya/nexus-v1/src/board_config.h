@@ -40,6 +40,7 @@
 #pragma once
 
 #include <px4_platform_common/px4_config.h>
+#include <px4_boardconfig.h> /* CONFIG_BOARD_FMU_REVxx */
 #include <nuttx/compiler.h>
 #include <stdint.h>
 #include <stm32_gpio.h>
@@ -81,6 +82,16 @@
 #define PIN_ADC1_INP18			(GPIO_ANALOG|GPIO_PORTA|GPIO_PIN4)
 
 /* ADC channels */
+#if defined(CONFIG_BOARD_FMU_REV01)
+/* Rev01: PA4 is the ICM-20689 chip select, no revision divider */
+#define PX4_ADC_GPIO  \
+	/* PC4 */  PIN_ADC1_INP4,  \
+	/* PC5 */  PIN_ADC1_INP8,  \
+	/* PB0 */  PIN_ADC1_INP9,  \
+	/* PB1 */  PIN_ADC1_INP5,  \
+	/* PC0 */  PIN_ADC1_INP10, \
+	/* PC1 */  PIN_ADC1_INP11
+#else
 #define PX4_ADC_GPIO  \
 	/* PC4 */  PIN_ADC1_INP4,  \
 	/* PC5 */  PIN_ADC1_INP8,  \
@@ -89,6 +100,7 @@
 	/* PC0 */  PIN_ADC1_INP10, \
 	/* PC1 */  PIN_ADC1_INP11, \
 	/* PA4 */  PIN_ADC1_INP18
+#endif
 
 /* Define Channel numbers must match above GPIO pins */
 #define ADC_BATTERY1_VOLTAGE_CHANNEL         8 /* PC5: BATT_VOLTAGE_SENS */
@@ -99,6 +111,15 @@
 #define ADC_AIRSPEED_VOLTAGE_CHANNEL        11 /* PC1: AIRSPEED_SENS */
 #define ADC_HW_REV_SENSE_CHANNEL            18 /* PA4: HW_REV_SENS   */
 
+#if defined(CONFIG_BOARD_FMU_REV01)
+#define ADC_CHANNELS \
+	((1 << ADC_BATTERY1_VOLTAGE_CHANNEL)       | \
+	 (1 << ADC_BATTERY1_CURRENT_CHANNEL)       | \
+	 (1 << ADC_BATTERY2_VOLTAGE_CHANNEL)       | \
+	 (1 << ADC_BATTERY2_CURRENT_CHANNEL)       | \
+	 (1 << ADC_PRESSURE_VOLTAGE_CHANNEL)       | \
+	 (1 << ADC_AIRSPEED_VOLTAGE_CHANNEL))
+#else
 #define ADC_CHANNELS \
 	((1 << ADC_BATTERY1_VOLTAGE_CHANNEL)       | \
 	 (1 << ADC_BATTERY1_CURRENT_CHANNEL)       | \
@@ -107,6 +128,7 @@
 	 (1 << ADC_PRESSURE_VOLTAGE_CHANNEL)       | \
 	 (1 << ADC_AIRSPEED_VOLTAGE_CHANNEL)	   | \
 	 (1 << ADC_HW_REV_SENSE_CHANNEL))
+#endif
 
 #define SYSTEM_ADC_BASE STM32_ADC1_BASE
 
@@ -154,11 +176,17 @@
 #define GPIO_nVDD_5V_HIPOWER_OC /* PD4  */ (GPIO_INPUT|GPIO_FLOAT|GPIO_PORTD|GPIO_PIN4)   // VDD_5V_HIPOWER_OC
 
 /* Tone alarm output */
+#if defined(CONFIG_BOARD_FMU_REV01)
+/* Rev01: buzzer on PE15, which has no timer channel; PB3 is the DIN2 input */
+#define GPIO_TONE_ALARM_IDLE    /* PE15 */ (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_CLEAR|GPIO_PORTE|GPIO_PIN15) // ALARM
+#define GPIO_TONE_ALARM_GPIO    GPIO_TONE_ALARM_IDLE
+#else
 #define TONE_ALARM_TIMER        	2  /* Timer 2 */
 #define TONE_ALARM_CHANNEL      	2  /* PB3 TIM2_CH2 */
 
 #define GPIO_TONE_ALARM_IDLE    /* PB3 */ (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_CLEAR|GPIO_PORTB|GPIO_PIN3) // ALARM
 #define GPIO_TONE_ALARM         /* PB3 */ (GPIO_ALT|GPIO_AF1|GPIO_SPEED_50MHz|GPIO_PUSHPULL|GPIO_PORTB|GPIO_PIN3)
+#endif
 
 /* FREQ input driver. Use FMU AUX5, AUX6, AUX7 pins attached to Timer1 Channel 1,2,3 */
 #define FREQIN_TIMER                       1
@@ -233,7 +261,11 @@
 #define USBHUB_RST_GPIO_PIN /* PA15 */	(GPIO_OUTPUT|GPIO_OPENDRAIN|GPIO_SPEED_2MHz|GPIO_OUTPUT_CLEAR|GPIO_PORTA|GPIO_PIN15)
 
 /* I/O expander reset control */
+#if defined(CONFIG_BOARD_FMU_REV01)
+#define IOE_RST_GPIO_PIN 	/* PE14 */	(GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_CLEAR|GPIO_PORTE|GPIO_PIN14)
+#else
 #define IOE_RST_GPIO_PIN 	/* PE15 */	(GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_CLEAR|GPIO_PORTE|GPIO_PIN15)
+#endif
 
 /* I2C4 Bus pins */
 #define GPIO_I2C4_SCL_RESET	/* PB8 */ 	(GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_CLEAR|GPIO_PORTB|GPIO_PIN8)

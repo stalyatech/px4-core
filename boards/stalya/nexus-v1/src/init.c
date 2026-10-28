@@ -176,6 +176,12 @@ __EXPORT int board_app_initialize(uintptr_t arg)
 		syslog(LOG_ERR, "[boot] Failed to read HW revision and version\n");
 	}
 
+#if defined(CONFIG_BOARD_FMU_REV01)
+	syslog(LOG_INFO, "[boot] FMU pinout: Rev01\n");
+#else
+	syslog(LOG_INFO, "[boot] FMU pinout: Rev02\n");
+#endif
+
 	/* configure SPI interfaces (after we determined the HW version) */
 	stm32_spiinitialize();
 
