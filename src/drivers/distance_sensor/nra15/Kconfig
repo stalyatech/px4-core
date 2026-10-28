@@ -3,3 +3,26 @@ menuconfig DRIVERS_DISTANCE_SENSOR_NRA15
 	default n
 	---help---
 		Enable support for NRA15 Radar
+
+if DRIVERS_DISTANCE_SENSOR_NRA15
+
+choice
+	prompt "NRA15 interface"
+	default NRA15_IFACE_UART
+	---help---
+		The NRA15 comes as a UART or a CAN model; select the one fitted.
+
+config NRA15_IFACE_UART
+	bool "UART"
+	---help---
+		UART model, 115200 baud. Port set with SENS_NRA15_CFG.
+
+config NRA15_IFACE_CAN
+	bool "CAN"
+	---help---
+		CAN model, 500 kbit/s classic CAN through SocketCAN. Port set
+		with SENS_NRA15_CAN.
+
+endchoice
+
+endif

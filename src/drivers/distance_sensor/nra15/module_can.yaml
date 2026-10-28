@@ -1,0 +1,18 @@
+module_name: NRA15 Radar (CAN)
+parameters:
+    - group: Sensors
+      definitions:
+          SENS_NRA15_CAN:
+              description:
+                  short: NRA15 CAN port
+                  long: |
+                      CAN port the NRA15 radar is connected to. The driver
+                      starts at boot when this is not 0 and sets the port to
+                      500 kbit/s.
+              type: enum
+              values:
+                  0: Disabled
+                  1: CAN1
+                  2: CAN2
+              default: 0
+              reboot_required: true

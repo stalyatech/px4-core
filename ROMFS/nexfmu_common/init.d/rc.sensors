@@ -113,6 +113,18 @@ then
 	tf02pro start -X
 fi
 
+# Nanoradar MR72 CAN model (the UART model starts from rc.serial)
+if param greater -s SENS_MR72_CAN 0
+then
+	mr72 start
+fi
+
+# Nanoradar NRA15 CAN model (the UART model starts from rc.serial)
+if param greater -s SENS_NRA15_CAN 0
+then
+	nra15 start
+fi
+
 # ADIS16448 spi external IMU
 if param compare -s SENS_EN_ADIS164X 1
 then

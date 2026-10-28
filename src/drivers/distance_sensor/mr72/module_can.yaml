@@ -1,0 +1,29 @@
+module_name: MR72 Radar (CAN)
+parameters:
+    - group: Sensors
+      definitions:
+          SENS_MR72_CAN:
+              description:
+                  short: MR72 CAN port
+                  long: |
+                      CAN port the MR72 radar is connected to. The driver
+                      starts at boot when this is not 0 and sets the port to
+                      500 kbit/s.
+              type: enum
+              values:
+                  0: Disabled
+                  1: CAN1
+                  2: CAN2
+              default: 0
+              reboot_required: true
+          SENS_MR72_ID:
+              description:
+                  short: MR72 sensor ID
+                  long: |
+                      SensorID configured in the radar (0...7). Every MR72
+                      message identifier is offset by SensorID * 0x10.
+              type: int32
+              min: 0
+              max: 7
+              default: 0
+              reboot_required: true

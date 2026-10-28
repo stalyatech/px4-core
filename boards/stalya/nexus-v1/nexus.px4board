@@ -10,5 +10,11 @@ CONFIG_BOARD_NO_ROMFS_IO_FW=y
 
 CONFIG_MODULES_UXRCE_DDS_CLIENT=y
 
+# Nanoradar MR72 CAN model on the tilt rig (port and id: SENS_MR72_CAN, SENS_MR72_ID)
+CONFIG_MR72_IFACE_CAN=y
+
+# Nanoradar NRA15 CAN model on the tilt rig (port: SENS_NRA15_CAN)
+CONFIG_NRA15_IFACE_CAN=y
+
 # simpleTRAP FMU revision fitted on the tilt rig
 CONFIG_BOARD_FMU_REV01=y

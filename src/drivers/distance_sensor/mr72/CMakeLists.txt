@@ -30,19 +30,34 @@
 # POSSIBILITY OF SUCH DAMAGE.
 #
 ############################################################################
-px4_add_module(
-	MODULE drivers__distance_sensor__mr72
-	MAIN mr72
-	#COMPILE_FLAGS
-	#	-O0
-	SRCS
-		NanoRadarMR72.cpp
-		NanoRadarMR72.hpp
-		mr72_main.cpp
-	MODULE_CONFIG
-		module.yaml
-	DEPENDS
-		drivers_rangefinder
-		px4_work_queue
-		filter
-	)
+if(CONFIG_MR72_IFACE_CAN)
+	# CAN model: object list over SocketCAN
+	px4_add_module(
+		MODULE drivers__distance_sensor__mr72
+		MAIN mr72
+		SRCS
+			NanoRadarMR72Can.cpp
+			NanoRadarMR72Can.hpp
+			mr72_can_protocol.hpp
+		MODULE_CONFIG
+			module_can.yaml
+		DEPENDS
+			drivers_rangefinder
+		)
+else()
+	# UART model: nearest target per sector
+	px4_add_module(
+		MODULE drivers__distance_sensor__mr72
+		MAIN mr72
+		SRCS
+			NanoRadarMR72.cpp
+			NanoRadarMR72.hpp
+			mr72_main.cpp
+		MODULE_CONFIG
+			module.yaml
+		DEPENDS
+			drivers_rangefinder
+			px4_work_queue
+			filter
+		)
+endif()
