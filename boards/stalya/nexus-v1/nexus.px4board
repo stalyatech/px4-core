@@ -17,4 +17,10 @@ CONFIG_MR72_IFACE_CAN=y
 CONFIG_NRA15_IFACE_CAN=y
 
 # simpleTRAP FMU revision fitted on the tilt rig
-CONFIG_BOARD_FMU_REV01=y
+CONFIG_BOARD_FMU_REV02=y
+
+# TELEM4 to the TPU Linux UART2 (needs the U13 pin 1-3 bridge on the TPU)
+CONFIG_BOARD_TPU_TELEM4_SWAP=y
+
+# TX/RX swap tool for the TELEM4 bring-up
+CONFIG_SYSTEMCMDS_SERIAL_SWAP=y

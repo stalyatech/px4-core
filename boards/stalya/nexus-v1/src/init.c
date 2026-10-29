@@ -44,6 +44,9 @@
 #include "board_config.h"
 
 #include <syslog.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/ioctl.h>
 
 #include <nuttx/config.h>
 #include <nuttx/board.h>
@@ -62,6 +65,13 @@
 #include <px4_platform/board_dma_alloc.h>
 
 #include <mpu.h>
+
+#if defined(CONFIG_BOARD_TPU_TELEM4_SWAP)
+#  include <nuttx/serial/tioctl.h>
+#  if !defined(CONFIG_STM32H7_USART_SWAP)
+#    error "BOARD_TPU_TELEM4_SWAP needs CONFIG_STM32H7_USART_SWAP"
+#  endif
+#endif
 
 __BEGIN_DECLS
 extern void led_init(void);
@@ -160,6 +170,31 @@ __EXPORT void stm32_boardinitialize(void)
  *   any failure to indicate the nature of the failure.
  *
  ****************************************************************************/
+#if defined(CONFIG_BOARD_TPU_TELEM4_SWAP)
+/* Swap TELEM4 TX/RX once for the TPU Linux link (see the board Kconfig).
+ * The USART keeps the SWAP bit across later opens and baud rate changes,
+ * so the MAVLink or DDS instance on the port needs no change.
+ */
+static void board_tpu_telem4_swap(void)
+{
+	const int fd = open(CONFIG_BOARD_SERIAL_TEL4, O_RDWR | O_NOCTTY);
+
+	if (fd < 0) {
+		syslog(LOG_ERR, "[boot] TELEM4 swap: cannot open %s\n", CONFIG_BOARD_SERIAL_TEL4);
+		return;
+	}
+
+	if (ioctl(fd, TIOCSSWAP, SER_SWAP_ENABLED) < 0) {
+		syslog(LOG_ERR, "[boot] TELEM4 swap failed\n");
+
+	} else {
+		syslog(LOG_INFO, "[boot] TELEM4 %s TX/RX swapped for the TPU link\n", CONFIG_BOARD_SERIAL_TEL4);
+	}
+
+	close(fd);
+}
+#endif
+
 __EXPORT int board_app_initialize(uintptr_t arg)
 {
 	/* Power on Interfaces */
@@ -180,6 +215,10 @@ __EXPORT int board_app_initialize(uintptr_t arg)
 	syslog(LOG_INFO, "[boot] FMU pinout: Rev01\n");
 #else
 	syslog(LOG_INFO, "[boot] FMU pinout: Rev02\n");
+#endif
+
+#if defined(CONFIG_BOARD_TPU_TELEM4_SWAP)
+	board_tpu_telem4_swap();
 #endif
 
 	/* configure SPI interfaces (after we determined the HW version) */

@@ -21,4 +21,15 @@ config BOARD_FMU_REV02
 
 endchoice
 
+config BOARD_TPU_TELEM4_SWAP
+	bool "Swap TELEM4 TX/RX for the TPU Linux link"
+	default n
+	---help---
+		On the NexusV1-TPU the Linux UART2 RX sits on IOP1 pin 23, the
+		FMU UART4 RX line, and the Linux UART2 TX reaches IOP1 pin 22,
+		the FMU UART4 TX line, only through a bridge between U13 pins 1
+		and 3. With that bridge fitted, enable this to swap UART4 TX and
+		RX at boot so TELEM4 talks to the TPU Linux side. Leave it off
+		when TELEM4 drives the XBEE2 socket.
+
 endmenu
