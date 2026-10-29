@@ -1,0 +1,6 @@
+menuconfig SYSTEMCMDS_SERIAL_SWAP
+	bool "serial_swap"
+	default n
+	depends on PLATFORM_NUTTX
+	---help---
+		Swap or restore the TX and RX pins of a serial port (TIOCSSWAP)
