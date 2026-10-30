@@ -1,0 +1,5 @@
+menuconfig EXAMPLES_FAKE_NRA15
+	bool "fake_nra15"
+	default n
+	---help---
+		Simulated NRA15 altimeter for the tilt rig (needs rig_pose)

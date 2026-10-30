@@ -1,0 +1,43 @@
+module_name: fake_mr72
+parameters:
+    - group: Tilt Rig
+      definitions:
+          FAKE_MR72_EN:
+              description:
+                  short: Start the simulated MR72
+                  long: Starts fake_mr72 at boot with the rig airframe.
+              type: boolean
+              default: 0
+              reboot_required: true
+          FAKE_MR72_RX:
+              description:
+                  short: Simulated reflector distance
+                  long: |
+                      Horizontal distance of the corner reflector ahead of the
+                      tilt axis. 0 removes the reflector.
+              type: float
+              default: 2.4
+              min: 0
+              max: 40
+              unit: m
+              decimal: 2
+          FAKE_MR72_RZ:
+              description:
+                  short: Simulated reflector height
+                  long: Height of the corner reflector centre above the ground.
+              type: float
+              default: 0.30
+              min: 0
+              max: 5
+              unit: m
+              decimal: 2
+          FAKE_MR72_NOISE:
+              description:
+                  short: Simulated MR72 range noise
+                  long: Standard deviation of the Gaussian range noise before quantisation.
+              type: float
+              default: 0.05
+              min: 0
+              max: 1
+              unit: m
+              decimal: 3

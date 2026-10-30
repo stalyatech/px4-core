@@ -1,0 +1,35 @@
+module_name: fake_nra15
+parameters:
+    - group: Tilt Rig
+      definitions:
+          FAKE_NRA_EN:
+              description:
+                  short: Start the simulated NRA15
+                  long: Starts fake_nra15 at boot with the rig airframe.
+              type: boolean
+              default: 0
+              reboot_required: true
+          FAKE_NRA_BEAM:
+              description:
+                  short: Simulated NRA15 beam model
+                  long: |
+                      Narrow beam: range along the boresight, R = H / cos(theta) - d.
+                      Beam edge: flat ground returns from the direction inside
+                      the 37 degree beam nearest to the vertical, so the
+                      range stays at the face height while the vertical is
+                      inside the beam.
+              type: enum
+              values:
+                  0: Narrow beam
+                  1: Beam edge
+              default: 0
+          FAKE_NRA_NOISE:
+              description:
+                  short: Simulated NRA15 range noise
+                  long: Standard deviation of the Gaussian range noise.
+              type: float
+              default: 0.01
+              min: 0
+              max: 0.5
+              unit: m
+              decimal: 3

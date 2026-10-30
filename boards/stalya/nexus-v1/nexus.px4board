@@ -27,3 +27,8 @@ CONFIG_SYSTEMCMDS_SERIAL_SWAP=y
 
 # Gimbal module drives the rig tilt servo (MAVLink gimbal protocol in, AUX out)
 CONFIG_MODULES_GIMBAL=y
+# Tilt rig: platform tilt to radar pose converter and radar simulators
+CONFIG_MODULES_RIG_POSE=y
+CONFIG_MODULES_TILT_RIG=y
+CONFIG_EXAMPLES_FAKE_NRA15=y
+CONFIG_EXAMPLES_FAKE_MR72=y

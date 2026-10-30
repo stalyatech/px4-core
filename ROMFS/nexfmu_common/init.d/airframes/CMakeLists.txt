@@ -39,6 +39,7 @@ px4_add_romfs_files(
 
 	# [22000, 22999] Reserve for custom models
 	22100_radar_imu_tilt_rig
+	22100_radar_imu_tilt_rig.post
 )
 
 if(CONFIG_MODULES_SIMULATION_PWM_OUT_SIM)

@@ -1,0 +1,5 @@
+menuconfig EXAMPLES_FAKE_MR72
+	bool "fake_mr72"
+	default n
+	---help---
+		Simulated MR72 radar for the tilt rig (needs rig_pose)

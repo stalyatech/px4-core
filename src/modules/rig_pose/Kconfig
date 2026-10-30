@@ -1,0 +1,5 @@
+menuconfig MODULES_RIG_POSE
+	bool "rig_pose"
+	default n
+	---help---
+		Tilt rig platform angle to radar pose converter

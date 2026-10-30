@@ -1,0 +1,5 @@
+menuconfig MODULES_TILT_RIG
+	bool "tilt_rig"
+	default n
+	---help---
+		Tilt profiles for the radar/IMU rig through the gimbal manager (MAV_CMD_USER_1)

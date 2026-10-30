@@ -1,0 +1,63 @@
+module_name: rig_pose
+parameters:
+    - group: Tilt Rig
+      definitions:
+          RIG_TILT_SRC:
+              description:
+                  short: Platform tilt source
+                  long: |
+                      Where rig_pose takes the platform tilt from. IMU uses the
+                      attitude estimate of the FMU on the cradle. Servo uses
+                      the gimbal pitch command through a first order lag
+                      (RIG_SERVO_TAU), for benches where the FMU does not tilt.
+                      Manual uses RIG_TILT_DEG.
+              type: enum
+              values:
+                  0: IMU
+                  1: Servo command
+                  2: Manual
+              default: 0
+          RIG_TILT_DEG:
+              description:
+                  short: Manual platform tilt
+                  long: Tilt used when RIG_TILT_SRC is Manual, positive nose down.
+              type: float
+              default: 0
+              min: -60
+              max: 60
+              unit: deg
+              decimal: 1
+          RIG_TILT_OFF:
+              description:
+                  short: IMU tilt offset
+                  long: |
+                      IMU reading with the cradle pinned at 0 degrees,
+                      subtracted from the IMU tilt.
+              type: float
+              default: 0
+              min: -10
+              max: 10
+              unit: deg
+              decimal: 2
+          RIG_AXIS_H:
+              description:
+                  short: Tilt axis height
+                  long: |
+                      Height of the tilt axis above the ground, measured with
+                      the laser meter (0.20 to 0.40 m with the spacers).
+              type: float
+              default: 0.30
+              min: 0.1
+              max: 2.0
+              unit: m
+              decimal: 3
+          RIG_SERVO_TAU:
+              description:
+                  short: Servo lag time constant
+                  long: First order lag applied to the servo command source.
+              type: float
+              default: 0.08
+              min: 0
+              max: 1
+              unit: s
+              decimal: 3

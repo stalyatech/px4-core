@@ -1,0 +1,23 @@
+#!/bin/sh
+#
+# Radar IMU Tilt Rig: started after all other apps
+
+# Platform tilt to radar pose converter and tilt profiles (MAV_CMD_USER_1)
+rig_pose start
+tilt_rig start
+
+# Radar simulators for link and UI tests without the radars
+if param compare -s FAKE_NRA_EN 1
+then
+	fake_nra15 start
+fi
+
+if param compare -s FAKE_MR72_EN 1
+then
+	fake_mr72 start
+fi
+
+# TPU link on TELEM4: every radar at its own rate (onboard mode sends 10 Hz)
+mavlink stream -d /dev/ttyS2 -s DISTANCE_SENSOR -r 50
+# Commanded tilt (tilt_cmd) for the UI
+mavlink stream -d /dev/ttyS2 -s NAMED_VALUE_FLOAT -r 25
