@@ -87,11 +87,26 @@ int FakeMR72::targets(const rig_sensor_pose_s &pose, Target out[2])
 	const float noise = _param_fake_mr72_noise.get();
 	int n = 0;
 
-	// Corner reflector ahead of the rig: seen while its depression angle
-	// lies inside the elevation beam.
 	const float rx = _param_fake_mr72_rx.get() - pose.mr72_face_x;
+	const float wall = _param_fake_mr72_wall.get();
 
-	if (rx > 0.f) {
+	if (rx > 0.f && wall > 0.f) {
+		// Wall ahead of the rig, from the ground to its height: the nearest
+		// part of it inside the elevation beam answers. Depression angles,
+		// zero is level with the radar.
+		const float wall_top = atan2f(pose.mr72_face_z - wall, rx);
+		const float wall_foot = atan2f(pose.mr72_face_z, rx);
+		const float seen_from = math::max(pose.mr72_boresight - half_elevation, wall_top);
+		const float seen_to = math::min(pose.mr72_boresight + half_elevation, wall_foot);
+
+		if (seen_from <= seen_to) {
+			const float depression = math::constrain(0.f, seen_from, seen_to);
+			out[n++] = Target{ID_REFLECTOR, rx / cosf(depression) + noise * gauss(), 10.f};
+		}
+
+	} else if (rx > 0.f) {
+		// Corner reflector ahead of the rig: seen while its depression angle
+		// lies inside the elevation beam.
 		const float dz = pose.mr72_face_z - _param_fake_mr72_rz.get();
 		const float depression = atan2f(dz, rx);
 
@@ -105,8 +120,9 @@ int FakeMR72::targets(const rig_sensor_pose_s &pose, Target out[2])
 
 	if (lower_edge > math::radians(0.2f) && pose.mr72_face_z > 0.f && uniform() < GROUND_DETECTION) {
 		const float range = pose.mr72_face_z / sinf(lower_edge);
+		const bool behind_wall = (wall > 0.f) && (range * cosf(lower_edge) >= rx);
 
-		if (range <= MAX_DISTANCE) {
+		if (range <= MAX_DISTANCE && !behind_wall) {
 			out[n++] = Target{ID_GROUND, range + noise * gauss(), -10.f};
 		}
 	}

@@ -130,6 +130,7 @@ private:
 	DEFINE_PARAMETERS(
 		(ParamFloat<px4::params::FAKE_MR72_RX>) _param_fake_mr72_rx,
 		(ParamFloat<px4::params::FAKE_MR72_RZ>) _param_fake_mr72_rz,
+		(ParamFloat<px4::params::FAKE_MR72_WALL>) _param_fake_mr72_wall,
 		(ParamFloat<px4::params::FAKE_MR72_NOISE>) _param_fake_mr72_noise
 	)
 };

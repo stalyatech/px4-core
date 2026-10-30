@@ -31,6 +31,20 @@ parameters:
               max: 5
               unit: m
               decimal: 2
+          FAKE_MR72_WALL:
+              description:
+                  short: Simulated wall height
+                  long: |
+                      Above 0 the target at FAKE_MR72_RX is a wall of this height
+                      instead of the corner reflector. It stays visible while any
+                      part of it is inside the elevation beam and hides the ground
+                      behind it. 0 keeps the corner reflector.
+              type: float
+              default: 0
+              min: 0
+              max: 20
+              unit: m
+              decimal: 2
           FAKE_MR72_NOISE:
               description:
                   short: Simulated MR72 range noise
