@@ -86,6 +86,16 @@ then
 	. ${R}etc/init.d/rc.uuv_apps
 fi
 
+#
+# Sensor test rig setup.
+#
+if [ $VEHICLE_TYPE = rig ]
+then
+	# No controllers, land detector or control allocator: the rig is never
+	# armed and the gimbal module drives its servo while prearmed.
+	echo "Sensor test rig: no vehicle apps"
+fi
+
 
 
 #

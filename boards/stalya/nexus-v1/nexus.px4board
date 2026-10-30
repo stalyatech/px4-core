@@ -24,3 +24,6 @@ CONFIG_BOARD_TPU_TELEM4_SWAP=y
 
 # TX/RX swap tool for the TELEM4 bring-up
 CONFIG_SYSTEMCMDS_SERIAL_SWAP=y
+
+# Gimbal module drives the rig tilt servo (MAVLink gimbal protocol in, AUX out)
+CONFIG_MODULES_GIMBAL=y

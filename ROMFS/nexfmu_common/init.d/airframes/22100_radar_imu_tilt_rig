@@ -1,0 +1,57 @@
+#!/bin/sh
+#
+# @name Radar IMU Tilt Rig
+#
+# @type Sensor Test Rig
+# @class Custom
+#
+# @desc Bench rig for the radar/IMU fusion work: one servo tilts the NRA15
+# altimeter and MR72 obstacle radar, the FMU logs IMU and radar data.
+# No flight control runs and the vehicle is never armed; the servo
+# output stays live in the prearmed state.
+#
+# @output Servo1 tilt servo (TPU IO output 1)
+#
+# @maintainer Stalya Technology
+#
+# @board px4_fmu-v2 exclude
+# @board bitcraze_crazyflie exclude
+#
+
+set VEHICLE_TYPE rig
+
+param set-default MAV_TYPE 0
+
+# Outputs active without arming, no RC, no failsafe actions
+param set-default COM_PREARM_MODE 2
+param set-default COM_RC_IN_MODE 4
+param set-default NAV_DLL_ACT 0
+param set-default NAV_RCL_ACT 0
+param set-default FD_FAIL_P 0
+param set-default FD_FAIL_R 0
+param set-default SYS_HAS_GPS 0
+
+# Tilt servo: gimbal module (MAVLink gimbal v2 in, AUX out) on IO output 1
+param set-default MNT_MODE_IN 4
+param set-default MNT_MODE_OUT 0
+param set-default MNT_DO_STAB 0
+param set-default PWM_MAIN_FUNC1 421
+param set-default PWM_MAIN_TIM0 50
+param set-default PWM_MAIN_MIN1 1000
+param set-default PWM_MAIN_MAX1 2000
+param set-default PWM_MAIN_DIS1 1500
+
+# TPU link: MAVLink onboard on TELEM4 (SG2000 UART needs 1562500, see mavlink_main.cpp)
+param set-default UXRCE_DDS_CFG 0
+param set-default MAV_1_CONFIG 104
+param set-default MAV_1_MODE 2
+param set-default MAV_1_RATE 0
+param set-default MAV_1_FORWARD 0
+param set-default SER_TEL4_BAUD 1562500
+param set-default GPS_RTCM_INJECT 0
+param set-default SYS_USE_IO 1
+
+# Radars on CAN (only present in builds with the CAN drivers)
+param set-default -s SENS_MR72_CAN 1
+param set-default -s SENS_MR72_ID 0
+param set-default -s SENS_NRA15_CAN 2
