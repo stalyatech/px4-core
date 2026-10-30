@@ -176,6 +176,7 @@ set(msg_files
 	Px4ioStatus.msg
 	QshellReq.msg
 	QshellRetval.msg
+	RadarFusion.msg
 	RadarObjects.msg
 	RadarStatus.msg
 	RadioStatus.msg

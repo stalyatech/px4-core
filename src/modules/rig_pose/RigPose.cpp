@@ -32,6 +32,7 @@
  ****************************************************************************/
 
 #include "RigPose.hpp"
+#include "rig_geometry.hpp"
 
 #include <lib/mathlib/mathlib.h>
 #include <lib/matrix/matrix/math.hpp>
@@ -127,11 +128,11 @@ void RigPose::Run()
 	_pose.source = static_cast<uint8_t>(_param_rig_tilt_src.get());
 	_pose.tilt = theta;
 	_pose.axis_height = h;
-	_pose.alt_face_x = ALT_FACE_X * c + ALT_FACE_Z * s;
-	_pose.alt_face_z = h - ALT_FACE_X * s + ALT_FACE_Z * c;
+	_pose.alt_face_x = rig::ALT_FACE_X * c + rig::ALT_FACE_Z * s;
+	_pose.alt_face_z = h - rig::ALT_FACE_X * s + rig::ALT_FACE_Z * c;
 	_pose.alt_boresight = theta;
-	_pose.mr72_face_x = MR72_FACE_X * c + MR72_FACE_Z * s;
-	_pose.mr72_face_z = h - MR72_FACE_X * s + MR72_FACE_Z * c;
+	_pose.mr72_face_x = rig::MR72_FACE_X * c + rig::MR72_FACE_Z * s;
+	_pose.mr72_face_z = h - rig::MR72_FACE_X * s + rig::MR72_FACE_Z * c;
 	_pose.mr72_boresight = theta;
 	_rig_sensor_pose_pub.publish(_pose);
 }

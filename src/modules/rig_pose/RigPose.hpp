@@ -78,13 +78,6 @@ public:
 private:
 	static constexpr hrt_abstime INTERVAL_US{20_ms}; // 50 Hz
 
-	// Antenna face centres relative to the tilt axis at zero tilt [m],
-	// from the CAD model (Models/cad, tam_montaj_H400.step).
-	static constexpr float ALT_FACE_X{-0.0088f};
-	static constexpr float ALT_FACE_Z{-0.0615f};
-	static constexpr float MR72_FACE_X{0.0955f};
-	static constexpr float MR72_FACE_Z{0.006f};
-
 	void Run() override;
 
 	/** Platform tilt [rad] from the selected source, positive nose down. */

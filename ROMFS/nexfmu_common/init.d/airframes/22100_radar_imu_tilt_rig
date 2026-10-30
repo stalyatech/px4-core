@@ -22,6 +22,11 @@ set VEHICLE_TYPE rig
 
 param set-default MAV_TYPE 0
 
+# Tilt axis height with four spacers, refine with the laser meter
+param set-default RIG_AXIS_H 0.40
+# Simulated reflector on the MR72 boresight at zero tilt
+param set-default -s FAKE_MR72_RZ 0.406
+
 # Outputs active without arming, no RC, no failsafe actions
 param set-default COM_PREARM_MODE 2
 param set-default COM_RC_IN_MODE 4

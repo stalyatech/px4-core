@@ -1,0 +1,6 @@
+menuconfig MODULES_RADAR_IMU_FUSION
+	bool "radar_imu_fusion"
+	default n
+	depends on MODULES_RIG_POSE
+	---help---
+		Tilt rig EKF: tilt, axis height and ground echo rejection

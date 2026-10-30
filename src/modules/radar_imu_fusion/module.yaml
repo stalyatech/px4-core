@@ -1,0 +1,116 @@
+module_name: radar_imu_fusion
+parameters:
+    - group: Tilt Rig
+      definitions:
+          FUS_EN:
+              description:
+                  short: Start the radar/IMU fusion
+                  long: Starts radar_imu_fusion at boot with the rig airframe.
+              type: boolean
+              default: 1
+              reboot_required: true
+          FUS_SIM_IMU:
+              description:
+                  short: Simulated IMU for the fusion
+                  long: |
+                      Builds the gyro and tilt measurements from rig_pose with
+                      FUS_GYR_NOISE, FUS_ACC_NOISE and FUS_SIM_BIAS, for benches
+                      where the FMU does not tilt with the platform. The
+                      filter then also reports NEES against the known truth.
+              type: boolean
+              default: 0
+          FUS_SIM_BIAS:
+              description:
+                  short: Simulated gyro bias
+              type: float
+              default: 0.01
+              min: -0.2
+              max: 0.2
+              unit: rad/s
+              decimal: 3
+          FUS_GYR_NOISE:
+              description:
+                  short: Gyro noise density in rad/s/sqrt(Hz)
+                  long: Take this from the Allan variance of the IMU (angle random walk).
+              type: float
+              default: 0.001
+              min: 0.00001
+              max: 0.1
+              decimal: 5
+          FUS_GBIAS_RW:
+              description:
+                  short: Gyro bias random walk in rad/s^2/sqrt(Hz)
+              type: float
+              default: 0.00001
+              min: 0
+              max: 0.01
+              decimal: 6
+          FUS_H_RW:
+              description:
+                  short: Height random walk in m/s/sqrt(Hz)
+                  long: How fast the filter lets the axis height drift.
+              type: float
+              default: 0.002
+              min: 0
+              max: 1
+              decimal: 4
+          FUS_ACC_NOISE:
+              description:
+                  short: Tilt noise from the accelerometer
+                  long: Standard deviation of the gravity tilt at 50 Hz.
+              type: float
+              default: 0.02
+              min: 0.0001
+              max: 1
+              unit: rad
+              decimal: 4
+          FUS_ALT_NOISE:
+              description:
+                  short: Altimeter range noise
+                  long: Standard deviation of the altimeter range, from its characterisation.
+              type: float
+              default: 0.01
+              min: 0.001
+              max: 1
+              unit: m
+              decimal: 3
+          FUS_ALT_GATE:
+              description:
+                  short: Altimeter innovation gate
+              type: float
+              default: 4
+              min: 1
+              max: 20
+              unit: SD
+              decimal: 1
+          FUS_GND_NOISE:
+              description:
+                  short: Ground echo range noise
+                  long: |
+                      Spread of the ground echo around H / sin(theta + beta). Includes the
+                      0.2 m distance unit of the radar objects.
+              type: float
+              default: 0.10
+              min: 0.01
+              max: 5
+              unit: m
+              decimal: 2
+          FUS_GND_GATE:
+              description:
+                  short: Ground echo gate
+                  long: Radar objects within this many sigma of the expected ground echo are ground echoes.
+              type: float
+              default: 3
+              min: 0.5
+              max: 10
+              unit: SD
+              decimal: 1
+          FUS_GND_UPD:
+              description:
+                  short: Use ground echoes as measurements
+                  long: |
+                      Feeds the nearest ground echo into the filter. Off by default:
+                      a real target inside the gate would bias the tilt and the gain
+                      is small next to the accelerometer and the altimeter.
+              type: boolean
+              default: 0

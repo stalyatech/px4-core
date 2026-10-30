@@ -17,7 +17,15 @@ then
 	fake_mr72 start
 fi
 
+# Radar/IMU fusion
+if param compare -s FUS_EN 1
+then
+	radar_imu_fusion start
+fi
+
 # TPU link on TELEM4: every radar at its own rate (onboard mode sends 10 Hz)
 mavlink stream -d /dev/ttyS2 -s DISTANCE_SENSOR -r 50
 # Commanded tilt (tilt_cmd) for the UI
 mavlink stream -d /dev/ttyS2 -s NAMED_VALUE_FLOAT -r 25
+# Fusion output for the UI
+mavlink stream -d /dev/ttyS2 -s DEBUG_FLOAT_ARRAY -r 25
