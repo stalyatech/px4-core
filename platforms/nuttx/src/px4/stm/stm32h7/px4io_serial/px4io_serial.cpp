@@ -106,7 +106,10 @@ ArchPX4IOSerial::ArchPX4IOSerial() :
 	_current_packet(nullptr),
 	_rx_dma_status(_dma_status_inactive),
 	_completion_semaphore(SEM_INITIALIZER(0)),
-	_pc_dmaerrs(perf_alloc(PC_COUNT, MODULE_NAME": DMA errors"))
+	_pc_dmaerrs(perf_alloc(PC_COUNT, MODULE_NAME": DMA errors")),
+	_pc_earlydma(perf_alloc(PC_COUNT, MODULE_NAME": early DMA")),
+	_pc_stalesem(perf_alloc(PC_COUNT, MODULE_NAME": stale sem")),
+	_pc_norx(perf_alloc(PC_COUNT, MODULE_NAME": no rx"))
 {
 }
 
@@ -142,6 +145,9 @@ ArchPX4IOSerial::~ArchPX4IOSerial()
 	px4_sem_destroy(&_completion_semaphore);
 
 	perf_free(_pc_dmaerrs);
+	perf_free(_pc_earlydma);
+	perf_free(_pc_stalesem);
+	perf_free(_pc_norx);
 }
 
 int
@@ -277,6 +283,14 @@ ArchPX4IOSerial::_bus_exchange(IOPacket *_packet)
 {
 	_current_packet = _packet;
 
+	/* a completion left over from an earlier exchange must not end this one */
+	while (px4_sem_trywait(&_completion_semaphore) == 0) {
+		perf_count(_pc_stalesem);
+	}
+
+	_tx_started = false;
+	_rx_length = 0;
+
 	/* clear data that may be in the RDR and clear overrun error: */
 	if (rISR & USART_ISR_RXNE) {
 		(void)rRDR;
@@ -340,6 +354,7 @@ ArchPX4IOSerial::_bus_exchange(IOPacket *_packet)
 	txdmacfg.cfg2  = 0;
 
 	stm32_dmasetup(_tx_dma, &txdmacfg);
+	_tx_started = true;
 	rCR3 |= USART_CR3_DMAT;
 	stm32_dmastart(_tx_dma, nullptr, nullptr, false);
 
@@ -400,6 +415,15 @@ ArchPX4IOSerial::_bus_exchange(IOPacket *_packet)
 	_rx_dma_status = _dma_status_inactive;
 	leave_critical_section(irqs);
 
+	if ((ret == OK) && (_rx_length == 0)) {
+		/* Nothing came back. The buffer still holds our request, and as
+		 * PKT_CODE_READ equals PKT_CODE_SUCCESS it would pass as a good reply.
+		 */
+		_abort_dma();
+		perf_count(_pc_norx);
+		ret = -EIO;
+	}
+
 	if (ret == OK) {
 		/* check packet CRC - corrupt packet errors mean IO receive CRC error */
 		uint8_t crc = _current_packet->crc;
@@ -422,6 +446,19 @@ ArchPX4IOSerial::_dma_callback(DMA_HANDLE handle, uint8_t status, void *arg)
 {
 	if (arg != nullptr) {
 		ArchPX4IOSerial *ps = reinterpret_cast<ArchPX4IOSerial *>(arg);
+
+		const bool failed = status & (DMA_STATUS_DMEIF | DMA_STATUS_TEIF);
+		const bool complete = status & DMA_STATUS_TCIF;
+
+		/* A completion with no request on the wire can only be a leftover */
+		if (!failed && (!complete || !ps->_tx_started)) {
+			perf_count(ps->_pc_earlydma);
+			return;
+		}
+
+		if (complete) {
+			ps->_rx_length = sizeof(IOPacket);
+		}
 
 		ps->_do_rx_dma_callback(status);
 	}
@@ -525,6 +562,7 @@ ArchPX4IOSerial::_do_interrupt()
 			}
 
 			perf_count(_pc_idle);
+			_rx_length = length;
 
 			/* stop the receive DMA */
 			stm32_dmastop(_rx_dma);

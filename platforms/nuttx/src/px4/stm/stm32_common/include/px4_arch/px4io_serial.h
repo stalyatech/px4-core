@@ -136,6 +136,12 @@ private:
 	static const unsigned	_dma_status_waiting  = 0x00000000;
 	volatile unsigned	_rx_dma_status;
 
+	/** set once the request is on its way, no reply can arrive before that */
+	volatile bool		_tx_started{false};
+
+	/** bytes of the reply received in this exchange */
+	volatile size_t		_rx_length{0};
+
 	/** client-waiting lock/signal */
 	px4_sem_t			_completion_semaphore;
 
@@ -160,6 +166,9 @@ private:
 	 * Performance counters.
 	 */
 	perf_counter_t		_pc_dmaerrs;
+	perf_counter_t		_pc_earlydma{nullptr};
+	perf_counter_t		_pc_stalesem{nullptr};
+	perf_counter_t		_pc_norx{nullptr};
 
 	/**
 	 * IO Buffer storage
