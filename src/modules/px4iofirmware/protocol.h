@@ -92,6 +92,8 @@
 #define PX4IO_P_CONFIG_ACTUATOR_COUNT		5	/* hardcoded max actuator output count */
 #define PX4IO_P_CONFIG_RC_INPUT_COUNT		6	/* hardcoded max R/C input count supported */
 #define PX4IO_P_CONFIG_ADC_INPUT_COUNT		7	/* hardcoded max ADC inputs */
+#define PX4IO_P_CONFIG_FEATURES			8	/* optional pages this IO serves; older IOs reject the read */
+#define PX4IO_P_CONFIG_FEATURES_AIRSPEED	(1 << 0) /* PX4IO_PAGE_AIRSPEED */
 #define PX4IO_MAX_TRANSFER_LEN			64
 
 /* dynamic status page */
@@ -148,6 +150,18 @@
 /* PWM servo information */
 #define PX4IO_PAGE_PWM_INFO			7
 #define PX4IO_RATE_MAP_BASE			0	/* 0..CONFIG_ACTUATOR_COUNT bitmaps of PWM rate groups */
+
+/* airspeed sensor on the IO I2C bus (MS4525DO), raw validated sample */
+#define PX4IO_PAGE_AIRSPEED			8
+#define PX4IO_P_AIRSPEED_STATUS			0
+#define PX4IO_P_AIRSPEED_STATUS_PRESENT		(1 << 0) /* the sensor answers on the bus */
+#define PX4IO_P_AIRSPEED_STATUS_VALID		(1 << 1) /* a validated sample is held */
+#define PX4IO_P_AIRSPEED_SEQ			1	/* increments with every new sample */
+#define PX4IO_P_AIRSPEED_BRIDGE			2	/* 14-bit bridge (pressure) count */
+#define PX4IO_P_AIRSPEED_TEMP			3	/* 11-bit temperature count */
+#define PX4IO_P_AIRSPEED_AGE			4	/* ms since the sample, 0xffff if older */
+#define PX4IO_P_AIRSPEED_ERRORS			5	/* bus and data errors (wrapping counter) */
+#define PX4IO_P_AIRSPEED_COUNT			6
 
 /* setup page */
 #define PX4IO_PAGE_SETUP			50

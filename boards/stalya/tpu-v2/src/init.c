@@ -31,6 +31,9 @@
 #ifdef CONFIG_SG2000_WDT
 #include <arch/sg2000/wdt.h>
 #endif
+#ifdef CONFIG_SG2000_I2C1
+#include "sg2000_i2c.h"
+#endif
 
 #ifdef PX4IO_DEBUG
 # define PX4IO_DBG(_fmt, ...) syslog(LOG_INFO, "[px4io][init] " _fmt, ##__VA_ARGS__)
@@ -187,4 +190,13 @@ __EXPORT int board_app_initialize(uintptr_t arg)
 #endif
 
 	return OK;
+}
+
+__EXPORT struct i2c_master_s *tpu_v2_airspeed_i2c(void)
+{
+#ifdef CONFIG_SG2000_I2C1
+	return sg2000_i2cbus_initialize(1);
+#else
+	return NULL;
+#endif
 }

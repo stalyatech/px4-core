@@ -36,6 +36,7 @@ option(PX4IO_PERF "Enable px4io perf counters" OFF)
 if(${PX4_CHIP} STREQUAL "sg2000")
 	set(px4iofirmware_arch_sources
 		sg2000/adc.cpp
+		sg2000/airspeed.cpp
 		sg2000/serial.cpp
 		fw_manifest.c
 	)

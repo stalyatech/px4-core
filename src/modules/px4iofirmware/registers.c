@@ -94,6 +94,11 @@ static const uint16_t	r_page_config[] = {
 	[PX4IO_P_CONFIG_ACTUATOR_COUNT]		= PX4IO_SERVO_COUNT,
 	[PX4IO_P_CONFIG_RC_INPUT_COUNT]		= PX4IO_RC_INPUT_CHANNELS,
 	[PX4IO_P_CONFIG_ADC_INPUT_COUNT]	= PX4IO_ADC_CHANNEL_COUNT,
+#if defined(PX4IO_AIRSPEED_I2C_ADDR)
+	[PX4IO_P_CONFIG_FEATURES]		= PX4IO_P_CONFIG_FEATURES_AIRSPEED,
+#else
+	[PX4IO_P_CONFIG_FEATURES]		= 0,
+#endif
 };
 
 /**
@@ -1036,6 +1041,17 @@ registers_get(uint8_t page, uint8_t offset, uint16_t **values, unsigned *num_val
 	case PX4IO_PAGE_FW_MGMT:
 		SELECT_PAGE(r_page_fw_mgmt);
 		break;
+
+#if defined(PX4IO_AIRSPEED_I2C_ADDR)
+
+	case PX4IO_PAGE_AIRSPEED: {
+			/* the sensor thread updates the page; hand out a consistent copy */
+			static uint16_t snapshot[PX4IO_P_AIRSPEED_COUNT];
+			airspeed_snapshot(snapshot);
+			SELECT_PAGE(snapshot);
+		}
+		break;
+#endif
 
 	default:
 		return -1;

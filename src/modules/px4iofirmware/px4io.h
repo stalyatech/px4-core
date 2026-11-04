@@ -194,6 +194,14 @@ extern void	px4io_fw_mgmt_seed_from_manifest(void);
 extern int	adc_init(void);
 extern uint16_t	adc_measure(unsigned channel);
 
+#if defined(PX4IO_AIRSPEED_I2C_ADDR)
+/**
+ * Airspeed sensor on the IO I2C bus
+ */
+extern void	airspeed_init(void);
+extern void	airspeed_snapshot(uint16_t page[PX4IO_P_AIRSPEED_COUNT]);
+#endif
+
 /**
  * R/C receiver handling.
  *

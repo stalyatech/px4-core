@@ -60,6 +60,7 @@
 #include <drivers/drv_io_heater.h>
 #include <drivers/drv_pwm_output.h>
 #include <drivers/drv_sbus.h>
+#include <drivers/drv_sensor.h>
 
 #include <lib/circuit_breaker/circuit_breaker.h>
 #include <lib/mathlib/mathlib.h>
@@ -77,6 +78,7 @@
 #include <uORB/SubscriptionInterval.hpp>
 #include <uORB/topics/actuator_armed.h>
 #include <uORB/topics/actuator_outputs.h>
+#include <uORB/topics/differential_pressure.h>
 #include <uORB/topics/input_rc.h>
 #include <uORB/topics/vehicle_command.h>
 #include <uORB/topics/vehicle_command_ack.h>
@@ -255,6 +257,11 @@ private:
 	/* advertised topics */
 	uORB::PublicationMulti<input_rc_s>	_input_rc_pub{ORB_ID(input_rc)};
 	uORB::Publication<px4io_status_s>	_px4io_status_pub{ORB_ID(px4io_status)};
+	uORB::PublicationMulti<differential_pressure_s>	_differential_pressure_pub{ORB_ID(differential_pressure)};
+
+	bool			_airspeed_available{false};	///< IO serves PX4IO_PAGE_AIRSPEED
+	uint16_t		_airspeed_seq{0};		///< last sample published
+	param_t			_param_dpres_rev{PARAM_INVALID};
 
 	ButtonPublisher	_button_publisher;
 	bool _previous_safety_off{false};
@@ -295,6 +302,13 @@ private:
 	 * @return		OK if data was returned.
 	 */
 	int			io_publish_raw_rc();
+
+	/**
+	 * Fetch the airspeed sample from IO and publish differential_pressure.
+	 *
+	 * @return		OK if the page was read.
+	 */
+	int			io_publish_airspeed();
 
 	/**
 	 * write register(s)
@@ -533,6 +547,15 @@ int PX4IO::init()
 		_max_rc_input = input_rc_s::RC_INPUT_MAX_CHANNELS;
 	}
 
+	/* optional pages; an IO without the feature register rejects the read */
+	const uint32_t io_features = io_reg_get(PX4IO_PAGE_CONFIG, PX4IO_P_CONFIG_FEATURES);
+	_airspeed_available = (io_features != _io_reg_get_error) && (io_features & PX4IO_P_CONFIG_FEATURES_AIRSPEED);
+
+	if (_airspeed_available) {
+		_param_dpres_rev = param_find("SENS_DPRES_REV");
+		PX4_INFO("airspeed sensor on IO");
+	}
+
 	uint16_t reg = 0;
 
 	/* get IO's last seen FMU state */
@@ -683,6 +706,10 @@ void PX4IO::Run()
 
 		/* get raw R/C input from IO */
 		io_publish_raw_rc();
+
+		if (_airspeed_available) {
+			io_publish_airspeed();
+		}
 	}
 
 	/* check updates on uORB topics and handle it */
@@ -1183,6 +1210,64 @@ int PX4IO::io_get_status()
 	return ret;
 }
 
+int PX4IO::io_publish_airspeed()
+{
+	uint16_t regs[PX4IO_P_AIRSPEED_COUNT] {};
+
+	if (io_reg_get(PX4IO_PAGE_AIRSPEED, 0, regs, PX4IO_P_AIRSPEED_COUNT) != OK) {
+		return -1;
+	}
+
+	const uint16_t seq = regs[PX4IO_P_AIRSPEED_SEQ];
+	const bool fresh = (seq != _airspeed_seq);
+	_airspeed_seq = seq;
+
+	// the IO samples about every 20 ms, an older sample means it stopped
+	static constexpr uint16_t MAX_AGE_MS = 100;
+
+	if (!fresh || !(regs[PX4IO_P_AIRSPEED_STATUS] & PX4IO_P_AIRSPEED_STATUS_VALID)
+	    || regs[PX4IO_P_AIRSPEED_AGE] > MAX_AGE_MS) {
+		return OK;
+	}
+
+	// same conversion as the MS4525DO driver: 14-bit bridge count, +-1 PSI,
+	// 10..90 % of the range, negated so the bottom port is the static port
+	const float bridge = regs[PX4IO_P_AIRSPEED_BRIDGE];
+	static constexpr float P_min = -1.f; // PSI
+	static constexpr float P_max = 1.f;  // PSI
+	static constexpr float PSI_to_Pa = 6894.757f;
+	const float diff_press_psi = -((bridge - 0.1f * 16383.f) * (P_max - P_min) / (0.8f * 16383.f) + P_min);
+	float diff_press_pa = diff_press_psi * PSI_to_Pa;
+
+	int32_t dpres_rev = 0;
+
+	if (_param_dpres_rev != PARAM_INVALID) {
+		param_get(_param_dpres_rev, &dpres_rev);
+	}
+
+	if (dpres_rev == 1) {
+		diff_press_pa = -diff_press_pa;
+	}
+
+	device::Device::DeviceId device_id{};
+	device_id.devid_s.bus_type = device::Device::DeviceBusType_SERIAL;
+	device_id.devid_s.address = 0x28;
+	device_id.devid_s.devtype = DRV_DIFF_PRESS_DEVTYPE_MS4525DO;
+
+	const hrt_abstime now = hrt_absolute_time();
+
+	differential_pressure_s differential_pressure{};
+	differential_pressure.timestamp_sample = now - regs[PX4IO_P_AIRSPEED_AGE] * 1000ULL;
+	differential_pressure.device_id = device_id.devid;
+	differential_pressure.differential_pressure_pa = diff_press_pa;
+	differential_pressure.temperature = ((200.f * regs[PX4IO_P_AIRSPEED_TEMP]) / 2047) - 50.f;
+	differential_pressure.error_count = regs[PX4IO_P_AIRSPEED_ERRORS];
+	differential_pressure.timestamp = hrt_absolute_time();
+	_differential_pressure_pub.publish(differential_pressure);
+
+	return OK;
+}
+
 int PX4IO::io_publish_raw_rc()
 {
 	const uint16_t rc_valid_update_count = io_reg_get(PX4IO_PAGE_RAW_RC_INPUT, PX4IO_P_RAW_FRAME_COUNT);
@@ -1540,6 +1625,17 @@ int PX4IO::print_status()
 	}
 
 	printf("\n");
+
+	if (_airspeed_available) {
+		uint16_t asp[PX4IO_P_AIRSPEED_COUNT] {};
+
+		if (io_reg_get(PX4IO_PAGE_AIRSPEED, 0, asp, PX4IO_P_AIRSPEED_COUNT) == OK) {
+			printf("airspeed status 0x%" PRIx16 " seq %" PRIu16 " bridge %" PRIu16 " temp %" PRIu16
+			       " age %" PRIu16 " ms errors %" PRIu16 "\n",
+			       asp[PX4IO_P_AIRSPEED_STATUS], asp[PX4IO_P_AIRSPEED_SEQ], asp[PX4IO_P_AIRSPEED_BRIDGE],
+			       asp[PX4IO_P_AIRSPEED_TEMP], asp[PX4IO_P_AIRSPEED_AGE], asp[PX4IO_P_AIRSPEED_ERRORS]);
+		}
+	}
 
 	/* setup and state */
 	uint16_t features = io_reg_get(PX4IO_PAGE_SETUP, PX4IO_P_SETUP_FEATURES);

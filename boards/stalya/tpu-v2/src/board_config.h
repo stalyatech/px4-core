@@ -30,6 +30,8 @@
  */
 #define PX4IO_SBUS_DEVICE		"/dev/ttyS1"
 
+#define PX4IO_AIRSPEED_I2C_ADDR		0x28
+
 /* RC I/O mux pins (TPU-v2 schematic).
  *
  * UART1_TX = XGPIOA_10 (SD0_D1 pad, route 3) → SBUS_OUT when SBUS_OUT_EN=0.
@@ -87,6 +89,13 @@ void tpu_v2_led_status_set(bool on);
  * tpu_v2_rc_input_select_dsm(false) → UART1_RX listens to SBUS receiver.
  */
 int  tpu_v2_rc_mux_init(void);
+
+/*
+ * Airspeed sensor (Matek ASPD-4525, MS4525DO at 0x28) on I2C1:
+ * VIVO_D3 = IIC1_SCL, VIVO_D4 = IIC1_SDA, brought out on J4 pins 5 and 4
+ * through the U14 level translator.  Returns NULL if the bus cannot be set up.
+ */
+struct i2c_master_s *tpu_v2_airspeed_i2c(void);
 void tpu_v2_sbus_out_enable(bool on);
 void tpu_v2_rc_input_select_dsm(bool dsm);
 bool tpu_v2_rc_input_is_dsm(void);

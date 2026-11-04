@@ -389,6 +389,11 @@ extern "C" __EXPORT int user_start(int argc, char *argv[])
 	/* start the FMU interface */
 	interface_init();
 
+#if defined(PX4IO_AIRSPEED_I2C_ADDR)
+	/* start sampling the airspeed sensor */
+	airspeed_init();
+#endif
+
 #if defined(PX4IO_PERF)
 	/* add a performance counter for mixing */
 	perf_counter_t mixer_perf = perf_alloc(PC_ELAPSED, "mix");
