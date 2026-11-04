@@ -21,46 +21,14 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <string.h>
+#include <sys/ioctl.h>
+
+#include <drivers/drv_hrt.h>
 
 #include "px4io.h"
 
 static int _fmu_fd{-1};
 static pthread_t _rx_thread{};
-
-static int read_full(void *buffer, size_t len, int timeout_ms)
-{
-	uint8_t *dst = static_cast<uint8_t *>(buffer);
-	size_t received = 0;
-
-	while (received < len) {
-		struct pollfd pfd{};
-		pfd.fd = _fmu_fd;
-		pfd.events = POLLIN;
-		const int poll_ret = poll(&pfd, 1, timeout_ms);
-
-		if (poll_ret == 0) {
-			return -ETIMEDOUT;
-		}
-
-		if (poll_ret < 0) {
-			if (errno == EINTR) {
-				continue;
-			}
-
-			return -errno;
-		}
-
-		const ssize_t n = read(_fmu_fd, &dst[received], len - received);
-
-		if (n <= 0) {
-			return -EIO;
-		}
-
-		received += static_cast<size_t>(n);
-	}
-
-	return OK;
-}
 
 static int write_full(const void *buffer, size_t len)
 {
@@ -88,17 +56,34 @@ static int write_full(const void *buffer, size_t len)
 	return OK;
 }
 
+/*
+ * The PX4IO protocol has no sync byte.  On STM32 every packet is framed by
+ * the UART line-idle interrupt; here the bytes come through the NuttX serial
+ * upper half, so idle is emulated with timestamps.  The FMU sends a whole
+ * packet back to back and then waits up to 10 ms for the reply before it
+ * retries, so a pause longer than PX4IO_RX_GAP_US always lies between two
+ * packets.  Any bytes held across such a pause belong to a broken packet and
+ * are dropped, which brings the parser back in step within one FMU retry.
+ */
+#define PX4IO_RX_GAP_US		3000
+#define PX4IO_RX_POLL_MS	20
+
+struct px4io_link_stats_s {
+	uint32_t packets;	/* good packets handled */
+	uint32_t replies;	/* replies sent */
+	uint32_t crc_errors;	/* complete packets with a bad CRC */
+	uint32_t bad_headers;	/* headers with an invalid code or count */
+	uint32_t gap_drops;	/* partial packets dropped at a line pause */
+	uint32_t stale;		/* packets superseded before a reply was sent */
+	uint32_t write_errors;	/* reply writes that failed */
+};
+
+/* kept global so it can be read from Linux through /dev/mem */
+struct px4io_link_stats_s g_px4io_link_stats;
+
 static void handle_packet(IOPacket &packet)
 {
-	uint8_t crc = packet.crc;
-	packet.crc = 0;
-
-	if (crc != crc_packet(&packet)) {
-		packet.count_code = PKT_CODE_CORRUPT;
-		packet.page = 0xff;
-		packet.offset = 0xff;
-
-	} else if (PKT_CODE(packet) == PKT_CODE_WRITE) {
+	if (PKT_CODE(packet) == PKT_CODE_WRITE) {
 		if (registers_set(packet.page, packet.offset, &packet.regs[0], PKT_COUNT(packet))) {
 			packet.count_code = PKT_CODE_ERROR;
 
@@ -106,7 +91,7 @@ static void handle_packet(IOPacket &packet)
 			packet.count_code = PKT_CODE_SUCCESS;
 		}
 
-	} else if (PKT_CODE(packet) == PKT_CODE_READ) {
+	} else {
 		unsigned count = 0;
 		uint16_t *registers = nullptr;
 
@@ -125,18 +110,20 @@ static void handle_packet(IOPacket &packet)
 			memcpy(&packet.regs[0], registers, count * sizeof(uint16_t));
 			packet.count_code = static_cast<uint8_t>(count) | PKT_CODE_SUCCESS;
 		}
-
-	} else {
-		packet.count_code = PKT_CODE_CORRUPT;
-		packet.page = 0xff;
-		packet.offset = 0xfe;
 	}
 
 	packet.crc = 0;
 	packet.crc = crc_packet(&packet);
+}
 
+static void send_reply(IOPacket &packet)
+{
 	if (write_full(&packet, PKT_SIZE(packet)) != OK) {
+		g_px4io_link_stats.write_errors++;
 		syslog(LOG_ERR, "px4io_sg2000: packet response write failed\n");
+
+	} else {
+		g_px4io_link_stats.replies++;
 	}
 }
 
@@ -144,30 +131,109 @@ static void *rx_worker(void *arg)
 {
 	(void)arg;
 	IOPacket packet{};
+	uint8_t *const buf = reinterpret_cast<uint8_t *>(&packet);
+	size_t have = 0;
+	size_t need = 0;
+	bool discard = false;
+	hrt_abstime last_rx = 0;
+	uint8_t chunk[64];
 
 	while (true) {
-		if (read_full(&packet, 4, 2000) != OK) {
+		struct pollfd pfd {};
+		pfd.fd = _fmu_fd;
+		pfd.events = POLLIN;
+		const int poll_ret = poll(&pfd, 1, PX4IO_RX_POLL_MS);
+
+		if (poll_ret <= 0) {
+			/* line idle: whatever is held is a broken packet */
+			if (have > 0) {
+				g_px4io_link_stats.gap_drops++;
+			}
+
+			have = 0;
+			discard = false;
 			continue;
 		}
 
-		const uint8_t count = PKT_COUNT(packet);
+		const ssize_t n = read(_fmu_fd, chunk, sizeof(chunk));
 
-		if (count > PKT_MAX_REGS) {
+		if (n <= 0) {
 			continue;
 		}
 
-		/* Bigger inter-byte timeout for the regs portion: a short timeout
-		 * + `continue` would leave the regs bytes behind in the RX queue
-		 * and the next header read would lock onto garbage, breaking the
-		 * stream permanently.  We've already committed to this packet
-		 * once the header is in, so wait long enough that scheduler jitter
-		 * (cooperative SCHED_RR on the C906 LITTLE) can't trip us.
-		 */
-		if (read_full(packet.regs, count * sizeof(uint16_t), 200) != OK) {
-			continue;
+		const hrt_abstime now = hrt_absolute_time();
+
+		if ((last_rx != 0) && (now - last_rx > PX4IO_RX_GAP_US)) {
+			if (have > 0) {
+				g_px4io_link_stats.gap_drops++;
+			}
+
+			have = 0;
+			discard = false;
 		}
 
-		handle_packet(packet);
+		last_rx = now;
+
+		bool reply_ready = false;
+
+		for (ssize_t i = 0; i < n; i++) {
+			if (discard) {
+				continue;
+			}
+
+			if (reply_ready) {
+				/* the FMU sent more after this packet, so it gave up waiting */
+				g_px4io_link_stats.stale++;
+				reply_ready = false;
+			}
+
+			buf[have++] = chunk[i];
+
+			if (have == 4) {
+				const uint8_t code = PKT_CODE(packet);
+
+				if ((PKT_COUNT(packet) > PKT_MAX_REGS) ||
+				    ((code != PKT_CODE_READ) && (code != PKT_CODE_WRITE))) {
+					g_px4io_link_stats.bad_headers++;
+					have = 0;
+					discard = true;
+					continue;
+				}
+
+				need = PKT_SIZE(packet);
+			}
+
+			if ((have < 4) || (have < need)) {
+				continue;
+			}
+
+			have = 0;
+
+			const uint8_t crc = packet.crc;
+			packet.crc = 0;
+
+			if (crc != crc_packet(&packet)) {
+				/* most likely out of step: wait for the line to go quiet */
+				g_px4io_link_stats.crc_errors++;
+				discard = true;
+				continue;
+			}
+
+			g_px4io_link_stats.packets++;
+			handle_packet(packet);
+			reply_ready = true;
+		}
+
+		if (reply_ready) {
+			int pending = 0;
+
+			if ((ioctl(_fmu_fd, FIONREAD, (unsigned long)&pending) == 0) && (pending > 0)) {
+				g_px4io_link_stats.stale++;
+
+			} else {
+				send_reply(packet);
+			}
+		}
 	}
 
 	return nullptr;
@@ -186,7 +252,7 @@ void interface_init(void)
 		return;
 	}
 
-	struct termios t{};
+	struct termios t {};
 
 	if (tcgetattr(_fmu_fd, &t) < 0) {
 		syslog(LOG_ERR, "px4io_sg2000: tcgetattr failed (%d)\n", errno);

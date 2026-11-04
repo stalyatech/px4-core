@@ -94,6 +94,12 @@ PX4IO_serial::init(IOPacket *io_buffer)
 	return 0;
 }
 
+/* IO echoes page and offset; a reply carrying others answers an earlier request */
+static bool reply_matches(const IOPacket *packet, uint8_t page, uint8_t offset)
+{
+	return (packet->page == page) && (packet->offset == offset);
+}
+
 int
 PX4IO_serial::write(unsigned address, void *data, unsigned count)
 {
@@ -124,6 +130,12 @@ PX4IO_serial::write(unsigned address, void *data, unsigned count)
 
 		/* start the transaction and wait for it to complete */
 		result = _bus_exchange(_io_buffer_ptr);
+
+		/* a reply for some other request is a late one, try again */
+		if ((result == OK) && !reply_matches(_io_buffer_ptr, page, offset)) {
+			result = -EIO;
+			perf_count(_pc_protoerrs);
+		}
 
 		/* successful transaction? */
 		if (result == OK) {
@@ -177,6 +189,12 @@ PX4IO_serial::read(unsigned address, void *data, unsigned count)
 
 		/* start the transaction and wait for it to complete */
 		result = _bus_exchange(_io_buffer_ptr);
+
+		/* a reply for some other request is a late one, try again */
+		if ((result == OK) && !reply_matches(_io_buffer_ptr, page, offset)) {
+			result = -EIO;
+			perf_count(_pc_protoerrs);
+		}
 
 		/* successful transaction? */
 		if (result == OK) {
