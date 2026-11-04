@@ -793,6 +793,14 @@ bool UxrceddsClient::setBaudrate(int fd, unsigned baud)
 
 	case 4000000: speed = B4000000; break;
 
+#if defined(__PX4_NUTTX)
+
+	// SG2000 (NexusV1-TPU) UARTs divide 25 MHz by 16 x an integer, so 921600
+	// runs at 781250 there; 1562500 is the fastest exact rate. NuttX takes the
+	// numeric rate directly.
+	case 1562500: speed = 1562500; break;
+#endif
+
 	default:
 		PX4_ERR("ERR: unknown baudrate: %d", baud);
 		return false;
