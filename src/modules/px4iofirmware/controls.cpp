@@ -84,6 +84,26 @@ static perf_counter_t c_gather_ppm;
 static int _dsm_fd = -1;
 int _sbus_fd = -1;
 static int _ppm_fd = -1;
+static bool _ppm_capture_present = false;
+
+/*
+ * The capture driver arms its GPIO edge interrupt on open and disarms it on
+ * close, so closing the device is how PPM capture is switched off.
+ */
+static void ppm_capture_enable(bool enable)
+{
+	if (!_ppm_capture_present) {
+		return;
+	}
+
+	if (enable && _ppm_fd < 0) {
+		_ppm_fd = open(PX4IO_PPM_CAPTURE_DEVICE, O_RDONLY);
+
+	} else if (!enable && _ppm_fd >= 0) {
+		close(_ppm_fd);
+		_ppm_fd = -1;
+	}
+}
 
 #ifdef ADC_RSSI
 static unsigned _rssi_adc_counts = 0;
@@ -228,6 +248,7 @@ controls_init(void)
 
 	/* Optional SG2000 PPM capture driver path. */
 	_ppm_fd = open(PX4IO_PPM_CAPTURE_DEVICE, O_RDONLY);
+	_ppm_capture_present = (_ppm_fd >= 0);
 
 #if defined(PX4IO_PERF)
 	c_gather_dsm = perf_alloc(PC_ELAPSED, "c_gather_dsm");
@@ -322,14 +343,26 @@ controls_tick()
 #endif
 
 	/*
-	 * XXX each S.bus frame will cause a PPM decoder interrupt
-	 * storm (lots of edges).  It might be sensible to actually
-	 * disable the PPM decoder completely if we have S.bus signal.
+	 * Each S.bus frame causes a PPM decoder interrupt storm (lots of
+	 * edges), and on boards where one RC pin feeds both decoders (TPU-v2:
+	 * PPM_SBUS_IN goes to the PPM capture GPIO and, through an inverter,
+	 * to the S.bus UART) the raw S.bus waveform is now and then decoded as
+	 * a PPM frame.  That flips the input source to PPM and clears the
+	 * failsafe flag below.  So once S.bus is seen, skip PPM and stop the
+	 * capture interrupt; RC loss clears RC_SBUS and brings PPM back.
 	 */
 #if defined(PX4IO_PERF)
 	perf_begin(c_gather_ppm);
 #endif
-	bool ppm_updated = ppm_input(r_raw_rc_values, &r_raw_rc_count, &r_page_raw_rc_input[PX4IO_P_RAW_RC_DATA]);
+	bool ppm_updated = false;
+
+	if (r_status_flags & PX4IO_P_STATUS_FLAGS_RC_SBUS) {
+		ppm_capture_enable(false);
+
+	} else {
+		ppm_capture_enable(true);
+		ppm_updated = ppm_input(r_raw_rc_values, &r_raw_rc_count, &r_page_raw_rc_input[PX4IO_P_RAW_RC_DATA]);
+	}
 
 	if (ppm_updated) {
 
