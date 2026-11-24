@@ -161,7 +161,22 @@
 #define PX4IO_P_AIRSPEED_TEMP			3	/* 11-bit temperature count */
 #define PX4IO_P_AIRSPEED_AGE			4	/* ms since the sample, 0xffff if older */
 #define PX4IO_P_AIRSPEED_ERRORS			5	/* bus and data errors (wrapping counter) */
-#define PX4IO_P_AIRSPEED_COUNT			6
+#define PX4IO_P_AIRSPEED_DATA_COUNT		6	/* registers above; all an FMU needs to publish */
+
+/* Timing and drop counters for diagnosis.  An IO without them serves only
+ * the first PX4IO_P_AIRSPEED_DATA_COUNT registers.  Counters wrap; wait times
+ * are in 0.1 ms units, saturating at 0xffff, averages are a running mean and
+ * maxima cover the last full second.
+ */
+#define PX4IO_P_AIRSPEED_CYCLES			6	/* measurement requests sent */
+#define PX4IO_P_AIRSPEED_DROP_STATUS		7	/* fetches with 1st not normal or 2nd not stale */
+#define PX4IO_P_AIRSPEED_DROP_MISMATCH		8	/* fetches whose bridge MSB or temperature differ */
+#define PX4IO_P_AIRSPEED_LSB_DIFF		9	/* accepted samples whose bridge LSB differed */
+#define PX4IO_P_AIRSPEED_CONV_WAIT_AVG		10	/* conversion wait, requested 5 ms */
+#define PX4IO_P_AIRSPEED_CONV_WAIT_MAX		11
+#define PX4IO_P_AIRSPEED_CYCLE_WAIT_AVG		12	/* wait between cycles, requested 10 ms */
+#define PX4IO_P_AIRSPEED_CYCLE_WAIT_MAX		13
+#define PX4IO_P_AIRSPEED_COUNT			14
 
 /* setup page */
 #define PX4IO_PAGE_SETUP			50

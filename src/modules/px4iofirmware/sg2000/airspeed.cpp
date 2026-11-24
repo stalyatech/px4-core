@@ -54,6 +54,23 @@ pthread_t _thread{};
 uint16_t _page[PX4IO_P_AIRSPEED_COUNT] {};
 hrt_abstime _sample_time{0};
 
+/*
+ * Measured length of one kind of sleep.  The worker thread is the only
+ * writer; the page registers are updated under the critical section.
+ */
+struct WaitStat {
+	uint8_t avg_reg;
+	uint8_t max_reg;
+	uint32_t avg_x16{0};		// running mean in 0.1 ms units, scaled by 16
+	uint16_t window_max{0};
+	hrt_abstime window_start{0};
+};
+
+WaitStat _conv_wait{PX4IO_P_AIRSPEED_CONV_WAIT_AVG, PX4IO_P_AIRSPEED_CONV_WAIT_MAX};
+WaitStat _cycle_wait{PX4IO_P_AIRSPEED_CYCLE_WAIT_AVG, PX4IO_P_AIRSPEED_CYCLE_WAIT_MAX};
+
+constexpr hrt_abstime WAIT_MAX_WINDOW_US = 1000000;
+
 int i2c_write(const uint8_t *data, size_t len)
 {
 	struct i2c_msg_s msg {};
@@ -76,11 +93,58 @@ int i2c_read(uint8_t *data, size_t len)
 	return I2C_TRANSFER(_i2c, &msg, 1);
 }
 
-void count_error()
+void count(uint8_t reg)
 {
 	irqstate_t flags = enter_critical_section();
-	_page[PX4IO_P_AIRSPEED_ERRORS]++;
+	_page[reg]++;
 	leave_critical_section(flags);
+}
+
+/* usleep() and record how long it really took */
+void timed_sleep(useconds_t us, WaitStat &stat)
+{
+	const hrt_abstime start = hrt_absolute_time();
+	usleep(us);
+	const hrt_abstime now = hrt_absolute_time();
+
+	const hrt_abstime elapsed_100us = (now - start) / 100;
+	const uint16_t elapsed = (elapsed_100us < 0xffff) ? static_cast<uint16_t>(elapsed_100us) : 0xffff;
+
+	if (stat.avg_x16 == 0) {
+		stat.avg_x16 = static_cast<uint32_t>(elapsed) << 4;
+
+	} else {
+		// exponential mean over about 16 sleeps
+		stat.avg_x16 = stat.avg_x16 - (stat.avg_x16 >> 4) + elapsed;
+	}
+
+	bool window_done = false;
+
+	if (stat.window_start == 0) {
+		stat.window_start = now;
+	}
+
+	if (elapsed > stat.window_max) {
+		stat.window_max = elapsed;
+	}
+
+	if (now - stat.window_start >= WAIT_MAX_WINDOW_US) {
+		window_done = true;
+	}
+
+	irqstate_t flags = enter_critical_section();
+	_page[stat.avg_reg] = static_cast<uint16_t>(stat.avg_x16 >> 4);
+
+	if (window_done) {
+		_page[stat.max_reg] = stat.window_max;
+	}
+
+	leave_critical_section(flags);
+
+	if (window_done) {
+		stat.window_max = 0;
+		stat.window_start = now;
+	}
 }
 
 void set_present(bool present)
@@ -112,8 +176,9 @@ bool sample()
 
 	const hrt_abstime sample_time = hrt_absolute_time();
 	set_present(true);
+	count(PX4IO_P_AIRSPEED_CYCLES);
 
-	usleep(CONVERSION_WAIT_US);
+	timed_sleep(CONVERSION_WAIT_US, _conv_wait);
 
 	uint8_t data_1[4] {};
 	uint8_t data_2[4] {};
@@ -134,10 +199,21 @@ bool sample()
 	const uint16_t temperature_1 = ((data_1[2] << 8) | (data_1[3] & 0xe0)) >> 5;
 	const uint16_t temperature_2 = ((data_2[2] << 8) | (data_2[3] & 0xe0)) >> 5;
 
-	if (status_1 != STATUS_NORMAL || status_2 != STATUS_STALE
-	    || bridge_1 != bridge_2 || temperature_1 != temperature_2) {
+	if (status_1 != STATUS_NORMAL || status_2 != STATUS_STALE) {
 		// no fresh conversion yet, not a fault
+		count(PX4IO_P_AIRSPEED_DROP_STATUS);
 		return true;
+	}
+
+	// Like the PX4 MS4525DO driver, compare only the bridge MSB: the LSB may
+	// differ between the two fetches of one conversion.
+	if ((bridge_1 >> 8) != (bridge_2 >> 8) || temperature_1 != temperature_2) {
+		count(PX4IO_P_AIRSPEED_DROP_MISMATCH);
+		return true;
+	}
+
+	if (bridge_1 != bridge_2) {
+		count(PX4IO_P_AIRSPEED_LSB_DIFF);
 	}
 
 	irqstate_t flags = enter_critical_section();
@@ -159,14 +235,14 @@ void *airspeed_worker(void *arg)
 	while (true) {
 		if (sample()) {
 			errors_in_row = 0;
-			usleep(CYCLE_WAIT_US);
+			timed_sleep(CYCLE_WAIT_US, _cycle_wait);
 			continue;
 		}
 
-		count_error();
+		count(PX4IO_P_AIRSPEED_ERRORS);
 
 		if (++errors_in_row < RESET_AFTER_ERRORS) {
-			usleep(CYCLE_WAIT_US);
+			timed_sleep(CYCLE_WAIT_US, _cycle_wait);
 			continue;
 		}
 

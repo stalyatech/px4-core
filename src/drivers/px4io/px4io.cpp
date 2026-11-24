@@ -1212,9 +1212,9 @@ int PX4IO::io_get_status()
 
 int PX4IO::io_publish_airspeed()
 {
-	uint16_t regs[PX4IO_P_AIRSPEED_COUNT] {};
+	uint16_t regs[PX4IO_P_AIRSPEED_DATA_COUNT] {};
 
-	if (io_reg_get(PX4IO_PAGE_AIRSPEED, 0, regs, PX4IO_P_AIRSPEED_COUNT) != OK) {
+	if (io_reg_get(PX4IO_PAGE_AIRSPEED, 0, regs, PX4IO_P_AIRSPEED_DATA_COUNT) != OK) {
 		return -1;
 	}
 
@@ -1629,11 +1629,26 @@ int PX4IO::print_status()
 	if (_airspeed_available) {
 		uint16_t asp[PX4IO_P_AIRSPEED_COUNT] {};
 
-		if (io_reg_get(PX4IO_PAGE_AIRSPEED, 0, asp, PX4IO_P_AIRSPEED_COUNT) == OK) {
+		if (io_reg_get(PX4IO_PAGE_AIRSPEED, 0, asp, PX4IO_P_AIRSPEED_DATA_COUNT) == OK) {
 			printf("airspeed status 0x%" PRIx16 " seq %" PRIu16 " bridge %" PRIu16 " temp %" PRIu16
 			       " age %" PRIu16 " ms errors %" PRIu16 "\n",
 			       asp[PX4IO_P_AIRSPEED_STATUS], asp[PX4IO_P_AIRSPEED_SEQ], asp[PX4IO_P_AIRSPEED_BRIDGE],
 			       asp[PX4IO_P_AIRSPEED_TEMP], asp[PX4IO_P_AIRSPEED_AGE], asp[PX4IO_P_AIRSPEED_ERRORS]);
+		}
+
+		// an older IO serves only the data registers
+		static constexpr unsigned diag_count = PX4IO_P_AIRSPEED_COUNT - PX4IO_P_AIRSPEED_DATA_COUNT;
+
+		if (io_reg_get(PX4IO_PAGE_AIRSPEED, PX4IO_P_AIRSPEED_DATA_COUNT,
+			       &asp[PX4IO_P_AIRSPEED_DATA_COUNT], diag_count) == OK) {
+			// wait times come in 0.1 ms units
+			const auto ms = [](uint16_t v) { return v / 10.f; };
+			printf("airspeed cycles %" PRIu16 " drop status %" PRIu16 " mismatch %" PRIu16 " lsb diff %" PRIu16 "\n",
+			       asp[PX4IO_P_AIRSPEED_CYCLES], asp[PX4IO_P_AIRSPEED_DROP_STATUS],
+			       asp[PX4IO_P_AIRSPEED_DROP_MISMATCH], asp[PX4IO_P_AIRSPEED_LSB_DIFF]);
+			printf("airspeed wait conv avg %.1f max %.1f ms (5 ms asked), cycle avg %.1f max %.1f ms (10 ms asked)\n",
+			       (double)ms(asp[PX4IO_P_AIRSPEED_CONV_WAIT_AVG]), (double)ms(asp[PX4IO_P_AIRSPEED_CONV_WAIT_MAX]),
+			       (double)ms(asp[PX4IO_P_AIRSPEED_CYCLE_WAIT_AVG]), (double)ms(asp[PX4IO_P_AIRSPEED_CYCLE_WAIT_MAX]));
 		}
 	}
 
