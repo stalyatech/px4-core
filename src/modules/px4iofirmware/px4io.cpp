@@ -423,10 +423,9 @@ extern "C" __EXPORT int user_start(int argc, char *argv[])
 
 	for (;;) {
 #if defined(CONFIG_ARCH_CHIP_SG2000)
-		/* SG2000 LITTLE core has no preemptive timer for SCHED_RR slice
-		 * end, so the firmware main loop must voluntarily yield each
-		 * iteration; otherwise other RR threads (rx_worker for FMU<->IO
-		 * comms, the LED breath worker) starve.
+		/* The main loop never blocks.  Yield every iteration so threads
+		 * at the same priority (LED breath worker, LP work queue) run
+		 * without waiting for the 200 ms round-robin slice.
 		 */
 		sched_yield();
 #endif

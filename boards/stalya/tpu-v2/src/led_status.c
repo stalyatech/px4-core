@@ -21,10 +21,9 @@
  *         0..1000 ms : fade in   (duty 0%   -> 100%)
  *         1000..2000 : fade out  (duty 100% -> 0%)
  *         2000..2500 : blank     (duty 0%, LED dark)
- *     Total cycle = 2500 ms.  Independent busy-wait threads can't
- *     share CPU on this SG2000 SKU (no preemptive timer source for
- *     SCHED_RR slice end on the C906 LITTLE core), so we stay in a
- *     single thread.  The cycle only runs while
+ *     Total cycle = 2500 ms.  The worker shares the CPU with the main
+ *     loop by yielding at the same priority, so all LED work stays in
+ *     this single thread.  The cycle only runs while
  *     PX4IO_P_STATUS_FLAGS_FMU_OK is set in r_status_flags; with no
  *     FMU link the LED stays dark and the cycle restarts cleanly from
  *     fade-in once the link recovers.

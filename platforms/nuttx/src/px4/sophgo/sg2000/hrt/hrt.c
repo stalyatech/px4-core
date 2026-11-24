@@ -156,6 +156,22 @@ __EXPORT uint16_t ppm_frame_length = 0;
 __EXPORT unsigned ppm_decoded_channels = 0;
 __EXPORT hrt_abstime ppm_last_valid_decode = 0;
 
+#ifndef CONFIG_SCHED_TICKLESS
+/* The NuttX tick and this driver share the machine timer (CSR_TIME and its
+ * compare register, RISCV_IRQ_TIMER).  hrt_tim_init() attaches that IRQ, so
+ * the arch alarm that drove the tick never fires again.  Drive the tick from
+ * a periodic callout instead; without it sleeps, poll/semaphore timeouts and
+ * round-robin time slicing stop working after hrt_init().
+ */
+static struct hrt_call g_os_tick_call;
+
+static void hrt_os_tick(void *arg)
+{
+	(void)arg;
+	nxsched_process_timer();
+}
+#endif
+
 /* timer-specific functions */
 static void hrt_tim_init(void);
 static int  hrt_tim_isr(int irq, void *context, void *args);
@@ -283,6 +299,10 @@ hrt_init(void)
 
 	sq_init(&callout_queue);
 	hrt_tim_init();
+
+#ifndef CONFIG_SCHED_TICKLESS
+	hrt_call_every(&g_os_tick_call, CONFIG_USEC_PER_TICK, CONFIG_USEC_PER_TICK, hrt_os_tick, NULL);
+#endif
 }
 
 /**

@@ -283,10 +283,10 @@ void interface_init(void)
 	}
 
 	/* RX worker must run at highest practical priority so RX bytes are
-	 * drained before the upper-half buffer overruns and so the inter-byte
-	 * timeout never trips.  The C906 LITTLE core has no preemptive timer
-	 * for SCHED_RR slice-end, so equal-priority threads serialise; we
-	 * therefore boost ourselves above the default.
+	 * drained before the upper-half buffer overruns and replies go out well
+	 * inside the FMU's 10 ms window.  Equal-priority threads only switch on
+	 * a yield or at the end of a 200 ms round-robin slice, so run above the
+	 * default.
 	 */
 	pthread_attr_t attr;
 	pthread_attr_init(&attr);
