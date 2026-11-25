@@ -176,14 +176,11 @@ set(msg_files
 	Px4ioStatus.msg
 	QshellReq.msg
 	QshellRetval.msg
-	RadarFusion.msg
-	RadarObjects.msg
 	RadarStatus.msg
 	RadioStatus.msg
 	RateCtrlStatus.msg
 	RcChannels.msg
 	RcParameterMap.msg
-	RigSensorPose.msg
 	RoverAttitudeSetpoint.msg
 	RoverAttitudeStatus.msg
 	RoverPositionSetpoint.msg

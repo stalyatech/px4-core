@@ -103,3 +103,7 @@
 [submodule "src/drivers/ins/sbgecom/sbgECom"]
 	path = src/drivers/ins/sbgecom/sbgECom
 	url = https://github.com/PX4/sbgECom.git
+[submodule "external/radar-imu-rig"]
+	path = external/radar-imu-rig
+	url = https://github.com/stalyatech/px4-radar-imu-rig.git
+	branch = main

@@ -113,13 +113,15 @@ then
 	tf02pro start -X
 fi
 
-# Nanoradar MR72 CAN model (the UART model starts from rc.serial)
+# Nanoradar MR72 CAN model (the UART model starts from rc.serial).
+# The CAN driver is an external module from external/radar-imu-rig.
 if param greater -s SENS_MR72_CAN 0
 then
 	mr72 start
 fi
 
-# Nanoradar NRA15 CAN model (the UART model starts from rc.serial)
+# Nanoradar NRA15 CAN model (the UART model starts from rc.serial).
+# The CAN driver is an external module from external/radar-imu-rig.
 if param greater -s SENS_NRA15_CAN 0
 then
 	nra15 start

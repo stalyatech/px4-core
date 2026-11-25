@@ -1,6 +1,9 @@
 #!/bin/sh
 #
 # Radar IMU Tilt Rig: started after all other apps
+#
+# rig_pose, tilt_rig, fake_nra15, fake_mr72 and radar_imu_fusion are external
+# modules from external/radar-imu-rig (EXTERNAL_MODULES_LOCATION).
 
 # Platform tilt to radar pose converter and tilt profiles (MAV_CMD_USER_1)
 rig_pose start

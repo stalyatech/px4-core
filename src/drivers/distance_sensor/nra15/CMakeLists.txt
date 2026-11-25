@@ -30,36 +30,19 @@
 # POSSIBILITY OF SUCH DAMAGE.
 #
 ############################################################################
-if(CONFIG_NRA15_IFACE_CAN)
-	# CAN model: SocketCAN
-	px4_add_module(
-		MODULE drivers__distance_sensor__nra15
-		MAIN nra15
-		SRCS
-			NanoRadarNRA15Can.cpp
-			NanoRadarNRA15Can.hpp
-			nra15_can_protocol.hpp
-		MODULE_CONFIG
-			module_can.yaml
-		DEPENDS
-			drivers_rangefinder
-		)
-else()
-	# UART model
-	px4_add_module(
-		MODULE drivers__distance_sensor__nra15
-		MAIN nra15
-		#COMPILE_FLAGS
-		#	-O0
-		SRCS
-			NanoRadarNRA15.cpp
-			NanoRadarNRA15.hpp
-			nra15_main.cpp
-		MODULE_CONFIG
-			module.yaml
-		DEPENDS
-			drivers_rangefinder
-			px4_work_queue
-			filter
-		)
-endif()
+px4_add_module(
+	MODULE drivers__distance_sensor__nra15
+	MAIN nra15
+	#COMPILE_FLAGS
+	#	-O0
+	SRCS
+		NanoRadarNRA15.cpp
+		NanoRadarNRA15.hpp
+		nra15_main.cpp
+	MODULE_CONFIG
+		module.yaml
+	DEPENDS
+		drivers_rangefinder
+		px4_work_queue
+		filter
+	)

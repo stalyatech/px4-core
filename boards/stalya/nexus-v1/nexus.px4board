@@ -10,11 +10,11 @@ CONFIG_BOARD_NO_ROMFS_IO_FW=y
 
 CONFIG_MODULES_UXRCE_DDS_CLIENT=y
 
-# Nanoradar MR72 CAN model on the tilt rig (port and id: SENS_MR72_CAN, SENS_MR72_ID)
-CONFIG_MR72_IFACE_CAN=y
-
-# Nanoradar NRA15 CAN model on the tilt rig (port: SENS_NRA15_CAN)
-CONFIG_NRA15_IFACE_CAN=y
+# The MR72 and NRA15 CAN drivers come from the external tilt rig modules
+# (external/radar-imu-rig) and use the same command names, so the in-tree
+# UART drivers stay out of this build.
+# CONFIG_DRIVERS_DISTANCE_SENSOR_MR72 is not set
+# CONFIG_DRIVERS_DISTANCE_SENSOR_NRA15 is not set
 
 # simpleTRAP FMU revision fitted on the tilt rig
 CONFIG_BOARD_FMU_REV02=y
@@ -27,9 +27,6 @@ CONFIG_SYSTEMCMDS_SERIAL_SWAP=y
 
 # Gimbal module drives the rig tilt servo (MAVLink gimbal protocol in, AUX out)
 CONFIG_MODULES_GIMBAL=y
-# Tilt rig: platform tilt to radar pose converter and radar simulators
-CONFIG_MODULES_RIG_POSE=y
-CONFIG_MODULES_TILT_RIG=y
-CONFIG_MODULES_RADAR_IMU_FUSION=y
-CONFIG_EXAMPLES_FAKE_NRA15=y
-CONFIG_EXAMPLES_FAKE_MR72=y
+# Tilt rig modules (rig_pose, tilt_rig, radar_imu_fusion, fake_mr72,
+# fake_nra15) are external. Build with
+# EXTERNAL_MODULES_LOCATION=external/radar-imu-rig.
